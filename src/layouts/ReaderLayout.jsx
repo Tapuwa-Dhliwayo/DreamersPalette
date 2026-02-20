@@ -7,7 +7,7 @@ export default function ReaderLayout() {
         dark:text-neutral-100 transition-colors">
 
             {/* Top spacing */}
-            <div className="pt-16 pb-24">
+            <div className="pt-20 pb-24">
                 <Container size="default">
                     <Outlet />
                 </Container>

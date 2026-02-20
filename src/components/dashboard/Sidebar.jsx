@@ -1,0 +1,124 @@
+import { NavLink, useNavigate } from "react-router-dom"
+import { useEffect, useState } from "react"
+import Button from "@/components/ui/Button"
+import { signOut } from "@/services/authService"
+import { getMyProfile } from "@/services/profileService"
+import { DASHBOARD_ROUTES, PUBLIC_ROUTES } from "@/app/routes"
+
+export default function Sidebar() {
+    const navigate = useNavigate()
+    const [profile, setProfile] = useState(null)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        async function loadProfile() {
+            try {
+                const data = await getMyProfile()
+                setProfile(data)
+            } catch (err) {
+                console.error("Failed to load profile:", err)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        loadProfile()
+    }, [])
+
+    async function handleLogout() {
+        try {
+            await signOut()
+            navigate(PUBLIC_ROUTES.LOGIN, { replace: true })
+        } catch (err) {
+            console.error("Logout failed:", err)
+        }
+    }
+
+    const navItems = [
+        { label: "Dashboard", to: DASHBOARD_ROUTES.ROOT },
+        { label: "Collections", to: DASHBOARD_ROUTES.COLLECTIONS },
+        { label: "Poems", to: DASHBOARD_ROUTES.POEMS },
+        { label: "Books", to: DASHBOARD_ROUTES.BOOKS },
+        { label: "Chapters", to: DASHBOARD_ROUTES.CHAPTERS },
+    ]
+
+    return (
+        <aside className="w-64 border-r border-neutral-200 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-sm flex flex-col justify-between">
+
+            {/* Top */}
+            <div className="p-6 space-y-10">
+
+                {/* Brand */}
+                <div>
+                    <h1 className="text-xl font-semibold tracking-tight">
+                        Dreamer’s Palette
+                    </h1>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                        Author Studio
+                    </p>
+                </div>
+
+                {/* Navigation */}
+                <nav className="space-y-2">
+                    {navItems.map((item) => (
+                        <NavLink
+                            key={item.to}
+                            to={item.to}
+                            end={item.to === DASHBOARD_ROUTES.ROOT}
+                            className={({ isActive }) =>
+                                `block px-3 py-2 rounded-lg text-sm transition ${
+                                    isActive
+                                        ? "bg-neutral-200/60 dark:bg-neutral-800 font-medium"
+                                        : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800/50"
+                                }`
+                            }
+                        >
+                            {item.label}
+                        </NavLink>
+                    ))}
+                </nav>
+            </div>
+
+            {/* Bottom Profile Area */}
+            <div className="p-6 border-t border-neutral-200 dark:border-neutral-800 space-y-4">
+
+                {loading ? (
+                    <div className="text-sm text-neutral-500">
+                        Loading profile...
+                    </div>
+                ) : profile ? (
+                    <>
+                        <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-full bg-neutral-300 dark:bg-neutral-700 flex items-center justify-center text-sm font-medium">
+                                {profile.display_name?.charAt(0)?.toUpperCase() || "A"}
+                            </div>
+                            <div>
+                                <div className="text-sm font-medium">
+                                    {profile.display_name}
+                                </div>
+                                <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                                    {profile.role}
+                                </div>
+                            </div>
+                        </div>
+
+                        <Button
+                            variant="subtle"
+                            size="sm"
+                            className="w-full justify-start"
+                            onClick={handleLogout}
+                        >
+                            Logout
+                        </Button>
+                    </>
+                ) : (
+                    <div className="text-sm text-red-500">
+                        Profile not found
+                    </div>
+                )}
+
+            </div>
+
+        </aside>
+    )
+}
