@@ -13,7 +13,7 @@ It exists to:
 ---
 
 ## v0.1.0 — Infrastructure Foundation Stabilized
-**Date:** YYYY-MM-DD  
+**Date:** 2026-02-20  
 **Tag:** v0.1.0  
 **Branch Merged:** dev → main  
 
@@ -103,3 +103,116 @@ Focus:
 - Dashboard content management wiring
 
 ---
+---
+
+## v0.2.0 — Collections Backbone + Public Rendering
+**Date:** 2026-02-20  
+**Tag:** v0.2.0  
+**Branch Merged:** dev → main  
+
+### Overview
+
+Phase 2 establishes the first functional vertical slice of Dreamer’s Palette.
+
+This version transforms the platform from infrastructure scaffolding into a working multi-author literary CMS foundation.
+
+Collections are now fully manageable via the dashboard and publicly readable via slug-based routes.
+
+---
+
+### ✅ Implemented
+
+#### 1. Dashboard Structural Shell
+- Permanent 2-column layout
+- Sidebar navigation (Dashboard, Collections, Poems, Books, Chapters)
+- Profile context integration (display_name + role)
+- Logout relocated into Sidebar
+- Clean separation between layout and service logic
+
+#### 2. Profile Service Layer
+- `profileService.js` implemented
+- `getMyProfile()` RLS-safe query
+- No inline Supabase queries inside layout components
+- Ownership enforced via `auth.uid()`
+
+#### 3. Collections Service Backbone
+- `contentService.js` created
+- Author methods:
+  - `getMyCollections()`
+  - `createCollection()`
+  - `updateCollection()`
+  - `deleteCollection()`
+  - `togglePublish()`
+- Public methods:
+  - `getPublishedCollections()`
+  - `getCollectionBySlug(slug)`
+- Strict RLS alignment
+- Service-layer injection of `author_id`
+
+#### 4. Slug System
+- Deterministic `slugify()` utility
+- Accent normalization
+- Special character stripping
+- Hyphen collapsing
+- Unique slug constraint enforced at DB level
+- Slug-based routing validated end-to-end
+
+#### 5. Dashboard Collections UI
+- Modal-based create/edit form
+- Draft vs Published workflow
+- Publish toggle
+- Delete support
+- Empty state messaging
+- Calm Flux-inspired layout styling
+
+#### 6. Public Collections Rendering
+- `/collections` listing page
+- `/collections/:slug` detail page
+- Published-only filtering enforced
+- 404-style fallback for unpublished content
+- ReaderLayout typography preserved
+
+#### 7. UI Refinements
+- Card hover interaction switched from underline to surface darkening
+- Scoped link override for UI surfaces
+- Soft staggered fade-in animation for collections
+- Maintained separation between prose links and UI links
+
+---
+
+### 🧠 Architectural Decisions Reinforced
+
+- RLS is the source of truth for ownership
+- Service layer is mandatory for all Supabase queries
+- Slug stability is critical to routing integrity
+- UI surface links differ from literary prose links
+- Dashboard logic separated from layout structure
+- Publish workflow enforced at both service and UI levels
+
+---
+
+### 🚫 Not Included Yet
+
+- Poems CRUD
+- Markdown editor integration
+- React Markdown rendering
+- Collection theming engine
+- AI image generation
+- Books & chapters backbone
+- Role-based admin logic
+- Pagination
+- Realtime updates
+
+---
+
+### Phase 2 Status
+
+Phase 2 is considered complete.
+
+The platform now has:
+
+- Author content management
+- Public content rendering
+- Slug-stable routing
+- RLS-enforced publishing discipline
+- Clean architectural layering
