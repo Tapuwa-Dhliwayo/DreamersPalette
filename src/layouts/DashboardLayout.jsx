@@ -1,7 +1,19 @@
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
+import {Outlet, useNavigate} from "react-router-dom";
+import {signOut} from "../services/authService.js";
 
-export default function DashboardLayout({ children }) {
+export default function DashboardLayout() {
+    const navigate = useNavigate();
+
+    async function handleLogout() {
+        try {
+            await signOut();
+            navigate("/login", { replace: true });
+        } catch (err) {
+            console.error("Logout failed:", err);
+        }
+    }
     return (
         <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 text-neutral-900
         dark:text-neutral-100 transition-colors">
@@ -15,7 +27,7 @@ export default function DashboardLayout({ children }) {
                             Dreamer’s Palette
                         </h1>
 
-                        <Button variant="subtle" size="sm">
+                        <Button variant="subtle" size="sm" onClick={handleLogout}>
                             Logout
                         </Button>
                     </div>
@@ -25,7 +37,7 @@ export default function DashboardLayout({ children }) {
             {/* Main Content */}
             <main className="py-12">
                 <Container size="wide">
-                    {children}
+                    <Outlet />
                 </Container>
             </main>
 
