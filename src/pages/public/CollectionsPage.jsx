@@ -5,6 +5,7 @@ import { getPublishedCollections } from "@/services/contentService"
 import { PUBLIC_ROUTES } from "@/app/routes"
 
 export default function CollectionsPage() {
+    const [mounted, setMounted] = useState(false)
     const [collections, setCollections] = useState([])
     const [loading, setLoading] = useState(true)
 
@@ -17,6 +18,11 @@ export default function CollectionsPage() {
                 console.error("Failed to load collections:", err)
             } finally {
                 setLoading(false)
+
+                // allow next paint before animating
+                requestAnimationFrame(() => {
+                    setMounted(true)
+                })
             }
         }
 
@@ -57,13 +63,27 @@ export default function CollectionsPage() {
             </header>
 
             <div className="grid gap-8">
-                {collections.map((collection) => (
+                {collections.map((collection, index) => (
                     <Link
                         key={collection.id}
                         to={PUBLIC_ROUTES.COLLECTION_DETAIL(collection.slug)}
-                        className="block"
+                        className="block group no-underline! hover:no-underline!"
                     >
-                        <Card className="transition hover:shadow-md cursor-pointer">
+                        <Card
+                            className={`
+                                cursor-pointer
+                                transition-all duration-500 ease-out
+                                group-hover:bg-neutral-50 dark:group-hover:bg-neutral-800
+                                group-hover:shadow-md
+                                group-hover:-translate-y-0.5
+                                ${mounted
+                                    ? "opacity-100 translate-y-0"
+                                    : "opacity-0 translate-y-1"}
+                              `}
+                            style={{
+                                transitionDelay: `${index * 60}ms`
+                            }}
+                        >
 
                             <h3 className="text-xl font-medium">
                                 {collection.title}
