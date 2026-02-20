@@ -22,9 +22,23 @@ export async function getMyCollections() {
  * Create new collection
  */
 export async function createCollection(payload) {
+    const {
+        data: { user },
+        error: userError
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+        throw new Error("User not authenticated")
+    }
+
     const { data, error } = await supabase
         .from("poetry_collections")
-        .insert([payload])
+        .insert([
+            {
+                ...payload,
+                author_id: user.id
+            }
+        ])
         .select()
         .single()
 
