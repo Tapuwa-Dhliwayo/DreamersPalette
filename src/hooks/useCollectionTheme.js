@@ -1,19 +1,21 @@
 import { useEffect, useState } from "react"
-import { useParams, useMatch } from "react-router-dom"
+import { useMatch, useParams } from "react-router-dom"
 import {
     getCollectionBySlug,
-    getPublishedPoemBySlug,
+    getCollectionById,
+    getPublishedPoemBySlug
 } from "@/services/contentService"
 
 export function useCollectionTheme() {
     const { slug } = useParams()
 
-    const isCollectionRoute = useMatch("/collections/:slug")
+    const isCollectionDetail = useMatch("/collections/:slug")
     const isPoemRoute = useMatch("/poems/:slug")
 
+    const [accentColor, setAccentColor] = useState(null)
     const [backgroundUrl, setBackgroundUrl] = useState(null)
-    const [overlayColor, setOverlayColor] = useState("rgba(0,0,0,0.6)")
-    const [accentColor, setAccentColor] = useState("#d4d4d8")
+    const [overlayColor, setOverlayColor] = useState(null)
+    const [textMode, setTextMode] = useState("light")
 
     useEffect(() => {
         let isMounted = true
@@ -22,43 +24,51 @@ export function useCollectionTheme() {
             try {
                 let collection = null
 
-                // Collection Page
-                if (isCollectionRoute) {
+                // Collection Detail
+                if (isCollectionDetail) {
                     collection = await getCollectionBySlug(slug)
                 }
 
-                // Poem Page
+                // Poem Route
                 if (isPoemRoute) {
                     const poem = await getPublishedPoemBySlug(slug)
-                    if (poem?.collection?.slug) {
-                        collection = await getCollectionBySlug(
-                            poem.collection.slug
-                        )
+                    if (poem) {
+                        collection = await getCollectionById(poem.collection_id)
                     }
+                }
+
+                // 🚨 RESET IF NOT A THEMED ROUTE
+                if (!isCollectionDetail && !isPoemRoute) {
+                    if (!isMounted) return
+
+                    setAccentColor(null)
+                    setBackgroundUrl(null)
+                    setOverlayColor(null)
+                    setTextMode("light")
+                    return
                 }
 
                 if (!collection || !isMounted) return
 
-                const {
-                    theme_background_url,
-                    theme_overlay_opacity,
-                    accent_color,
-                } = collection
+                const accentColor = collection.accent_color || null
+                const mode = collection.theme_text_mode || "light"
+                const opacity = collection.theme_overlay_opacity ?? 0.65
 
-                const opacity =
-                    typeof theme_overlay_opacity === "number"
-                        ? theme_overlay_opacity
-                        : 0.6
+                setAccentColor(accentColor)
+                setTextMode(mode)
+                setBackgroundUrl(collection.theme_background_url || null)
 
-                const accent = accent_color || "#d4d4d8"
+                if (collection.theme_background_url) {
+                    const overlay =
+                        mode === "light"
+                            ? `rgba(0,0,0,${opacity})`
+                            : `rgba(255,255,255,${opacity})`
 
-                if (!isMounted) return
+                    setOverlayColor(overlay)
+                } else {
+                    setOverlayColor(null)
+                }
 
-                setBackgroundUrl(theme_background_url || null)
-                setAccentColor(accent)
-                setOverlayColor(
-                    `rgba(0, 0, 0, ${opacity})`
-                )
             } catch (error) {
                 console.error("Theme resolution error:", error)
             }
@@ -69,11 +79,12 @@ export function useCollectionTheme() {
         return () => {
             isMounted = false
         }
-    }, [slug, isCollectionRoute, isPoemRoute])
+    }, [slug, isCollectionDetail, isPoemRoute])
 
     return {
+        accentColor,
         backgroundUrl,
         overlayColor,
-        accentColor,
+        textMode
     }
 }

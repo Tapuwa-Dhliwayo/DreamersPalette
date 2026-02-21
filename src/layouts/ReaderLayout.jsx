@@ -3,38 +3,55 @@ import { useCollectionTheme } from "@/hooks/useCollectionTheme"
 import ReaderNavigation from "@/components/reader/ReaderNavigation"
 
 export default function ReaderLayout() {
-    const { backgroundUrl, overlayColor } = useCollectionTheme()
+    const {
+        backgroundUrl,
+        overlayColor,
+        textMode,
+        accentColor
+    } = useCollectionTheme()
+
+    const outerSurface =
+        textMode === "dark"
+            ? "bg-neutral-50 text-neutral-900"
+            : "bg-neutral-950 text-neutral-100"
 
     return (
-        <div className="relative min-h-screen text-foreground">
+        <div
+            className={`min-h-screen ${outerSurface}`}
+            style={
+                accentColor
+                    ? { "--accent-color": accentColor }
+                    : undefined
+            }
+        >
 
-            {/* Background Layer */}
-            {backgroundUrl && (
-                <div
-                    className="fixed inset-0 bg-cover bg-center bg-no-repeat"
-                    style={{ backgroundImage: `url(${backgroundUrl})` }}
-                />
-            )}
+            <div className="relative max-w-5xl mx-auto min-h-screen">
 
-            {/* Overlay Layer */}
-            <div
-                className="fixed inset-0"
-                style={{ backgroundColor: overlayColor }}
-            />
+                {backgroundUrl && (
+                    <div
+                        className="absolute inset-0 bg-cover bg-center bg-no-repeat rounded-3xl"
+                        style={{ backgroundImage: `url(${backgroundUrl})` }}
+                    />
+                )}
 
-            {/* Reading Surface */}
-            <div className="relative z-10">
+                {backgroundUrl && overlayColor && (
+                    <div
+                        className="absolute inset-0 rounded-3xl"
+                        style={{ backgroundColor: overlayColor }}
+                    />
+                )}
 
-                {/* Immersive Navigation */}
-                <div className="max-w-3xl mx-auto px-6 pt-8">
-                    <ReaderNavigation />
+                <div className="relative z-10">
+
+                    <div className="max-w-3xl mx-auto px-6 pt-12">
+                        <ReaderNavigation />
+                    </div>
+
+                    <main className="max-w-3xl mx-auto px-6 pb-32">
+                        <Outlet />
+                    </main>
+
                 </div>
-
-                {/* Literary Content */}
-                <main className="max-w-3xl mx-auto px-6 pb-24">
-                    <Outlet />
-                </main>
-
             </div>
         </div>
     )
