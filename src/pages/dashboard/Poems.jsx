@@ -6,6 +6,8 @@ import Button from "@/components/ui/Button"
 
 import {
     getMyPoems,
+    getPoemsByCollection,
+    getMyCollections,
     deletePoem,
     togglePoemPublish
 } from "@/services/contentService"
@@ -14,18 +16,44 @@ export default function Poems() {
     const navigate = useNavigate()
 
     const [poems, setPoems] = useState([])
+    const [collections, setCollections] = useState([])
+    const [selectedCollection, setSelectedCollection] = useState("all")
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        fetchPoems()
+        initialize()
     }, [])
 
-    async function fetchPoems() {
+    async function initialize() {
         try {
-            const data = await getMyPoems()
-            setPoems(data)
+            const [poemsData, collectionsData] = await Promise.all([
+                getMyPoems(),
+                getMyCollections()
+            ])
+
+            setPoems(poemsData)
+            setCollections(collectionsData)
         } catch (err) {
             console.error("Failed to load poems:", err)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    async function handleFilterChange(value) {
+        setSelectedCollection(value)
+        setLoading(true)
+
+        try {
+            if (value === "all") {
+                const data = await getMyPoems()
+                setPoems(data)
+            } else {
+                const data = await getPoemsByCollection(value)
+                setPoems(data)
+            }
+        } catch (err) {
+            console.error("Filter failed:", err)
         } finally {
             setLoading(false)
         }
@@ -34,7 +62,7 @@ export default function Poems() {
     async function handleDelete(id) {
         try {
             await deletePoem(id)
-            await fetchPoems()
+            await handleFilterChange(selectedCollection)
         } catch (err) {
             console.error("Delete failed:", err)
         }
@@ -43,7 +71,7 @@ export default function Poems() {
     async function handleTogglePublish(poem) {
         try {
             await togglePoemPublish(poem.id, !poem.is_published)
-            await fetchPoems()
+            await handleFilterChange(selectedCollection)
         } catch (err) {
             console.error("Toggle failed:", err)
         }
@@ -63,6 +91,22 @@ export default function Poems() {
                 </Button>
             </div>
 
+            {/* Filter */}
+            <div className="max-w-xs">
+                <select
+                    value={selectedCollection}
+                    onChange={(e) => handleFilterChange(e.target.value)}
+                    className="w-full border border-neutral-200 rounded-xl p-3 text-sm bg-white"
+                >
+                    <option value="all">All Collections</option>
+                    {collections.map((collection) => (
+                        <option key={collection.id} value={collection.id}>
+                            {collection.title}
+                        </option>
+                    ))}
+                </select>
+            </div>
+
             {/* Loading */}
             {loading && (
                 <div className="text-sm text-neutral-500">
@@ -74,10 +118,10 @@ export default function Poems() {
             {!loading && poems.length === 0 && (
                 <Card className="p-10 text-center space-y-3">
                     <div className="text-lg font-medium">
-                        No poems yet
+                        No poems found
                     </div>
                     <div className="text-sm text-neutral-500">
-                        Begin your first verse.
+                        Begin your next verse.
                     </div>
                     <div>
                         <Button onClick={() => navigate("/dashboard/poems/new")}>
