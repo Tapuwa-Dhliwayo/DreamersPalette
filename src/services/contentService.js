@@ -160,6 +160,36 @@ export async function getCollectionBySlug(slug) {
     return data
 }
 
+/**
+ * Fetch collection by slug (author preview, no publish filter)
+ */
+export async function getCollectionBySlugPreview(slug) {
+    const { data, error } = await supabase
+        .from("poetry_collections")
+        .select("*")
+        .eq("slug", slug)
+        .single()
+
+    if (error) throw error
+    return data
+}
+
+/**
+ * Fetch single collection by id (published only)
+ */
+
+export async function getCollectionById(id) {
+    const { data, error } = await supabase
+        .from("poetry_collections")
+        .select("*")
+        .eq("id", id)
+        .eq("is_published", true)
+        .single()
+
+    if (error) throw error
+    return data
+}
+
 /* ================================
    POEMS — AUTHOR QUERIES
 ================================ */

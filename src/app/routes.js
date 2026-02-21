@@ -4,6 +4,7 @@ export const PUBLIC_ROUTES = {
     HOME: "/",
     COLLECTIONS: "/collections",
     COLLECTION_DETAIL: (slug) => `/collections/${slug}`,
+    COLLECTION_PREVIEW: (slug) => `/preview/collections/${slug}`,
     POEM: (slug) => `/poems/${slug}`,
     BOOKS: "/books",
     BOOK_DETAIL: (slug) => `/books/${slug}`,
