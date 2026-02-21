@@ -216,3 +216,77 @@ The platform now has:
 - Slug-stable routing
 - RLS-enforced publishing discipline
 - Clean architectural layering
+
+# Version History
+
+---
+
+## v0.3.0 — Poems System + Markdown Engine
+Release Date: 2026-02-21
+
+### Overview
+Phase 3 activates the core literary publishing engine of Dreamer’s Palette.
+
+This release transitions the platform from structural CMS groundwork to fully functional poetry publishing and reading.
+
+---
+
+### ✨ Major Features
+
+#### 1. Poems Content Backbone
+- Full poems CRUD in dashboard
+- Author-scoped RLS enforcement
+- Slug generation with retry logic (max 10 attempts)
+- Database-backed UNIQUE slug constraint
+- Deterministic, stable public URLs
+
+#### 2. Route-Based Poem Editor
+- `/dashboard/poems/new`
+- `/dashboard/poems/:id/edit`
+- Clean CMS architecture (no modal editor)
+- Collection assignment support
+- Draft / Publish workflow
+
+#### 3. Markdown Split Editor
+- Custom `EditorPanel` component
+- Side-by-side editor + live preview (desktop)
+- Stacked layout (mobile)
+- Divider for visual separation
+- `react-markdown` rendering
+- HTML injection disabled
+- `white-space: pre-wrap` for poetic formatting
+- `max-w-3xl` literary container width
+
+#### 4. Public Reader Experience
+- `/poems/:slug` route
+- Published-only visibility enforced
+- Markdown rendering with preserved stanza spacing
+- Graceful not-found states
+
+#### 5. Collection Detail Enhancement
+- Published poems listed under collection
+- Soft hover interaction
+- Public slug navigation
+- Published-only enforcement
+
+#### 6. Dashboard Filtering
+- Filter poems by collection
+- Clean Flux-inspired UI
+- Service-layer discipline maintained
+
+---
+
+### 🔒 Architectural Improvements
+- Centralized slug retry logic via service layer helper
+- UI fully decoupled from slug generation
+- RLS enforcement preserved across all queries
+- Route-based CMS structure prepared for Books + Chapters
+- Markdown-first content discipline solidified
+
+---
+
+### Status
+
+Phase 3 complete.
+
+Dreamer’s Palette is now a functioning literary publishing platform.
