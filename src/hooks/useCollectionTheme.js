@@ -1,5 +1,4 @@
 import { useActiveCollection } from "./useActiveCollection"
-import { hexToRgb } from "../utils/hexToRgb"
 
 export function useCollectionTheme() {
     const collection = useActiveCollection()
@@ -12,15 +11,10 @@ export function useCollectionTheme() {
     let overlayColor = null
 
     if (backgroundUrl) {
-        if (accentColor) {
-            const { r, g, b } = hexToRgb(accentColor)
-            overlayColor = `rgba(${r}, ${g}, ${b}, ${opacity})`
-        } else {
-            overlayColor =
-                textMode === "light"
-                    ? `rgba(0,0,0,${opacity})`
-                    : `rgba(255,255,255,${opacity})`
-        }
+        overlayColor =
+            textMode === "light"
+                ? `rgba(0,0,0,${opacity})`
+                : `rgba(255,255,255,${opacity})`
     }
 
     return {
