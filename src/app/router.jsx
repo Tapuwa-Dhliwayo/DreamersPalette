@@ -36,6 +36,15 @@ export const router = createBrowserRouter([
             { path: "/books/:slug", element: <BookDetailPage /> },
             { path: "/books/:slug/chapter/:number", element: <ChapterPage /> },
             { path: "/login", element: <LoginPage /> },
+            /* ---------- PREVIEW (AUTH REQUIRED) ---------- */
+            {
+                path: "/preview/collections/:slug",
+                element: (
+                    <ProtectedRoute>
+                        <CollectionDetailPage />
+                    </ProtectedRoute>
+                ),
+            },
         ],
     },
 

@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react"
 import { useParams, useMatch } from "react-router-dom"
 
+import { useActiveCollection } from "@/hooks/useActiveCollection"
 import {
-    getCollectionBySlug,
-    getCollectionById,
     getPublishedPoemBySlug,
     getPublishedPoemsByCollection
 } from "@/services/contentService"
@@ -11,13 +10,13 @@ import {
 export function useReaderNavigation() {
     const { slug } = useParams()
 
-    // Route classification
     const isCollectionsIndex = useMatch("/collections")
     const isCollectionDetail = useMatch("/collections/:slug")
     const isPoemRoute = useMatch("/poems/:slug")
 
+    const collection = useActiveCollection()
+
     const [level, setLevel] = useState("none")
-    const [collection, setCollection] = useState(null)
     const [previous, setPrevious] = useState(null)
     const [next, setNext] = useState(null)
 
@@ -32,7 +31,6 @@ export function useReaderNavigation() {
                 if (isCollectionsIndex && !isCollectionDetail) {
                     if (!isMounted) return
                     setLevel("index")
-                    setCollection(null)
                     setPrevious(null)
                     setNext(null)
                     return
@@ -42,11 +40,8 @@ export function useReaderNavigation() {
                 // Level 2 — Collection Detail
                 // -----------------------------
                 if (isCollectionDetail) {
-                    const col = await getCollectionBySlug(slug)
                     if (!isMounted) return
-
                     setLevel("collection")
-                    setCollection(col)
                     setPrevious(null)
                     setNext(null)
                     return
@@ -55,16 +50,17 @@ export function useReaderNavigation() {
                 // -----------------------------
                 // Level 3 — Poem
                 // -----------------------------
-                if (isPoemRoute) {
+                if (isPoemRoute && collection) {
                     const poem = await getPublishedPoemBySlug(slug)
                     if (!poem || !isMounted) return
 
-                    const col = await getCollectionById(poem.collection_id)
-                    if (!col || !isMounted) return
+                    const poems = await getPublishedPoemsByCollection(
+                        collection.slug
+                    )
 
-                    const poems = await getPublishedPoemsByCollection(col.slug)
-
-                    const index = poems.findIndex(p => p.slug === poem.slug)
+                    const index = poems.findIndex(
+                        (p) => p.slug === poem.slug
+                    )
 
                     const prev =
                         index > 0 ? poems[index - 1] : null
@@ -77,7 +73,6 @@ export function useReaderNavigation() {
                     if (!isMounted) return
 
                     setLevel("poem")
-                    setCollection(col)
                     setPrevious(prev)
                     setNext(nxt)
                     return
@@ -86,7 +81,6 @@ export function useReaderNavigation() {
                 // Default fallback
                 if (!isMounted) return
                 setLevel("none")
-                setCollection(null)
                 setPrevious(null)
                 setNext(null)
 
@@ -100,7 +94,13 @@ export function useReaderNavigation() {
         return () => {
             isMounted = false
         }
-    }, [slug, isCollectionsIndex, isCollectionDetail, isPoemRoute])
+    }, [
+        slug,
+        collection,
+        isCollectionsIndex,
+        isCollectionDetail,
+        isPoemRoute
+    ])
 
     return {
         level,

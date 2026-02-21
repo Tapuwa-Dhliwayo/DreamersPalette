@@ -29,14 +29,14 @@ export default function ReaderLayout() {
 
                 {backgroundUrl && (
                     <div
-                        className="absolute inset-0 bg-cover bg-center bg-no-repeat rounded-3xl"
+                        className="absolute inset-0 bg-cover bg-center bg-no-repeat rounded-3xl transition-opacity duration-500"
                         style={{ backgroundImage: `url(${backgroundUrl})` }}
                     />
                 )}
 
                 {backgroundUrl && overlayColor && (
                     <div
-                        className="absolute inset-0 rounded-3xl"
+                        className="absolute inset-0 rounded-3xl transition-colors duration-500"
                         style={{ backgroundColor: overlayColor }}
                     />
                 )}

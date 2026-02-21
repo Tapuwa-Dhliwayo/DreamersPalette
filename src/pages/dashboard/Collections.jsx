@@ -210,7 +210,7 @@ export default function Collections() {
 
                             <div className="flex gap-2 items-center">
                                 <Link
-                                    to={`/collections/${collection.slug}`}
+                                    to={`/preview/collections/${collection.slug}`}
                                     target="_blank"
                                     className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 transition no-underline!"
                                 >
