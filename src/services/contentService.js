@@ -160,6 +160,22 @@ export async function getCollectionBySlug(slug) {
     return data
 }
 
+/**
+ * Fetch single collection by id (published only)
+ */
+
+export async function getCollectionById(id) {
+    const { data, error } = await supabase
+        .from("poetry_collections")
+        .select("*")
+        .eq("id", id)
+        .eq("is_published", true)
+        .single()
+
+    if (error) throw error
+    return data
+}
+
 /* ================================
    POEMS — AUTHOR QUERIES
 ================================ */
