@@ -290,3 +290,154 @@ This release transitions the platform from structural CMS groundwork to fully fu
 Phase 3 complete.
 
 Dreamer’s Palette is now a functioning literary publishing platform.
+
+---
+
+## v0.4.0 — Theming Engine + Immersive Reader Stabilized
+**Release Date:** 2026-02-21  
+**Tag:** v0.4.0  
+**Branch Merged:** dev → main
+
+### Overview
+
+Phase 4 introduces Dreamer’s Palette’s immersive reading engine.
+
+This release establishes a controlled theming system for poetry collections, integrates author-managed atmospheric styling, and stabilizes Reader navigation architecture.
+
+The platform now supports dynamic, author-driven aesthetic worlds while preserving deterministic readability.
+
+---
+
+### ✨ Major Features
+
+#### 1. Collection Theming Engine
+
+Each poetry collection now supports:
+
+- `theme_background_url`
+- `theme_overlay_opacity`
+- `accent_color`
+- `theme_text_mode` (light / dark)
+
+Theming is database-driven and applied dynamically at the layout level.
+
+---
+
+#### 2. ReaderLayout Redesign (Framed World Model)
+
+- Removed full-viewport background stretching
+- Introduced neutral outer surface (light/dark controlled)
+- Contained themed background inside centered canvas
+- Preserved readability under arbitrary image conditions
+- Prevented background dominance
+
+This creates a curated immersive world instead of uncontrolled wallpaper.
+
+---
+
+#### 3. Deterministic Contrast System
+
+`theme_text_mode` now controls:
+
+- Outer surface tone
+- Overlay polarity (dark vs light)
+- Reading surface contrast baseline
+
+No runtime image analysis required.
+
+Readability is author-controlled and stable.
+
+---
+
+#### 4. Accent Color Injection
+
+Accent color now:
+
+- Injected via CSS variable (`--accent-color`)
+- Used for navigation highlights and interactive elements
+- Decoupled from structural contrast logic
+
+Accent is expressive identity, not readability logic.
+
+---
+
+#### 5. Performance Deduplication
+
+Introduced:
+
+`useActiveCollection()`
+
+Collection resolution centralized and consumed by:
+
+- `useCollectionTheme`
+- `useReaderNavigation`
+
+Eliminated duplicate Supabase queries on poem routes.
+
+---
+
+#### 6. Reader Navigation Stabilization
+
+ReaderNavigation now supports:
+
+- Collections index level
+- Collection detail level
+- Poem level (previous / next)
+- Deterministic theme reset when leaving themed routes
+
+No lingering background artifacts.
+
+---
+
+#### 7. Draft Preview System
+
+Added:
+
+`/preview/collections/:slug`
+
+Features:
+
+- Auth-required
+- Draft collections visible to authors
+- Uses full ReaderLayout
+- Uses preview-safe service method
+- Respects RLS ownership
+
+Authors can preview immersive worlds without publishing.
+
+---
+
+### 🔒 Architectural Decisions Reinforced
+
+- Theme logic lives at layout level
+- Contrast is deterministic, not heuristic
+- Accent is expressive, not structural
+- Collection resolution centralized
+- Preview route separated from public route
+- RLS remains security authority
+
+---
+
+### 🚫 Not Included Yet
+
+- AI-generated theme backgrounds
+- AI-generated book covers
+- Books theming parity
+- Pagination
+- Performance caching layer
+- Accessibility contrast tooling
+- Admin moderation controls
+
+---
+
+### Phase 4 Status
+
+Phase 4 is complete.
+
+Dreamer’s Palette now supports:
+
+- Multi-author architecture (RLS-enforced ownership model)
+- Markdown-based literary rendering
+- Immersive theme-controlled reading environments
+- Preview-safe editorial workflow
+- Production-safe Supabase integration
