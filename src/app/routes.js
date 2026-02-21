@@ -17,6 +17,8 @@ export const DASHBOARD_ROUTES = {
     ROOT: "/dashboard",
     COLLECTIONS: "/dashboard/collections",
     POEMS: "/dashboard/poems",
+    POEM_NEW: "/dashboard/poems/new",
+    POEM_EDIT: (id) => `/dashboard/poems/${id}/edit`,
     BOOKS: "/dashboard/books",
     CHAPTERS: "/dashboard/chapters",
 };

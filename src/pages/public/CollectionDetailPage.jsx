@@ -1,18 +1,29 @@
 import { useEffect, useState } from "react"
-import { useParams } from "react-router-dom"
-import { getCollectionBySlug } from "@/services/contentService"
+import { useParams, Link } from "react-router-dom"
+
+import {
+    getCollectionBySlug,
+    getPublishedPoemsByCollection
+} from "@/services/contentService"
+
+import { PUBLIC_ROUTES } from "@/app/routes"
 
 export default function CollectionDetailPage() {
     const { slug } = useParams()
+
     const [collection, setCollection] = useState(null)
+    const [poems, setPoems] = useState([])
     const [loading, setLoading] = useState(true)
     const [notFound, setNotFound] = useState(false)
 
     useEffect(() => {
         async function load() {
             try {
-                const data = await getCollectionBySlug(slug)
-                setCollection(data)
+                const collectionData = await getCollectionBySlug(slug)
+                const poemsData = await getPublishedPoemsByCollection(slug)
+
+                setCollection(collectionData)
+                setPoems(poemsData)
             } catch (err) {
                 console.error("Collection not found:", err)
                 setNotFound(true)
@@ -46,8 +57,9 @@ export default function CollectionDetailPage() {
     }
 
     return (
-        <article className="space-y-10">
+        <article className="space-y-12">
 
+            {/* Header */}
             <header className="space-y-4">
                 <h1 className="text-4xl font-semibold tracking-tight">
                     {collection.title}
@@ -60,11 +72,35 @@ export default function CollectionDetailPage() {
                 )}
             </header>
 
-            {/* Placeholder for future poem list */}
-            <section className="pt-10 border-t border-neutral-200 dark:border-neutral-800">
-                <p className="text-neutral-500">
-                    Poems coming soon.
-                </p>
+            {/* Poems List */}
+            <section className="pt-10 border-t border-neutral-200 dark:border-neutral-800 space-y-6">
+
+                {poems.length === 0 && (
+                    <p className="text-neutral-500">
+                        No published poems yet.
+                    </p>
+                )}
+
+                {poems.map((poem) => (
+                    <Link
+                        key={poem.id}
+                        to={PUBLIC_ROUTES.POEM(poem.slug)}
+                        className="block group transition-opacity duration-200"
+                    >
+                        <div className="space-y-2">
+                            <h2 className="text-xl font-medium group-hover:opacity-70 transition">
+                                {poem.title}
+                            </h2>
+
+                            {poem.excerpt && (
+                                <p className="text-sm text-neutral-500 leading-relaxed">
+                                    {poem.excerpt}
+                                </p>
+                            )}
+                        </div>
+                    </Link>
+                ))}
+
             </section>
 
         </article>

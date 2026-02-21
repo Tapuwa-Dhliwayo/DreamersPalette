@@ -13,8 +13,6 @@ import {
     togglePublish
 } from "@/services/contentService"
 
-import { slugify } from "@/utils/slugify"
-
 export default function Collections() {
     const [collections, setCollections] = useState([])
     const [loading, setLoading] = useState(true)
@@ -59,24 +57,26 @@ export default function Collections() {
 
     async function handleSubmit() {
         try {
+            if (!form.title.trim()) {
+                return
+            }
+
             if (editingCollection) {
                 await updateCollection(editingCollection.id, {
                     title: form.title,
                     description: form.description
                 })
             } else {
-                const slug = slugify(form.title)
-
                 await createCollection({
                     title: form.title,
-                    slug,
                     description: form.description,
                     is_published: false
                 })
             }
 
             setIsModalOpen(false)
-            fetchCollections()
+            await fetchCollections()
+
         } catch (err) {
             console.error("Save failed:", err)
         }
