@@ -25,17 +25,20 @@ body {
   white-space: pre-wrap;
 }
 
-/* Headings */
+/* ---------------------------
+   Literary Headings
+---------------------------- */
+
 h1 {
-  @apply text-3xl font-semibold tracking-tight;
+  @apply font-serif text-4xl tracking-tight;
 }
 
 h2 {
-  @apply text-2xl font-semibold tracking-tight;
+  @apply font-serif text-2xl tracking-tight;
 }
 
 h3 {
-  @apply text-xl font-medium;
+  @apply font-serif text-xl;
 }
 
 /* Paragraph spacing rhythm */
@@ -46,6 +49,18 @@ p {
 /* Links */
 a {
   @apply text-neutral-900 dark:text-neutral-100 underline-offset-4 hover:underline;
+}
+
+/* Accent Button System */
+
+.accent-button {
+  @apply px-3 py-1.5 rounded-full transition-all duration-200 text-sm font-medium no-underline!;
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+}
+
+.accent-button:hover {
+  background-color: color-mix(in srgb, var(--accent-color) 15%, transparent);
 }
 
 /* Selection */
