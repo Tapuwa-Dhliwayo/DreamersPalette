@@ -64,13 +64,13 @@ export default function PoemPage() {
                     components={{
                         p: ({ node, ...props }) => (
                             <p
-                                className="whitespace-pre-wrap leading-relaxed text-lg mb-6 text-neutral-800 dark:text-neutral-200"
+                                className="whitespace-pre-wrap leading-relaxed text-lg mb-6 text-neutral-800 dark:text-neutral-800"
                                 {...props}
                             />
                         ),
                         blockquote: ({ node, ...props }) => (
                             <blockquote
-                                className="border-l-2 border-neutral-300 dark:border-neutral-700 pl-4 italic my-6 whitespace-pre-wrap"
+                                className="border-l-2 border-neutral-800 dark:border-neutral-700 pl-4 italic my-6 whitespace-pre-wrap"
                                 {...props}
                             />
                         ),
