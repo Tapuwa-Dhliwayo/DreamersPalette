@@ -441,3 +441,15 @@ Dreamer’s Palette now supports:
 - Immersive theme-controlled reading environments
 - Preview-safe editorial workflow
 - Production-safe Supabase integration
+
+## v0.4.2 — Public Reader Identity & Atmospheric UI
+
+- Established global atmospheric background layer
+- Introduced Logo system (symbol + wordmark)
+- Implemented persistent reader header
+- Refined Home, Collections, Collection Detail, Login, and Books pages
+- Unified typography system (serif-based hierarchy)
+- Introduced accent-button interaction system
+- Stabilized visual rhythm and spacing
+
+This version marks the transition from scaffold UI to cohesive literary platform.
