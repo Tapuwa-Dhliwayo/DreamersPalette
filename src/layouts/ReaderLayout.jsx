@@ -17,7 +17,7 @@ export default function ReaderLayout() {
 
     return (
         <div
-            className={`relative min-h-screen ${textTone}`}
+            className={`relative min-h-screen text-neutral-100`}
             style={{
                 "--accent-color": accentColor || "#cbd5e1"
             }}
@@ -29,7 +29,7 @@ export default function ReaderLayout() {
             />
 
             {/* Soft atmospheric fade */}
-            <div className="fixed inset-0 -z-10 bg-gradient-to-b from-neutral-900/40 to-neutral-900/60" />
+            <div className="fixed inset-0 -z-10 bg-gradient-to-b from-neutral-950/70 to-neutral-900/60" />
 
             {/* ---------------- FRAMED WORLD ---------------- */}
             <div className="relative max-w-5xl mx-auto min-h-screen">
