@@ -55,7 +55,7 @@ export default function LoginPage() {
 
                 {/* Heading */}
                 <div className="space-y-2 text-center">
-                    <h1 className="text-2xl font-serif tracking-tight">
+                    <h1 className="text-3xl font-serif tracking-tight">
                         Author Access
                     </h1>
                     <p className="text-sm opacity-60">

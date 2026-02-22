@@ -41,7 +41,7 @@ export default function HomePage() {
 
                 <Logo size="xl" stacked variant="subtle" />
 
-                <p className="text-lg opacity-80 max-w-2xl mx-auto mb-10">
+                <p className="text-lg opacity-70 leading-relaxed max-w-2xl mx-auto mb-10">
                     A sanctuary for poetry, imagined worlds, and quiet reading.
                 </p>
 

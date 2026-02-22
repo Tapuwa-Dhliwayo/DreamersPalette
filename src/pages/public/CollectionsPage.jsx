@@ -58,7 +58,7 @@ export default function CollectionsPage() {
                 <h1 className="text-4xl font-serif tracking-tight">
                     Collections
                 </h1>
-                <p className="text-base opacity-70 max-w-2xl mx-auto">
+                <p className="text-base opacity-70 leading-relaxed max-w-2xl mx-auto">
                     Enter curated poetic worlds shaped by atmosphere and memory.
                 </p>
             </header>

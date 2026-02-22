@@ -52,7 +52,7 @@ export default function PoemPage() {
         <article className="space-y-12">
 
             <header className="space-y-4">
-                <h1 className="text-4xl font-semibold tracking-tight">
+                <h1 className="text-4xl  tracking-tight">
                     {poem.title}
                 </h1>
             </header>
