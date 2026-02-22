@@ -1,16 +1,31 @@
-import { Link } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 import { useReaderNavigation } from "@/hooks/useReaderNavigation"
-import Logo from "@/components/ui/Logo.jsx";
+import { PUBLIC_ROUTES, DASHBOARD_ROUTES } from "@/app/routes"
+import Logo from "@/components/ui/Logo.jsx"
+import { supabase } from "@/services/supabaseClient"
+import { useEffect, useState } from "react"
 
 export default function ReaderNavigation() {
     const { level, collection, previous, next } =
         useReaderNavigation()
 
-    if (level === "index" || level === "none") {
+    const [isAuthenticated, setIsAuthenticated] = useState(false)
+    const location = useLocation()
+    const isHome = location.pathname === PUBLIC_ROUTES.HOME
+    const isLogin = location.pathname === PUBLIC_ROUTES.LOGIN
+
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data }) => {
+            setIsAuthenticated(!!data.session)
+        })
+    }, [])
+
+    // 🔹 Hide entire header on Home
+    if (isHome || isLogin) {
         return null
     }
 
-    const showBreadcrumb =
+    const showContextNav =
         level === "collection" ||
         (level === "poem" && collection)
 
@@ -18,63 +33,101 @@ export default function ReaderNavigation() {
         level === "poem" && (previous || next)
 
     return (
-        <div className="flex items-center justify-between text-sm opacity-70 transition-opacity duration-200 hover:opacity-100 mb-4">
+        <header className="space-y-6">
 
-            {/* LEFT — Logo (Always Visible) */}
-            <Link
-                to="/"
-                className="hover:opacity-80 transition-opacity"
-            >
-                <Logo size="sm" />
-            </Link>
+            {/* ---------- GLOBAL HEADER ---------- */}
+            <div className="flex items-center justify-between text-sm">
 
+                <Link
+                    to={PUBLIC_ROUTES.HOME}
+                    className="hover:opacity-80 transition-opacity"
+                >
+                    <Logo size="sm" />
+                </Link>
 
-
-            {/* CENTER — Breadcrumb */}
-            <div>
-                {showBreadcrumb && level === "collection" && (
+                <nav className="flex items-center gap-8">
                     <Link
-                        to="/collections"
+                        to={PUBLIC_ROUTES.COLLECTIONS}
                         className="accent-button"
                     >
-                        ← All Collections
+                        Collections
                     </Link>
-                )}
 
-                {showBreadcrumb && level === "poem" && collection && (
                     <Link
-                        to={`/collections/${collection.slug}`}
+                        to={PUBLIC_ROUTES.BOOKS}
                         className="accent-button"
                     >
-                        ← {collection.title}
+                        Books
                     </Link>
-                )}
-            </div>
+                </nav>
 
-            {/* RIGHT — Previous / Next */}
-            {showSiblingNav ? (
-                <div className="flex gap-6">
-                    {previous && (
+                <div>
+                    {isAuthenticated ? (
                         <Link
-                            to={`/poems/${previous.slug}`}
+                            to={DASHBOARD_ROUTES.ROOT}
                             className="accent-button"
                         >
-                            Previous
+                            Dashboard
                         </Link>
-                    )}
-
-                    {next && (
+                    ) : (
                         <Link
-                            to={`/poems/${next.slug}`}
+                            to={PUBLIC_ROUTES.LOGIN}
                             className="accent-button"
                         >
-                            Next
+                            Author Login
                         </Link>
                     )}
                 </div>
-            ) : (
-                <div /> // spacer to preserve layout
+            </div>
+
+            {/* ---------- CONTEXT NAV ---------- */}
+            {showContextNav && (
+                <div className="flex items-center justify-between text-xs opacity-70 border-t border-white/10 p-4 mb-2">
+
+                    <div>
+                        {level === "collection" && (
+                            <Link
+                                to={PUBLIC_ROUTES.COLLECTIONS}
+                                className="accent-button"
+                            >
+                                ← All Collections
+                            </Link>
+                        )}
+
+                        {level === "poem" && collection && (
+                            <Link
+                                to={PUBLIC_ROUTES.COLLECTION_DETAIL(collection.slug)}
+                                className="accent-button"
+                            >
+                                ← {collection.title}
+                            </Link>
+                        )}
+                    </div>
+
+                    {showSiblingNav && (
+                        <div className="flex gap-4">
+                            {previous && (
+                                <Link
+                                    to={PUBLIC_ROUTES.POEM(previous.slug)}
+                                    className="accent-button"
+                                >
+                                    Previous
+                                </Link>
+                            )}
+
+                            {next && (
+                                <Link
+                                    to={PUBLIC_ROUTES.POEM(next.slug)}
+                                    className="accent-button"
+                                >
+                                    Next
+                                </Link>
+                            )}
+                        </div>
+                    )}
+                </div>
             )}
-        </div>
+
+        </header>
     )
 }

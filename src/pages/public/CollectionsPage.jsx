@@ -51,53 +51,72 @@ export default function CollectionsPage() {
     }
 
     return (
-        <div className="space-y-10">
+        <div className="space-y-16">
 
-            <header className="space-y-3">
-                <h1 className="text-3xl font-semibold tracking-tight">
+            {/* Header */}
+            <header className="space-y-4 text-center pt-8">
+                <h1 className="text-4xl font-serif tracking-tight">
                     Collections
                 </h1>
-                <p className="text-neutral-500">
-                    Explore curated poetic worlds.
+                <p className="text-base opacity-70 max-w-2xl mx-auto">
+                    Enter curated poetic worlds shaped by atmosphere and memory.
                 </p>
             </header>
 
-            <div className="grid gap-8">
+            {/* Grid */}
+            <div className="grid gap-10">
+
                 {collections.map((collection, index) => (
                     <Link
                         key={collection.id}
                         to={PUBLIC_ROUTES.COLLECTION_DETAIL(collection.slug)}
                         className="block group no-underline! hover:no-underline!"
                     >
-                        <Card
+                        <div
                             className={`
-                                cursor-pointer
-                                transition-all duration-500 ease-out
-                                group-hover:bg-neutral-50 dark:group-hover:bg-neutral-800
-                                group-hover:shadow-md
-                                group-hover:-translate-y-0.5
-                                ${mounted
-                                    ? "opacity-100 translate-y-0"
-                                    : "opacity-0 translate-y-1"}
-                              `}
+                            relative overflow-hidden rounded-3xl
+                            bg-white/85 dark:bg-neutral-900/80 backdrop-blur-sm
+                            transition-all duration-500 ease-out
+                            shadow-sm group-hover:shadow-xl
+                            group-hover:-translate-y-1
+                            ${mounted
+                                ? "opacity-100 translate-y-0"
+                                : "opacity-0 translate-y-2"}
+                        `}
                             style={{
-                                transitionDelay: `${index * 60}ms`
+                                transitionDelay: `${index * 70}ms`
                             }}
                         >
 
-                            <h3 className="text-xl font-medium">
-                                {collection.title}
-                            </h3>
-
-                            {collection.description && (
-                                <p className="mt-3 text-neutral-600 dark:text-neutral-400">
-                                    {collection.description}
-                                </p>
+                            {/* Background Preview */}
+                            {collection.theme_background_url && (
+                                <div
+                                    className="absolute inset-0 bg-cover bg-center opacity-30 group-hover:opacity-40 transition-opacity duration-500"
+                                    style={{
+                                        backgroundImage: `url(${collection.theme_background_url})`
+                                    }}
+                                />
                             )}
 
-                        </Card>
+                            {/* Content Layer */}
+                            <div className="relative z-10 p-10 space-y-4">
+
+                                <h3 className="text-2xl font-serif tracking-tight group-hover:opacity-80 transition">
+                                    {collection.title}
+                                </h3>
+
+                                {collection.description && (
+                                    <p className="text-sm opacity-70 max-w-xl leading-relaxed">
+                                        {collection.description}
+                                    </p>
+                                )}
+
+                            </div>
+
+                        </div>
                     </Link>
                 ))}
+
             </div>
 
         </div>

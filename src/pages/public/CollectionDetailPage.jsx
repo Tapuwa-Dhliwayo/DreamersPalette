@@ -57,26 +57,27 @@ export default function CollectionDetailPage() {
     }
 
     return (
-        <article className="space-y-12">
+        <article className="space-y-20 pt-8">
 
             {/* Header */}
-            <header className="space-y-4">
-                <h1 className="text-4xl font-semibold tracking-tight">
+            <header className="space-y-6 text-center">
+
+                <h1 className="text-5xl font-serif tracking-tight">
                     {collection.title}
                 </h1>
 
                 {collection.description && (
-                    <p className="text-lg text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                    <p className="text-lg opacity-70 max-w-2xl mx-auto leading-relaxed">
                         {collection.description}
                     </p>
                 )}
             </header>
 
-            {/* Poems List */}
-            <section className="pt-10 border-t border-neutral-200 dark:border-neutral-800 space-y-6">
+            {/* Poems */}
+            <section className="space-y-8 border-t border-white/10 pt-12">
 
                 {poems.length === 0 && (
-                    <p className="text-neutral-500">
+                    <p className="opacity-60 text-center">
                         No published poems yet.
                     </p>
                 )}
@@ -85,18 +86,20 @@ export default function CollectionDetailPage() {
                     <Link
                         key={poem.id}
                         to={PUBLIC_ROUTES.POEM(poem.slug)}
-                        className="block group transition-opacity duration-200"
+                        className="block group transition-all duration-200"
                     >
-                        <div className="space-y-2">
-                            <h2 className="text-xl font-medium group-hover:opacity-70 transition">
+                        <div className="space-y-3">
+
+                            <h2 className="text-2xl font-serif group-hover:opacity-70 transition">
                                 {poem.title}
                             </h2>
 
                             {poem.excerpt && (
-                                <p className="text-sm text-neutral-500 leading-relaxed">
+                                <p className="text-sm opacity-60 leading-relaxed max-w-xl">
                                     {poem.excerpt}
                                 </p>
                             )}
+
                         </div>
                     </Link>
                 ))}
