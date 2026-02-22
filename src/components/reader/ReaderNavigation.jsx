@@ -1,49 +1,63 @@
 import { Link } from "react-router-dom"
 import { useReaderNavigation } from "@/hooks/useReaderNavigation"
+import Logo from "@/components/ui/Logo.jsx";
 
 export default function ReaderNavigation() {
     const { level, collection, previous, next } =
         useReaderNavigation()
 
-    // Index page → no navigation
     if (level === "index" || level === "none") {
         return null
     }
 
-    return (
-        <div className="flex items-center justify-between text-sm opacity-70 transition-opacity duration-200 hover:opacity-100">
+    const showBreadcrumb =
+        level === "collection" ||
+        (level === "poem" && collection)
 
-            {/* LEFT SIDE — Parent Navigation */}
+    const showSiblingNav =
+        level === "poem" && (previous || next)
+
+    return (
+        <div className="flex items-center justify-between text-sm opacity-70 transition-opacity duration-200 hover:opacity-100 mb-4">
+
+            {/* LEFT — Logo (Always Visible) */}
+            <Link
+                to="/"
+                className="hover:opacity-80 transition-opacity"
+            >
+                <Logo size="sm" />
+            </Link>
+
+
+
+            {/* CENTER — Breadcrumb */}
             <div>
-                {level === "collection" && (
+                {showBreadcrumb && level === "collection" && (
                     <Link
                         to="/collections"
-                        className="hover:underline"
-                        style={{ color: "var(--accent-color)" }}
+                        className="accent-button"
                     >
                         ← All Collections
                     </Link>
                 )}
 
-                {level === "poem" && collection && (
+                {showBreadcrumb && level === "poem" && collection && (
                     <Link
                         to={`/collections/${collection.slug}`}
-                        className="hover:underline"
-                        style={{ color: "var(--accent-color)" }}
+                        className="accent-button"
                     >
                         ← {collection.title}
                     </Link>
                 )}
             </div>
 
-            {/* RIGHT SIDE — Sibling Navigation */}
-            {level === "poem" && (previous || next) && (
+            {/* RIGHT — Previous / Next */}
+            {showSiblingNav ? (
                 <div className="flex gap-6">
                     {previous && (
                         <Link
                             to={`/poems/${previous.slug}`}
-                            className="hover:underline"
-                            style={{ color: "var(--accent-color)" }}
+                            className="accent-button"
                         >
                             Previous
                         </Link>
@@ -52,13 +66,14 @@ export default function ReaderNavigation() {
                     {next && (
                         <Link
                             to={`/poems/${next.slug}`}
-                            className="hover:underline"
-                            style={{ color: "var(--accent-color)" }}
+                            className="accent-button"
                         >
                             Next
                         </Link>
                     )}
                 </div>
+            ) : (
+                <div /> // spacer to preserve layout
             )}
         </div>
     )

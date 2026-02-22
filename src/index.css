@@ -48,6 +48,18 @@ a {
   @apply text-neutral-900 dark:text-neutral-100 underline-offset-4 hover:underline;
 }
 
+/* Accent Button System */
+
+.accent-button {
+  @apply px-3 py-1.5 rounded-full transition-all duration-200 text-sm font-medium no-underline!;
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+}
+
+.accent-button:hover {
+  background-color: color-mix(in srgb, var(--accent-color) 15%, transparent);
+}
+
 /* Selection */
 ::selection {
   @apply bg-neutral-900 text-white dark:bg-white dark:text-neutral-900;
