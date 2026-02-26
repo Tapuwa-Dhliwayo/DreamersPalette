@@ -109,7 +109,7 @@ export default function PoemEditorPage() {
         <div className="space-y-8">
 
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h2 className="text-2xl font-semibold tracking-tight">
                         {isEditMode ? "Edit Poem" : "New Poem"}
@@ -139,7 +139,7 @@ export default function PoemEditorPage() {
             </div>
 
             {/* Metadata */}
-            <div className="space-y-4 max-w-xl">
+            <div className="space-y-4 max-w-full md:max-w-xl">
 
                 <Input
                     placeholder="Poem title"

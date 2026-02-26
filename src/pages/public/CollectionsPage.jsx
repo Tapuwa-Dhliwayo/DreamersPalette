@@ -99,9 +99,9 @@ export default function CollectionsPage() {
                             )}
 
                             {/* Content Layer */}
-                            <div className="relative z-10 p-10 space-y-4">
+                            <div className="relative z-10 p-6 md:p-10 space-y-4">
 
-                                <h3 className="text-2xl font-serif tracking-tight group-hover:opacity-80 transition">
+                                <h3 className="text-xl md:text-2xl font-serif tracking-tight group-hover:opacity-80 transition">
                                     {collection.title}
                                 </h3>
 

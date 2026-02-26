@@ -5,7 +5,7 @@ import { signOut } from "@/services/authService"
 import { getMyProfile } from "@/services/profileService"
 import { DASHBOARD_ROUTES, PUBLIC_ROUTES } from "@/app/routes"
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
     const navigate = useNavigate()
     const [profile, setProfile] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -42,20 +42,30 @@ export default function Sidebar() {
         { label: "Chapters", to: DASHBOARD_ROUTES.CHAPTERS },
     ]
 
-    return (
-        <aside className="w-64 border-r border-neutral-200 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-sm flex flex-col justify-between">
+    const sidebarContent = (
+        <aside className="w-64 h-full border-r border-neutral-200 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-sm flex flex-col justify-between overflow-y-auto">
 
             {/* Top */}
             <div className="p-6 space-y-10">
 
-                {/* Brand */}
-                <div>
-                    <h1 className="text-xl font-semibold tracking-tight">
-                        Dreamer’s Palette
-                    </h1>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                        Author Studio
-                    </p>
+                {/* Brand + close button row */}
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h1 className="text-xl font-semibold tracking-tight">
+                            Dreamer's Palette
+                        </h1>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                            Author Studio
+                        </p>
+                    </div>
+                    {/* Close button — mobile only */}
+                    <button
+                        className="md:hidden text-xl leading-none mt-1"
+                        onClick={onClose}
+                        aria-label="Close sidebar"
+                    >
+                        ✕
+                    </button>
                 </div>
 
                 {/* Navigation */}
@@ -65,6 +75,7 @@ export default function Sidebar() {
                             key={item.to}
                             to={item.to}
                             end={item.to === DASHBOARD_ROUTES.ROOT}
+                            onClick={onClose}
                             className={({ isActive }) =>
                                 `block px-3 py-2 rounded-lg text-sm transition ${
                                     isActive
@@ -120,5 +131,29 @@ export default function Sidebar() {
             </div>
 
         </aside>
+    )
+
+    return (
+        <>
+            {/* Desktop: permanent sidebar */}
+            <div className="hidden md:flex">
+                {sidebarContent}
+            </div>
+
+            {/* Mobile: fixed overlay */}
+            {isOpen && (
+                <div className="fixed inset-0 z-50 md:hidden flex">
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        onClick={onClose}
+                    />
+                    {/* Sidebar panel */}
+                    <div className="relative transition-transform duration-300">
+                        {sidebarContent}
+                    </div>
+                </div>
+            )}
+        </>
     )
 }

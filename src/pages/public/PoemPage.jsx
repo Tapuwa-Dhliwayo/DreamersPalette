@@ -49,7 +49,7 @@ export default function PoemPage() {
     }
 
     return (
-        <article className="space-y-12 text-neutral-500">
+        <article className="space-y-8 md:space-y-12 text-neutral-500">
 
             <header className="space-y-4">
                 <h1 className="text-4xl tracking-tight">

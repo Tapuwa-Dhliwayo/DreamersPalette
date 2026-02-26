@@ -32,12 +32,12 @@ export default function ReaderLayout() {
             <div className="fixed inset-0 -z-10 bg-gradient-to-b from-neutral-950/70 to-neutral-900/60" />
 
             {/* ---------------- FRAMED WORLD ---------------- */}
-            <div className="relative max-w-5xl mx-auto min-h-screen">
+            <div className="relative max-w-full md:max-w-5xl mx-auto min-h-screen rounded-none md:rounded-3xl">
 
                 {/* Collection Background (if exists) */}
                 {backgroundUrl && (
                     <div
-                        className="absolute inset-0 bg-cover bg-center bg-no-repeat rounded-3xl transition-opacity duration-500"
+                        className="fixed inset-0 md:absolute md:inset-0 md:rounded-3xl bg-cover bg-center bg-no-repeat transition-opacity duration-500"
                         style={{ backgroundImage: `url(${backgroundUrl})` }}
                     />
                 )}
@@ -45,7 +45,7 @@ export default function ReaderLayout() {
                 {/* Collection Overlay */}
                 {backgroundUrl && overlayColor && (
                     <div
-                        className="absolute inset-0 rounded-3xl transition-colors duration-500"
+                        className="fixed inset-0 md:absolute md:inset-0 md:rounded-3xl transition-colors duration-500"
                         style={{ backgroundColor: overlayColor }}
                     />
                 )}
@@ -53,11 +53,11 @@ export default function ReaderLayout() {
                 {/* Content Layer */}
                 <div className="relative z-10">
 
-                    <div className="max-w-3xl mx-auto px-6 pt-12">
+                    <div className="max-w-3xl mx-auto px-4 md:px-6 pt-6 md:pt-12">
                         <ReaderNavigation />
                     </div>
 
-                    <main className="max-w-3xl mx-auto px-6 pb-32">
+                    <main className="max-w-3xl mx-auto px-4 md:px-6 pb-32">
                         <Outlet />
                     </main>
 

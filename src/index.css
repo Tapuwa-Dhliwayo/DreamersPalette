@@ -30,11 +30,11 @@ body {
 ---------------------------- */
 
 h1 {
-  @apply font-serif text-4xl tracking-tight;
+  @apply font-serif text-3xl md:text-4xl tracking-tight;
 }
 
 h2 {
-  @apply font-serif text-2xl tracking-tight;
+  @apply font-serif text-xl md:text-2xl tracking-tight;
 }
 
 h3 {

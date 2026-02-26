@@ -57,24 +57,24 @@ export default function CollectionDetailPage() {
     }
 
     return (
-        <article className="space-y-20 pt-8">
+        <article className="space-y-12 md:space-y-20 pt-8 md:pt-12">
 
             {/* Header */}
             <header className="space-y-6 text-center">
 
-                <h1 className="text-5xl font-serif tracking-tight">
+                <h1 className="text-3xl md:text-5xl font-serif tracking-tight">
                     {collection.title}
                 </h1>
 
                 {collection.description && (
-                    <p className="text-lg opacity-70 max-w-2xl mx-auto leading-relaxed">
+                    <p className="text-base md:text-lg opacity-70 max-w-2xl mx-auto leading-relaxed">
                         {collection.description}
                     </p>
                 )}
             </header>
 
             {/* Poems */}
-            <section className="space-y-8 border-t border-white/10 pt-12">
+            <section className="space-y-8 border-t border-white/10 pt-8 md:pt-12">
 
                 {poems.length === 0 && (
                     <p className="opacity-60 text-center">

@@ -11,7 +11,7 @@ export default function Modal({ open, onClose, children }) {
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center md:items-center md:justify-center">
 
             {/* Backdrop */}
             <div
@@ -20,7 +20,7 @@ export default function Modal({ open, onClose, children }) {
             />
 
             {/* Modal Content */}
-            <div className="relative bg-white dark:bg-neutral-900 rounded-2xl shadow-xl max-w-lg w-full p-8">
+            <div className="relative bg-white dark:bg-neutral-900 rounded-none md:rounded-3xl shadow-xl w-full h-full md:h-auto md:max-w-lg p-6 md:p-8 overflow-y-auto">
                 {children}
             </div>
 

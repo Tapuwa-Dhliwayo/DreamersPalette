@@ -134,9 +134,9 @@ export default function Poems() {
             {/* Poems List */}
             <div className="grid gap-6">
                 {poems.map((poem) => (
-                    <Card key={poem.id} className="p-6 space-y-4">
+                    <Card key={poem.id} className="p-4 md:p-6 space-y-4">
 
-                        <div className="flex items-start justify-between">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
 
                             <div>
                                 <h3 className="text-lg font-medium">

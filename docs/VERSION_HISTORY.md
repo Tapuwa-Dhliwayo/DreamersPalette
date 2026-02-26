@@ -453,3 +453,47 @@ Dreamer’s Palette now supports:
 - Stabilized visual rhythm and spacing
 
 This version marks the transition from scaffold UI to cohesive literary platform.
+
+---
+
+## v0.4.3 — Mobile Responsiveness
+**Date:** 2026-02-26
+
+### Overview
+
+This release is a comprehensive mobile responsiveness pass across every layout, component, and page of Dreamer's Palette. All changes use Tailwind's `md:` breakpoint prefix (768px+) to distinguish mobile from desktop, preserving the existing desktop design exactly while making the platform fully usable on small screens.
+
+A key architectural decision in this release: on mobile, the framed world model disappears — the `max-w-5xl` container loses its rounded corners and width constraint. When a collection has a `backgroundUrl`, that background fills the entire viewport on mobile via `fixed inset-0`, replacing the global atmospheric background and creating a true full-bleed immersive experience.
+
+---
+
+### ✅ Changes by Category
+
+#### Layouts
+- **DashboardLayout** — Added `sidebarOpen` state; hamburger button (☰) on mobile triggers a sidebar overlay; main padding reduced to `px-4 md:px-10`, `py-6 md:py-12`
+- **ReaderLayout** — Framed world container changed to `max-w-full md:max-w-5xl rounded-none md:rounded-3xl`; collection background and overlay use `fixed inset-0 md:absolute md:inset-0 md:rounded-3xl` for full-bleed mobile; content padding `px-4 md:px-6`; nav top spacing `pt-6 md:pt-12`
+
+#### Components
+- **Sidebar** — Accepts `isOpen`/`onClose` props; on desktop renders as permanent sidebar; on mobile renders as `fixed inset-0 z-50` overlay with semi-transparent backdrop, close button (✕), and `overflow-y-auto`; slide-in animated with `transition-transform duration-300`
+- **ReaderNavigation** — Nav gap reduced to `gap-3 md:gap-8`; context nav row uses `flex-col gap-3 md:flex-row md:items-center md:justify-between`; sibling nav uses `flex-wrap gap-2 md:gap-4`
+- **EditorPanel** — Min-height reduced to `min-h-[300px] md:min-h-[500px]`; editor and preview pane padding `p-4 md:p-6`
+- **Modal** — Full-screen on mobile (`w-full h-full`), constrained on desktop (`md:max-w-lg md:rounded-3xl`); added `overflow-y-auto` for scrollable content
+
+#### Pages — Public
+- **HomePage** — Hero section `py-12 md:py-24`; login button `top-2 right-2 md:top-0 md:right-0`; featured collection card padding `p-4 md:p-6`
+- **CollectionsPage** — Collection card content padding `p-6 md:p-10`; card title `text-xl md:text-2xl`
+- **CollectionDetailPage** — Title `text-3xl md:text-5xl`; description `text-base md:text-lg`; article spacing `space-y-12 md:space-y-20 pt-8 md:pt-12`; poems section `pt-8 md:pt-12`
+- **LoginPage** — Container `py-12 md:py-24`; card `p-6 md:p-10 space-y-6 md:space-y-10`; title `text-2xl md:text-3xl`
+- **BooksPage** — Header `pt-6 md:pt-12`; coming-soon card `px-8 md:px-12 py-12 md:py-16`
+- **PoemPage** — Article spacing `space-y-8 md:space-y-12`
+
+#### Pages — Dashboard
+- **Collections** — Card header stacks vertically on mobile (`flex-col gap-3 md:flex-row md:items-start md:justify-between`); card padding `p-4 md:p-6`
+- **Poems** — Same card header stacking pattern; card padding `p-4 md:p-6`
+- **PoemEditorPage** — Page header `flex-col gap-4 md:flex-row md:items-center md:justify-between`; metadata section `max-w-full md:max-w-xl`
+
+#### CSS
+- **index.css** — `h1` now `text-3xl md:text-4xl`; `h2` now `text-xl md:text-2xl`
+
+#### Global
+- **index.html** — Viewport meta tag `width=device-width, initial-scale=1.0` confirmed present (no change needed)

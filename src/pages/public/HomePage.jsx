@@ -27,10 +27,10 @@ export default function HomePage() {
         <div>
 
             {/* ---------------- HERO ---------------- */}
-            <section className="relative py-24 text-center">
+            <section className="relative py-12 md:py-24 text-center">
 
                 {/* Top Right Login */}
-                <div className="absolute top-0 right-0">
+                <div className="absolute top-2 right-2 md:top-0 md:right-0">
                     <Link
                         to={PUBLIC_ROUTES.LOGIN}
                         className="accent-button"
@@ -88,7 +88,7 @@ export default function HomePage() {
                                     />
                                 )}
 
-                                <div className="p-6">
+                                <div className="p-4 md:p-6">
                                     <h3 className="font-serif text-xl mb-2">
                                         {collection.title}
                                     </h3>

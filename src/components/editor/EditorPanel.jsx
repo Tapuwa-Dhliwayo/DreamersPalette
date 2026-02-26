@@ -11,10 +11,10 @@ export default function EditorPanel({
     return (
         <div className="w-full rounded-2xl shadow-sm border border-neutral-200 bg-white overflow-hidden">
 
-            <div className="flex flex-col md:flex-row min-h-[500px]">
+            <div className="flex flex-col md:flex-row min-h-[300px] md:min-h-[500px]">
 
                 {/* Editor */}
-                <div className="flex-1 p-6">
+                <div className="flex-1 p-4 md:p-6">
 
                     <textarea
                         value={value}
@@ -37,7 +37,7 @@ export default function EditorPanel({
                 <div className="block md:hidden h-px bg-neutral-200" />
 
                 {/* Preview */}
-                <div className="flex-1 p-6 bg-neutral-50">
+                <div className="flex-1 p-4 md:p-6 bg-neutral-50">
 
                     <div className="max-w-3xl mx-auto">
 

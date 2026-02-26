@@ -45,7 +45,7 @@ export default function ReaderNavigation() {
                     <Logo size="sm" />
                 </Link>
 
-                <nav className="flex items-center gap-8">
+                <nav className="flex items-center gap-3 md:gap-8">
                     <Link
                         to={PUBLIC_ROUTES.COLLECTIONS}
                         className="accent-button"
@@ -82,7 +82,7 @@ export default function ReaderNavigation() {
 
             {/* ---------- CONTEXT NAV ---------- */}
             {showContextNav && (
-                <div className="flex items-center justify-between text-xs opacity-70 border-t border-white/10 p-4 mb-2">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between text-xs opacity-70 border-t border-white/10 p-4 mb-2">
 
                     <div>
                         {level === "collection" && (
@@ -105,7 +105,7 @@ export default function ReaderNavigation() {
                     </div>
 
                     {showSiblingNav && (
-                        <div className="flex gap-4">
+                        <div className="flex flex-wrap gap-2 md:gap-4">
                             {previous && (
                                 <Link
                                     to={PUBLIC_ROUTES.POEM(previous.slug)}

@@ -3,7 +3,7 @@ import { PUBLIC_ROUTES } from "@/app/routes"
 
 export default function BooksPage() {
     return (
-        <div className="space-y-20 pt-12">
+        <div className="space-y-20 pt-6 md:pt-12">
 
             {/* Header */}
             <header className="space-y-6 text-center">
@@ -24,7 +24,7 @@ export default function BooksPage() {
                     bg-neutral-400/85 dark:bg-neutral-900/80
                     backdrop-blur-md
                     shadow-xl
-                    px-12 py-16
+                    px-8 md:px-12 py-12 md:py-16
                     text-center
                     space-y-6
                     max-w-xl

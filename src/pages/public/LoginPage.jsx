@@ -39,9 +39,9 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="min-h-[70vh] flex items-center justify-center py-24">
+        <div className="min-h-[70vh] flex items-center justify-center py-12 md:py-24">
 
-            <div className="w-full max-w-md rounded-3xl bg-neutral-400/85 dark:bg-neutral-900/80 backdrop-blur-md shadow-xl p-10 space-y-10">
+            <div className="w-full max-w-md rounded-3xl bg-neutral-400/85 dark:bg-neutral-900/80 backdrop-blur-md shadow-xl p-6 md:p-10 space-y-6 md:space-y-10">
 
                 {/* Logo */}
                 <div className="text-center">
@@ -55,7 +55,7 @@ export default function LoginPage() {
 
                 {/* Heading */}
                 <div className="space-y-2 text-center">
-                    <h1 className="text-3xl font-serif tracking-tight">
+                    <h1 className="text-2xl md:text-3xl font-serif tracking-tight">
                         Author Access
                     </h1>
                     <p className="text-sm opacity-60">
