@@ -29,7 +29,7 @@ export default function ReaderLayout() {
             />
 
             {/* Soft atmospheric fade */}
-            <div className="fixed inset-0 -z-10 bg-gradient-to-b from-neutral-950/70 to-neutral-900/60" />
+            <div className="fixed inset-0 -z-10 bg-linear-to-b from-neutral-950/70 to-neutral-900/60" />
 
             {/* ---------------- FRAMED WORLD ---------------- */}
             <div className="relative max-w-full md:max-w-5xl mx-auto min-h-screen rounded-none md:rounded-3xl">
