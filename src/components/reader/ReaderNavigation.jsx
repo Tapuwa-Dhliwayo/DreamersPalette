@@ -36,16 +36,55 @@ export default function ReaderNavigation() {
         <header className="space-y-6">
 
             {/* ---------- GLOBAL HEADER ---------- */}
-            <div className="flex items-center justify-between text-sm">
+            <div className="text-sm space-y-3">
 
-                <Link
-                    to={PUBLIC_ROUTES.HOME}
-                    className="hover:opacity-80 transition-opacity"
-                >
-                    <Logo size="sm" />
-                </Link>
+                {/* Row 1: Logo (left) + Auth button (right) — always */}
+                <div className="flex items-center justify-between">
+                    <Link
+                        to={PUBLIC_ROUTES.HOME}
+                        className="hover:opacity-80 transition-opacity"
+                    >
+                        <Logo size="sm" />
+                    </Link>
 
-                <nav className="flex items-center gap-3 md:gap-8">
+                    {/* Nav links — desktop only (center slot) */}
+                    <nav className="hidden md:flex items-center gap-8">
+                        <Link
+                            to={PUBLIC_ROUTES.COLLECTIONS}
+                            className="accent-button"
+                        >
+                            Collections
+                        </Link>
+
+                        <Link
+                            to={PUBLIC_ROUTES.BOOKS}
+                            className="accent-button"
+                        >
+                            Books
+                        </Link>
+                    </nav>
+
+                    <div>
+                        {isAuthenticated ? (
+                            <Link
+                                to={DASHBOARD_ROUTES.ROOT}
+                                className="accent-button"
+                            >
+                                Dashboard
+                            </Link>
+                        ) : (
+                            <Link
+                                to={PUBLIC_ROUTES.LOGIN}
+                                className="accent-button"
+                            >
+                                Author Login
+                            </Link>
+                        )}
+                    </div>
+                </div>
+
+                {/* Row 2: Nav links — mobile only */}
+                <nav className="flex md:hidden items-center justify-center gap-3">
                     <Link
                         to={PUBLIC_ROUTES.COLLECTIONS}
                         className="accent-button"
@@ -61,23 +100,6 @@ export default function ReaderNavigation() {
                     </Link>
                 </nav>
 
-                <div>
-                    {isAuthenticated ? (
-                        <Link
-                            to={DASHBOARD_ROUTES.ROOT}
-                            className="accent-button"
-                        >
-                            Dashboard
-                        </Link>
-                    ) : (
-                        <Link
-                            to={PUBLIC_ROUTES.LOGIN}
-                            className="accent-button"
-                        >
-                            Author Login
-                        </Link>
-                    )}
-                </div>
             </div>
 
             {/* ---------- CONTEXT NAV ---------- */}
