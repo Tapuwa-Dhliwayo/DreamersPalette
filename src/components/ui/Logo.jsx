@@ -13,8 +13,7 @@ export default function Logo({
 
     const colorVariants = {
         default: "text-neutral-900! dark:text-neutral-100!",
-        subtle: "opacity-70 text-current",
-        accent: ""
+        subtle: "opacity-70 text-neutral-900! dark:text-neutral-100!"
     }
 
     const accentStyle =
