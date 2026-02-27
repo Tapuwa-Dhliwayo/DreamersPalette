@@ -46,7 +46,7 @@ export default function Logo({
 
             {/* Wordmark */}
             <span
-                className={`font-serif tracking-tight font-medium ${sizes[size]} ${colorVariants[variant]}`}
+                className={`font-serif tracking-tight font-medium opacity-100 ${sizes[size]} ${colorVariants[variant]}`}
             >
                 Dreamer’s Palette
             </span>

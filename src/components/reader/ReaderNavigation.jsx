@@ -104,8 +104,9 @@ export default function ReaderNavigation() {
 
             {/* ---------- CONTEXT NAV ---------- */}
             {showContextNav && (
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between text-xs opacity-70 border-t border-white/10 p-4 mb-2">
+                <div className="flex items-center justify-between text-xs opacity-70 border-t border-white/10 p-4 mb-2">
 
+                    {/* Back Link */}
                     <div>
                         {level === "collection" && (
                             <Link
@@ -126,25 +127,34 @@ export default function ReaderNavigation() {
                         )}
                     </div>
 
-                    {showSiblingNav && (
-                        <div className="flex flex-wrap gap-2 md:gap-4">
-                            {previous && (
-                                <Link
-                                    to={PUBLIC_ROUTES.POEM(previous.slug)}
-                                    className="accent-button"
-                                >
-                                    Previous
-                                </Link>
-                            )}
+                    {/* Sibling Navigation (Always Rendered) */}
+                    {level === "poem" && (
+                        <div className="flex items-center gap-6">
 
-                            {next && (
-                                <Link
-                                    to={PUBLIC_ROUTES.POEM(next.slug)}
-                                    className="accent-button"
-                                >
-                                    Next
-                                </Link>
-                            )}
+                            <Link
+                                to={previous ? PUBLIC_ROUTES.POEM(previous.slug) : "#"}
+                                aria-disabled={!previous}
+                                className={`accent-button transition-opacity ${
+                                    !previous
+                                        ? "opacity-30 pointer-events-none cursor-default"
+                                        : ""
+                                }`}
+                            >
+                                Previous
+                            </Link>
+
+                            <Link
+                                to={next ? PUBLIC_ROUTES.POEM(next.slug) : "#"}
+                                aria-disabled={!next}
+                                className={`accent-button transition-opacity ${
+                                    !next
+                                        ? "opacity-30 pointer-events-none cursor-default"
+                                        : ""
+                                }`}
+                            >
+                                Next
+                            </Link>
+
                         </div>
                     )}
                 </div>
