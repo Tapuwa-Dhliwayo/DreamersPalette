@@ -39,32 +39,32 @@ export default function EditorPanel({
                 {/* Preview */}
                 <div className="flex-1 p-4 md:p-6 bg-neutral-50">
 
-                    <div className="max-w-3xl mx-auto">
+                    <div className="max-w-3xl mx-auto prose-reading">
 
                         <ReactMarkdown
                             skipHtml
                             components={{
-                                p: ({ node, ...props }) => (
+                                p: ({ ...props }) => (
                                     <p
-                                        className="whitespace-pre-wrap leading-relaxed text-neutral-800 mb-4"
+                                        className="whitespace-pre-wrap leading-relaxed text-neutral-800 mb-6"
                                         {...props}
                                     />
                                 ),
-                                h1: ({ node, ...props }) => (
+                                h1: ({ ...props }) => (
                                     <h1
-                                        className="text-3xl font-semibold tracking-tight mb-6"
+                                        className="text-3xl font-serif tracking-tight mb-6"
                                         {...props}
                                     />
                                 ),
-                                h2: ({ node, ...props }) => (
+                                h2: ({ ...props }) => (
                                     <h2
-                                        className="text-2xl font-medium mb-4"
+                                        className="text-2xl font-serif font-medium mt-8 mb-4"
                                         {...props}
                                     />
                                 ),
-                                blockquote: ({ node, ...props }) => (
+                                blockquote: ({ ...props }) => (
                                     <blockquote
-                                        className="border-l-2 border-neutral-300 pl-4 italic text-neutral-600 my-4 whitespace-pre-wrap"
+                                        className="border-l-2 border-neutral-300 pl-4 italic text-neutral-600 my-6 whitespace-pre-wrap"
                                         {...props}
                                     />
                                 )

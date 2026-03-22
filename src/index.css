@@ -63,6 +63,44 @@ a {
   background-color: color-mix(in srgb, var(--accent-color) 15%, transparent);
 }
 
+/* Accent Underline (optional editorial treatment) */
+
+.accent-underline {
+  text-decoration: underline;
+  text-decoration-color: var(--accent-color);
+  text-underline-offset: 6px;
+  text-decoration-thickness: 2px;
+  text-decoration-skip-ink: auto;
+}
+
+/* Context Nav Entrance Animation */
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.context-nav-enter {
+  animation: fadeSlideIn 0.35s ease-out both;
+}
+
+/* Reader Page Content Entrance */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.reader-fade-in {
+  animation: fadeIn 0.4s ease-out both;
+}
+
 /* Selection */
 ::selection {
   @apply bg-neutral-900 text-white dark:bg-white dark:text-neutral-900;

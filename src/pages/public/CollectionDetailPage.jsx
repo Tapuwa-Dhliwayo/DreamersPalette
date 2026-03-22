@@ -57,12 +57,12 @@ export default function CollectionDetailPage() {
     }
 
     return (
-        <article className="space-y-12 md:space-y-20 pt-8 md:pt-12">
+        <article className="reader-fade-in space-y-12 md:space-y-20 pt-8 md:pt-12">
 
             {/* Header */}
             <header className="space-y-6 text-center">
 
-                <h1 className="text-3xl md:text-5xl font-serif tracking-tight">
+                <h1 className="text-3xl md:text-5xl font-serif tracking-tight accent-underline">
                     {collection.title}
                 </h1>
 
