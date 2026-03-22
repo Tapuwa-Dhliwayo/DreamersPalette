@@ -21,7 +21,11 @@ export const DASHBOARD_ROUTES = {
     POEM_NEW: "/dashboard/poems/new",
     POEM_EDIT: (id) => `/dashboard/poems/${id}/edit`,
     BOOKS: "/dashboard/books",
+    BOOK_NEW: "/dashboard/books/new",
+    BOOK_EDIT: (id) => `/dashboard/books/${id}/edit`,
     CHAPTERS: "/dashboard/chapters",
+    CHAPTER_NEW: "/dashboard/chapters/new",
+    CHAPTER_EDIT: (id) => `/dashboard/chapters/${id}/edit`,
 };
 
 /* ---------- OPTIONAL: ROUTE META ---------- */

@@ -146,6 +146,20 @@ export async function getMyChaptersByBook(bookId) {
 }
 
 /**
+ * Get single chapter owned by current author
+ */
+export async function getMyChapterById(chapterId) {
+    const { data, error } = await supabase
+        .from("chapters")
+        .select("id, book_id, title, chapter_number, content_md, is_preview, is_published, created_at")
+        .eq("id", chapterId)
+        .single()
+
+    if (error) throw error
+    return data
+}
+
+/**
  * Create new chapter
  */
 export async function createChapter(payload) {
