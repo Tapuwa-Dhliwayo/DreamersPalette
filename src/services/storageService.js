@@ -111,7 +111,7 @@ export async function compressImageIfNeeded(file, opts = {}) {
     const blob = await canvas.convertToBlob({ type: outputType, quality })
 
     const ext = "webp"
-    const compressedName = file.name.replace(/\.[^.]+$/, `.${ext}`)
+    const compressedName = file.name.replace(/\.[^.]+$/, "") + `.${ext}`
 
     const compressedFile = new File([blob], compressedName, {
         type: outputType,

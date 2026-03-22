@@ -20,24 +20,39 @@ export default function CollectionDetailPage() {
     const [totalCount, setTotalCount] = useState(0)
 
     useEffect(() => {
-        async function load() {
+        async function loadCollection() {
             try {
                 const collectionData = await getCollectionBySlug(slug)
                 setCollection(collectionData)
+            } catch (err) {
+                console.error("Collection not found:", err)
+                setNotFound(true)
+            }
+        }
 
+        setPage(1)
+        setNotFound(false)
+        loadCollection()
+    }, [slug])
+
+    useEffect(() => {
+        if (!collection) return
+
+        async function loadPoems() {
+            try {
+                setLoading(true)
                 const { data: poemsData, count } = await getPublishedPoemsByCollectionPaginated(slug, page, DEFAULT_PAGE_SIZE)
                 setPoems(poemsData)
                 setTotalCount(count)
             } catch (err) {
-                console.error("Collection not found:", err)
-                setNotFound(true)
+                console.error("Failed to load poems:", err)
             } finally {
                 setLoading(false)
             }
         }
 
-        load()
-    }, [slug, page])
+        loadPoems()
+    }, [slug, page, collection])
 
     if (loading) {
         return (

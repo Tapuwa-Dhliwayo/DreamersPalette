@@ -16,6 +16,7 @@ export default function CollectionsPage() {
         async function load() {
             try {
                 setLoading(true)
+                // Reset mounted state to retrigger fade-in animations on page change
                 setMounted(false)
                 const { data, count } = await getPublishedCollectionsPaginated(page, DEFAULT_PAGE_SIZE)
                 setCollections(data)
