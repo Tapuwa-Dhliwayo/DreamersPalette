@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import Button from "@/components/ui/Button"
 import Input from "@/components/ui/Input"
 import Textarea from "@/components/ui/Textarea"
+import { generateBookCover, getAiProviderLabel } from "@/services/aiAssetService"
 
 import {
     getMyBooks,
@@ -13,6 +14,7 @@ import {
 import { DASHBOARD_ROUTES } from "@/app/routes"
 
 export default function BookEditorPage() {
+    const providerLabel = getAiProviderLabel()
     const navigate = useNavigate()
     const { id } = useParams()
 
@@ -20,6 +22,9 @@ export default function BookEditorPage() {
 
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [generatingCover, setGeneratingCover] = useState(false)
+    const [coverPrompt, setCoverPrompt] = useState("")
+    const [generationError, setGenerationError] = useState("")
 
     const [form, setForm] = useState({
         title: "",
@@ -85,6 +90,25 @@ export default function BookEditorPage() {
         }
     }
 
+    async function handleGenerateCover() {
+        if (generatingCover) return
+
+        try {
+            setGenerationError("")
+            setGeneratingCover(true)
+            const { imageUrl } = await generateBookCover(coverPrompt)
+            setForm((prev) => ({
+                ...prev,
+                cover_image_url: imageUrl
+            }))
+        } catch (err) {
+            console.error("Cover generation failed:", err)
+            setGenerationError(err.message || "Failed to generate cover image.")
+        } finally {
+            setGeneratingCover(false)
+        }
+    }
+
     if (loading) {
         return (
             <div className="text-sm text-neutral-500">
@@ -145,6 +169,44 @@ export default function BookEditorPage() {
                         setForm({ ...form, cover_image_url: e.target.value })
                     }
                 />
+
+                <div className="space-y-2">
+                    <Input
+                        placeholder="AI prompt for cover (optional)"
+                        value={coverPrompt}
+                        onChange={(e) => setCoverPrompt(e.target.value)}
+                        maxLength={500}
+                    />
+                    <div className="flex items-center gap-2">
+                        <Button
+                            type="button"
+                            variant="subtle"
+                            size="sm"
+                            onClick={handleGenerateCover}
+                            disabled={generatingCover || !coverPrompt.trim()}
+                        >
+                            {generatingCover ? "Generating..." : "Generate Cover with AI"}
+                        </Button>
+                        <span className="text-xs text-neutral-500">
+                            Provider: {providerLabel}
+                        </span>
+                    </div>
+                    {generationError && (
+                        <p className="text-xs text-red-500">
+                            {generationError}
+                        </p>
+                    )}
+                </div>
+
+                {form.cover_image_url && (
+                    <div className="space-y-2">
+                        <img
+                            src={form.cover_image_url}
+                            alt="Cover preview"
+                            className="w-full h-56 object-cover rounded-lg border border-neutral-200 dark:border-neutral-800"
+                        />
+                    </div>
+                )}
             </div>
         </div>
     )
