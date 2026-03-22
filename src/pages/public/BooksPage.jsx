@@ -1,17 +1,22 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { PUBLIC_ROUTES } from "@/app/routes"
-import { getPublishedBooks } from "@/services/bookService"
+import Pagination, { DEFAULT_PAGE_SIZE } from "@/components/ui/Pagination"
+import { getPublishedBooksPaginated } from "@/services/bookService"
 
 export default function BooksPage() {
     const [books, setBooks] = useState([])
     const [loading, setLoading] = useState(true)
+    const [page, setPage] = useState(1)
+    const [totalCount, setTotalCount] = useState(0)
 
     useEffect(() => {
         async function load() {
             try {
-                const data = await getPublishedBooks()
+                setLoading(true)
+                const { data, count } = await getPublishedBooksPaginated(page, DEFAULT_PAGE_SIZE)
                 setBooks(data)
+                setTotalCount(count)
             } catch (err) {
                 console.error("Failed to load books:", err)
             } finally {
@@ -20,7 +25,7 @@ export default function BooksPage() {
         }
 
         load()
-    }, [])
+    }, [page])
 
     return (
         <div className="space-y-20 pt-6 md:pt-12">
@@ -107,6 +112,16 @@ export default function BooksPage() {
                         </Link>
                     ))}
                 </section>
+            )}
+
+            {/* Pagination */}
+            {!loading && books.length > 0 && (
+                <Pagination
+                    page={page}
+                    pageSize={DEFAULT_PAGE_SIZE}
+                    totalCount={totalCount}
+                    onPageChange={setPage}
+                />
             )}
 
         </div>

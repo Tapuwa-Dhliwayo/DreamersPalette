@@ -248,6 +248,27 @@ export async function getPublishedBooks() {
 }
 
 /**
+ * Fetch published books with pagination
+ * @param {number} page - 1-based page number
+ * @param {number} pageSize - items per page
+ * @returns {{ data: Array, count: number }}
+ */
+export async function getPublishedBooksPaginated(page = 1, pageSize = 12) {
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+
+    const { data, error, count } = await supabase
+        .from("books")
+        .select("id, title, slug, synopsis, cover_image_url, theme_background_url", { count: "exact" })
+        .eq("is_published", true)
+        .order("created_at", { ascending: false })
+        .range(from, to)
+
+    if (error) throw error
+    return { data, count }
+}
+
+/**
  * Fetch single published book by slug
  */
 export async function getBookBySlug(slug) {

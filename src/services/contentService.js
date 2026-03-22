@@ -146,6 +146,27 @@ export async function getPublishedCollections() {
 }
 
 /**
+ * Fetch published collections with pagination
+ * @param {number} page - 1-based page number
+ * @param {number} pageSize - items per page
+ * @returns {{ data: Array, count: number }}
+ */
+export async function getPublishedCollectionsPaginated(page = 1, pageSize = 12) {
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+
+    const { data, error, count } = await supabase
+        .from("poetry_collections")
+        .select("id, title, slug, description, theme_background_url", { count: "exact" })
+        .eq("is_published", true)
+        .order("created_at", { ascending: false })
+        .range(from, to)
+
+    if (error) throw error
+    return { data, count }
+}
+
+/**
  * Fetch single collection by slug (published only)
  */
 export async function getCollectionBySlug(slug) {
@@ -322,4 +343,33 @@ export async function getPublishedPoemsByCollection(collectionSlug) {
 
     if (error) throw error
     return data
+}
+
+/**
+ * Fetch published poems by collection slug with pagination
+ * @param {string} collectionSlug
+ * @param {number} page - 1-based page number
+ * @param {number} pageSize - items per page
+ * @returns {{ data: Array, count: number }}
+ */
+export async function getPublishedPoemsByCollectionPaginated(collectionSlug, page = 1, pageSize = 12) {
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+
+    const { data, error, count } = await supabase
+        .from("poems")
+        .select(`
+            id,
+            title,
+            slug,
+            excerpt,
+            poetry_collections!inner(slug)
+        `, { count: "exact" })
+        .eq("is_published", true)
+        .eq("poetry_collections.slug", collectionSlug)
+        .order("created_at", { ascending: true })
+        .range(from, to)
+
+    if (error) throw error
+    return { data, count }
 }
