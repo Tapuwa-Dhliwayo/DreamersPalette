@@ -65,6 +65,45 @@ export async function getMyCollections() {
 }
 
 /**
+ * Get poem counts per collection (lightweight — no row data transferred).
+ * Returns { [collectionId]: { total, published } }
+ */
+export async function getPoemCountsByCollection() {
+    // Fetch all collection IDs owned by the author
+    const { data: collections, error: colErr } = await supabase
+        .from("poetry_collections")
+        .select("id")
+
+    if (colErr) throw colErr
+    if (!collections || collections.length === 0) return {}
+
+    // Fire two count queries per collection in parallel (total + published)
+    const counts = {}
+    await Promise.all(
+        collections.map(async (col) => {
+            const [totalRes, pubRes] = await Promise.all([
+                supabase
+                    .from("poems")
+                    .select("id", { count: "exact", head: true })
+                    .eq("collection_id", col.id),
+                supabase
+                    .from("poems")
+                    .select("id", { count: "exact", head: true })
+                    .eq("collection_id", col.id)
+                    .eq("is_published", true),
+            ])
+
+            counts[col.id] = {
+                total: totalRes.count ?? 0,
+                published: pubRes.count ?? 0,
+            }
+        })
+    )
+
+    return counts
+}
+
+/**
  * Create new collection
  */
 export async function createCollection(payload) {

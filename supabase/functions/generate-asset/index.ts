@@ -30,17 +30,49 @@ function validateType(raw: unknown): string {
   return raw as string
 }
 
-function buildVisualPrompt(prompt: string, type: string): string {
-  const base = prompt
-      .replace(/[.,]/g, " ")
+// Words that cause the model to render text or literary content in the image
+const LITERARY_WORDS = new Set([
+  "poem", "poems", "poetry", "verse", "verses", "stanza", "stanzas",
+  "story", "stories", "novel", "chapter", "chapters", "book", "books",
+  "writing", "written", "writes", "write", "wrote",
+  "describing", "described", "describes", "describe", "description",
+  "about", "titled", "called", "named",
+  "words", "word", "text", "texts", "letter", "letters",
+  "saying", "says", "said", "tells", "telling", "told",
+  "reading", "read", "reads",
+  "four", "three", "two", "five", "six", "seven", "eight", "nine", "ten",
+  "collection", "collections", "anthology",
+])
+
+function sanitizeForVisual(raw: string): string {
+  return raw
+      .replace(/[.,;:!?'"()\[\]{}]/g, " ")
+      .split(/\s+/)
+      .filter((w) => !LITERARY_WORDS.has(w.toLowerCase()))
+      .join(" ")
       .replace(/\s+/g, " ")
       .trim()
+}
+
+function buildVisualPrompt(prompt: string, type: string): string {
+  const visual = sanitizeForVisual(prompt)
+
+  // Fallback if sanitization strips everything
+  const base = visual || "abstract atmospheric landscape"
 
   if (type === "background") {
-    return `${base}, atmospheric environment, cinematic lighting, soft gradients, painterly, no text`
+    return `beautiful painting of ${base}, abstract art, atmospheric scene, cinematic lighting, soft color gradients, painterly brushstrokes, dreamy, ethereal, textless artwork, purely visual`
   }
 
-  return `${base}, epic fantasy book cover, cinematic lighting, painterly, elegant, no text`
+  return `painting of ${base}, epic fantasy book cover art, cinematic lighting, painterly, elegant composition, textless artwork, purely visual`
+}
+
+function buildNegativePrompt(type: string): string {
+  const base = "text, words, letters, numbers, writing, typography, font, watermark, signature, logo, label, caption, title, subtitle, handwriting, calligraphy, symbols, glyphs, alphabet"
+  if (type === "background") {
+    return `${base}, busy, cluttered, people, faces, characters`
+  }
+  return `${base}, blurry, low quality, deformed`
 }
 
 // ---------------------------------------------------------------------------
@@ -81,9 +113,11 @@ Deno.serve(async (req: Request) => {
     const prompt = validatePrompt(body.prompt)
     const type   = validateType(body.type)
 
-    const visualPrompt = buildVisualPrompt(prompt, type)
+    const visualPrompt   = buildVisualPrompt(prompt, type)
+    const negativePrompt = buildNegativePrompt(type)
 
     console.log("HF Prompt:", visualPrompt)
+    console.log("HF Negative:", negativePrompt)
 
     // -----------------------------------------------------------------------
     // Hugging Face Image Generation
@@ -98,6 +132,9 @@ Deno.serve(async (req: Request) => {
           },
           body: JSON.stringify({
             inputs: visualPrompt,
+            parameters: {
+              negative_prompt: negativePrompt,
+            },
           }),
         }
     )

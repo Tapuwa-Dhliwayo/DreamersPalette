@@ -4,6 +4,7 @@ import { uploadBackgroundImage, validateImageFile, compressImageIfNeeded } from 
 import { supabase } from "@/services/supabaseClient"
 import { Card } from "@/components/ui/Card"
 import Button from "@/components/ui/Button"
+import Badge from "@/components/ui/Badge"
 import Input from "@/components/ui/Input"
 import Textarea from "@/components/ui/Textarea"
 import Modal from "@/components/ui/Modal"
@@ -14,6 +15,7 @@ import {
 
 import {
     getMyCollections,
+    getPoemCountsByCollection,
     createCollection,
     updateCollection,
     deleteCollection,
@@ -33,6 +35,7 @@ export default function Collections() {
 
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingCollection, setEditingCollection] = useState(null)
+    const [poemCounts, setPoemCounts] = useState({})
 
     const [form, setForm] = useState({
         title: "",
@@ -49,8 +52,12 @@ export default function Collections() {
 
     async function fetchCollections() {
         try {
-            const data = await getMyCollections()
+            const [data, counts] = await Promise.all([
+                getMyCollections(),
+                getPoemCountsByCollection(),
+            ])
             setCollections(data)
+            setPoemCounts(counts)
         } catch (err) {
             console.error("Failed to load collections:", err)
         } finally {
@@ -264,6 +271,16 @@ export default function Collections() {
                                 <p className="text-xs text-neutral-400 mt-2">
                                     /collections/{collection.slug}
                                 </p>
+                                <div className="flex items-center gap-2 mt-2">
+                                    <Badge>
+                                        {poemCounts[collection.id]?.total || 0} {poemCounts[collection.id]?.total === 1 ? "poem" : "poems"}
+                                    </Badge>
+                                    {(poemCounts[collection.id]?.published || 0) > 0 && (
+                                        <Badge variant="success">
+                                            {poemCounts[collection.id].published} published
+                                        </Badge>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="flex gap-2 items-center">
