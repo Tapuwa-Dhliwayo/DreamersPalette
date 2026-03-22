@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 
 import Button from "@/components/ui/Button"
 import Input from "@/components/ui/Input"
+import Select from "@/components/ui/Select"
 import EditorPanel from "@/components/editor/EditorPanel"
 
 import {
@@ -147,17 +148,16 @@ export default function ChapterEditorPage() {
             </div>
 
             <div className="space-y-4 max-w-full md:max-w-xl">
-                <select
+                <Select
                     value={form.book_id}
                     onChange={(e) => setForm({ ...form, book_id: e.target.value })}
-                    className="w-full border border-neutral-200 rounded-xl p-3 text-sm bg-white"
                 >
                     {books.map((book) => (
                         <option key={book.id} value={book.id}>
                             {book.title}
                         </option>
                     ))}
-                </select>
+                </Select>
 
                 <Input
                     placeholder="Chapter title"

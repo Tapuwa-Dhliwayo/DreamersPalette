@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom"
 
 import Button from "@/components/ui/Button"
 import Input from "@/components/ui/Input"
+import Select from "@/components/ui/Select"
 import EditorPanel from "@/components/editor/EditorPanel"
 
 import {
@@ -149,12 +150,11 @@ export default function PoemEditorPage() {
                     }
                 />
 
-                <select
+                <Select
                     value={form.collection_id}
                     onChange={(e) =>
                         setForm({ ...form, collection_id: e.target.value })
                     }
-                    className="w-full border border-neutral-200 rounded-xl p-3 text-sm bg-white"
                 >
                     {collections.map((collection) => (
                         <option
@@ -164,7 +164,7 @@ export default function PoemEditorPage() {
                             {collection.title}
                         </option>
                     ))}
-                </select>
+                </Select>
 
             </div>
 

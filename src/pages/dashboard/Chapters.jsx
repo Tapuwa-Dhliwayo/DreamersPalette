@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 
 import { Card } from "@/components/ui/Card"
 import Button from "@/components/ui/Button"
+import Select from "@/components/ui/Select"
 
 import {
     getMyBooks,
@@ -101,17 +102,16 @@ export default function Chapters() {
 
             {books.length > 0 && (
                 <div className="max-w-xs">
-                    <select
+                    <Select
                         value={selectedBookId}
                         onChange={(e) => handleBookChange(e.target.value)}
-                        className="w-full border border-neutral-200 rounded-xl p-3 text-sm bg-white"
                     >
                         {books.map((book) => (
                             <option key={book.id} value={book.id}>
                                 {book.title}
                             </option>
                         ))}
-                    </select>
+                    </Select>
                 </div>
             )}
 

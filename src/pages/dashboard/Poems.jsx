@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 
 import { Card } from "@/components/ui/Card"
 import Button from "@/components/ui/Button"
+import Select from "@/components/ui/Select"
 
 import {
     getMyPoems,
@@ -93,10 +94,9 @@ export default function Poems() {
 
             {/* Filter */}
             <div className="max-w-xs">
-                <select
+                <Select
                     value={selectedCollection}
                     onChange={(e) => handleFilterChange(e.target.value)}
-                    className="w-full border border-neutral-200 rounded-xl p-3 text-sm bg-white"
                 >
                     <option value="all">All Collections</option>
                     {collections.map((collection) => (
@@ -104,7 +104,7 @@ export default function Poems() {
                             {collection.title}
                         </option>
                     ))}
-                </select>
+                </Select>
             </div>
 
             {/* Loading */}
