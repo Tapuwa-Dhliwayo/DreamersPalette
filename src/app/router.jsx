@@ -22,6 +22,8 @@ const DashboardPoems = lazy(() => import("@/pages/dashboard/Poems"));
 const DashboardBooks = lazy(() => import("@/pages/dashboard/Books"));
 const DashboardChapters = lazy(() => import("@/pages/dashboard/Chapters"));
 const DashboardPoemEditor = lazy(() => import("@/pages/dashboard/PoemEditorPage"));
+const DashboardBookEditor = lazy(() => import("@/pages/dashboard/BookEditorPage"));
+const DashboardChapterEditor = lazy(() => import("@/pages/dashboard/ChapterEditorPage"));
 
 export const router = createBrowserRouter([
     /* ---------- PUBLIC READER ---------- */
@@ -63,7 +65,11 @@ export const router = createBrowserRouter([
             { path: "poems/new", element: <DashboardPoemEditor /> },
             { path: "poems/:id/edit", element: <DashboardPoemEditor /> },
             { path: "books", element: <DashboardBooks /> },
+            { path: "books/new", element: <DashboardBookEditor /> },
+            { path: "books/:id/edit", element: <DashboardBookEditor /> },
             { path: "chapters", element: <DashboardChapters /> },
+            { path: "chapters/new", element: <DashboardChapterEditor /> },
+            { path: "chapters/:id/edit", element: <DashboardChapterEditor /> },
         ],
     },
 ]);
