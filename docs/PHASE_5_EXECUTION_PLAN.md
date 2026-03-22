@@ -41,11 +41,11 @@
 - [ ] **Pre-development approval gate (required):** share AI implementation plan and wait for explicit go-ahead before coding
 - [ ] Share exact additions list before coding (files/services/endpoints/schema-touchpoints/UI surfaces)
 - [ ] Share constraints alignment check before coding (RLS, storage policies, query projection discipline, env/security rules)
-- [ ] Add prompt capture inputs for collection background generation
-- [ ] Add prompt capture inputs for book cover generation
-- [ ] Save generated metadata in `generated_assets`
-- [ ] Upload generated files to Supabase Storage and persist URLs
-- [ ] Track prompt history + generation timestamps for reproducibility
+- [x] Add prompt capture inputs for collection background generation
+- [x] Add prompt capture inputs for book cover generation
+- [x] Save generated metadata in `generated_assets`
+- [x] Upload generated files to Supabase Storage and persist URLs
+- [x] Track prompt history + generation timestamps for reproducibility
 
 #### AI Pre-Development Notice Template (send before implementation)
 
@@ -67,7 +67,7 @@
 
 ### Workstream D — Editorial Refinement
 
-- [ ] Add smooth theme/background transitions between reader contexts
+- [x] Add smooth theme/background transitions between reader contexts
 - [ ] Add subtle ReaderNavigation micro-interactions
 - [ ] Add optional accent underline style treatment
 - [ ] Refine edit → preview flow latency and visual continuity
