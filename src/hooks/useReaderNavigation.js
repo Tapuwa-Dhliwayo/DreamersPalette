@@ -6,13 +6,19 @@ import {
     getPublishedPoemBySlug,
     getPublishedPoemsByCollection
 } from "@/services/contentService"
+import {
+    getPublishedChaptersByBook
+} from "@/services/bookService"
 
 export function useReaderNavigation() {
-    const { slug } = useParams()
+    const { slug, number } = useParams()
 
     const isCollectionsIndex = useMatch("/collections")
     const isCollectionDetail = useMatch("/collections/:slug")
     const isPoemRoute = useMatch("/poems/:slug")
+    const isBooksIndex = useMatch("/books")
+    const isBookDetail = useMatch("/books/:slug")
+    const isChapterRoute = useMatch("/books/:slug/chapter/:number")
 
     const collection = useActiveCollection()
 
@@ -78,6 +84,56 @@ export function useReaderNavigation() {
                     return
                 }
 
+                // -----------------------------
+                // Level 4 — Books Index
+                // -----------------------------
+                if (isBooksIndex && !isBookDetail) {
+                    if (!isMounted) return
+                    setLevel("books-index")
+                    setPrevious(null)
+                    setNext(null)
+                    return
+                }
+
+                // -----------------------------
+                // Level 5 — Book Detail
+                // -----------------------------
+                if (isBookDetail && !isChapterRoute) {
+                    if (!isMounted) return
+                    setLevel("book")
+                    setPrevious(null)
+                    setNext(null)
+                    return
+                }
+
+                // -----------------------------
+                // Level 6 — Chapter (with sibling navigation)
+                // -----------------------------
+                if (isChapterRoute && collection) {
+                    const chapters = await getPublishedChaptersByBook(slug)
+                    if (!isMounted) return
+
+                    const chapterNum = parseInt(number, 10)
+                    const index = chapters.findIndex(
+                        (c) => c.chapter_number === chapterNum
+                    )
+
+                    const prev =
+                        index > 0 ? chapters[index - 1] : null
+
+                    const nxt =
+                        index >= 0 && index < chapters.length - 1
+                            ? chapters[index + 1]
+                            : null
+
+                    if (!isMounted) return
+
+                    setLevel("chapter")
+                    setPrevious(prev)
+                    setNext(nxt)
+                    return
+                }
+
                 // Default fallback
                 if (!isMounted) return
                 setLevel("none")
@@ -96,10 +152,14 @@ export function useReaderNavigation() {
         }
     }, [
         slug,
+        number,
         collection,
         isCollectionsIndex,
         isCollectionDetail,
-        isPoemRoute
+        isPoemRoute,
+        isBooksIndex,
+        isBookDetail,
+        isChapterRoute
     ])
 
     return {

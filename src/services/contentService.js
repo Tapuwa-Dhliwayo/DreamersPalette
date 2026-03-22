@@ -57,7 +57,7 @@ async function insertWithUniqueSlug({
 export async function getMyCollections() {
     const { data, error } = await supabase
         .from("poetry_collections")
-        .select("*")
+        .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode, is_published, created_at, updated_at")
         .order("created_at", { ascending: false })
 
     if (error) throw error
@@ -151,7 +151,7 @@ export async function getPublishedCollections() {
 export async function getCollectionBySlug(slug) {
     const { data, error } = await supabase
         .from("poetry_collections")
-        .select("*")
+        .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode, author_id")
         .eq("slug", slug)
         .eq("is_published", true)
         .single()
@@ -166,7 +166,7 @@ export async function getCollectionBySlug(slug) {
 export async function getCollectionBySlugPreview(slug) {
     const { data, error } = await supabase
         .from("poetry_collections")
-        .select("*")
+        .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode, author_id")
         .eq("slug", slug)
         .single()
 
@@ -181,7 +181,7 @@ export async function getCollectionBySlugPreview(slug) {
 export async function getCollectionById(id) {
     const { data, error } = await supabase
         .from("poetry_collections")
-        .select("*")
+        .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode")
         .eq("id", id)
         .eq("is_published", true)
         .single()
@@ -200,7 +200,7 @@ export async function getCollectionById(id) {
 export async function getMyPoems() {
     const { data, error } = await supabase
         .from("poems")
-        .select("*")
+        .select("id, collection_id, title, slug, excerpt, is_published, created_at, updated_at")
         .order("created_at", { ascending: false })
 
     if (error) throw error
@@ -213,7 +213,7 @@ export async function getMyPoems() {
 export async function getPoemsByCollection(collectionId) {
     const { data, error } = await supabase
         .from("poems")
-        .select("*")
+        .select("id, collection_id, title, slug, excerpt, is_published, created_at")
         .eq("collection_id", collectionId)
         .order("created_at", { ascending: false })
 
@@ -294,7 +294,7 @@ export async function togglePoemPublish(id, isPublished) {
 export async function getPublishedPoemBySlug(slug) {
     const { data, error } = await supabase
         .from("poems")
-        .select("*")
+        .select("id, collection_id, title, slug, content_md, excerpt, author_id")
         .eq("slug", slug)
         .eq("is_published", true)
         .single()
