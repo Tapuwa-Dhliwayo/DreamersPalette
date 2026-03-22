@@ -33,6 +33,11 @@ Goal: Books feel native to the same atmospheric engine.
 
 Goal: Deployment-ready scalability.
 
+Sprint 2 practical validation focus (non-unit):
+- Manual pagination journey checks across first/middle/last pages
+- Payload size verification before/after optimization
+- Upload guardrail checks for invalid and oversized images
+
 ---
 
 ## Pillar C — AI Asset Integration
@@ -45,6 +50,11 @@ Goal: Deployment-ready scalability.
 
 Goal: Author-assisted world building.
 
+Sprint 2 practical validation focus (non-unit):
+- End-to-end generation flow checks (prompt → stored asset → rendered UI)
+- Dashboard confirmation of persisted prompt history and timestamps
+- Storage URL accessibility checks under expected roles
+
 ---
 
 ## Pillar D — Editorial Refinement
@@ -55,6 +65,11 @@ Goal: Author-assisted world building.
 - Improved edit → preview workflow
 
 Goal: Premium reading-app polish.
+
+Sprint 2 practical validation focus (non-unit):
+- Visual QA for transition smoothness and navigation micro-interactions
+- Manual regression pass for reader navigation continuity
+- Screenshot-based signoff on updated reading surfaces
 
 ---
 
@@ -67,3 +82,8 @@ Goal: Premium reading-app polish.
 - Define v1.0.0 milestone criteria
 
 Goal: Stable public deployment.
+
+Sprint 2 practical validation focus (non-unit):
+- Role-based manual verification of RLS and storage policies
+- Production build + smoke tests on candidate release
+- Final go/no-go checklist for v1.0.0 milestone
