@@ -627,13 +627,26 @@ alter table books add column theme_text_mode text default 'light';
 
 ---
 
+## v0.5.0 — Books & Chapters System + Dashboard Completion
+Release Date: 2026-03-XX
+
+### Overview
+Phase 5 Sprint 1 introduces full literary expansion into long-form content via books and chapters, achieving CMS parity and extending the immersive reader experience.
+
+### ✨ Major Features
+- Books CRUD (dashboard + public)
+- Chapters CRUD with markdown editor
+- Chapter navigation system
+- Reader route expansion (/books, /chapter)
+- Theming engine parity for books
+- Query optimization (no select "*")
+- Environment validation
+
+### 🔒 Architectural Reinforcement
+- Service layer remains mandatory
+- RLS enforcement extended to books/chapters
+- Editor consistency across poems and chapters
+- ReaderLayout preserved as theming authority
+
 ### Status
-
 Phase 5 Sprint 1 complete.
-
-Books now have:
-- Full service layer (CRUD + public queries)
-- Theming parity with poetry collections
-- Public reader pages with Markdown rendering
-- Chapter navigation with previous/next
-- Performance-optimized database queries
