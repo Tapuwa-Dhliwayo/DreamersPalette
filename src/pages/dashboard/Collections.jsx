@@ -7,6 +7,10 @@ import Button from "@/components/ui/Button"
 import Input from "@/components/ui/Input"
 import Textarea from "@/components/ui/Textarea"
 import Modal from "@/components/ui/Modal"
+import {
+    generateCollectionBackground,
+    getAiProviderLabel
+} from "@/services/aiAssetService"
 
 import {
     getMyCollections,
@@ -17,9 +21,13 @@ import {
 } from "@/services/contentService"
 
 export default function Collections() {
+    const providerLabel = getAiProviderLabel()
     const [collections, setCollections] = useState([])
     const [loading, setLoading] = useState(true)
     const [uploading, setUploading] = useState(false)
+    const [generatingBackground, setGeneratingBackground] = useState(false)
+    const [backgroundPrompt, setBackgroundPrompt] = useState("")
+    const [generationError, setGenerationError] = useState("")
 
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingCollection, setEditingCollection] = useState(null)
@@ -50,7 +58,16 @@ export default function Collections() {
 
     function openCreateModal() {
         setEditingCollection(null)
-        setForm({ title: "", description: "" })
+        setForm({
+            title: "",
+            description: "",
+            theme_background_url: "",
+            theme_overlay_opacity: 0.6,
+            accent_color: "#d4d4d8",
+            theme_text_mode: "light"
+        })
+        setBackgroundPrompt("")
+        setGenerationError("")
         setIsModalOpen(true)
     }
 
@@ -64,6 +81,8 @@ export default function Collections() {
             accent_color: collection.accent_color || "#d4d4d8",
             theme_text_mode: collection.theme_text_mode
         })
+        setBackgroundPrompt("")
+        setGenerationError("")
         setIsModalOpen(true)
     }
 
@@ -146,6 +165,25 @@ export default function Collections() {
             console.error("Upload failed:", error)
         } finally {
             setUploading(false)
+        }
+    }
+
+    async function handleGenerateBackground() {
+        if (generatingBackground) return
+
+        try {
+            setGenerationError("")
+            setGeneratingBackground(true)
+            const { imageUrl } = await generateCollectionBackground(backgroundPrompt)
+            setForm((prev) => ({
+                ...prev,
+                theme_background_url: imageUrl
+            }))
+        } catch (error) {
+            console.error("AI background generation failed:", error)
+            setGenerationError(error.message || "Failed to generate background image.")
+        } finally {
+            setGeneratingBackground(false)
         }
     }
 
@@ -319,6 +357,34 @@ export default function Collections() {
                                     </p>
                                 </div>
                             )}
+
+                            <div className="space-y-2">
+                                <Input
+                                    placeholder="AI prompt for background (optional)"
+                                    value={backgroundPrompt}
+                                    onChange={(e) => setBackgroundPrompt(e.target.value)}
+                                    maxLength={500}
+                                />
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="subtle"
+                                        size="sm"
+                                        onClick={handleGenerateBackground}
+                                        disabled={generatingBackground || !backgroundPrompt.trim()}
+                                    >
+                                        {generatingBackground ? "Generating..." : "Generate with AI"}
+                                    </Button>
+                                    <span className="text-xs text-neutral-500">
+                                        Provider: {providerLabel}
+                                    </span>
+                                </div>
+                                {generationError && (
+                                    <p className="text-xs text-red-500">
+                                        {generationError}
+                                    </p>
+                                )}
+                            </div>
                         </div>
 
                         {/* Overlay Opacity */}

@@ -637,3 +637,84 @@ Books now have:
 - Public reader pages with Markdown rendering
 - Chapter navigation with previous/next
 - Performance-optimized database queries
+
+---
+
+## v0.5.0-sprint.2 — AI Prompted Asset Generation (Dashboard)
+**Date:** 2026-03-22
+**Phase:** 5 — Literary Expansion & Production Hardening
+**Sprint:** 2
+
+### Overview
+
+This sprint introduces the first production-facing AI asset generation workflow for authors inside dashboard editing flows.
+
+Authors can now provide prompts to generate:
+- collection background imagery, and
+- book cover imagery,
+
+then persist those generated images into Supabase Storage and track metadata in `generated_assets`.
+
+### ✅ Implemented
+
+#### 1. AI Asset Service
+
+Added `src/services/aiAssetService.js`:
+
+- `generateCollectionBackground(prompt)`
+- `generateBookCover(prompt)`
+
+Flow:
+1. validate prompt input,
+2. generate image with the configured provider,
+3. upload generated binary to Supabase Storage bucket,
+4. insert metadata row in `generated_assets`,
+5. return public URL + record metadata for editor usage.
+
+All Supabase database queries continue to use explicit column projections.
+
+#### 2. Dashboard Collection Editor Integration
+
+`src/pages/dashboard/Collections.jsx` now includes:
+
+- prompt input for background generation,
+- Generate with AI action button,
+- inline generation error state,
+- automatic assignment of generated URL to `theme_background_url`.
+
+#### 3. Dashboard Book Editor Integration
+
+`src/pages/dashboard/BookEditorPage.jsx` now includes:
+
+- prompt input for cover generation,
+- Generate Cover with AI action button,
+- inline generation error state,
+- generated image preview,
+- automatic assignment of generated URL to `cover_image_url`.
+
+### 🤖 AI Generation Provider Used
+
+Current provider in use:
+
+- **Pollinations**
+  - Endpoint base: `https://image.pollinations.ai/prompt/...`
+  - Used in `aiAssetService.js` for prompt-based image generation
+
+Provider selection is controlled via:
+- `VITE_AI_IMAGE_PROVIDER` (defaults to `pollinations` if unset)
+
+Generated asset storage target is controlled via:
+- `VITE_GENERATED_ASSETS_BUCKET` (defaults to `backgrounds` if unset)
+
+### ⚠️ Practical Limitations (Current Implementation)
+
+- **Provider variability:** Generated quality and style consistency can vary by prompt and provider-side model behavior.
+- **No hard rate-limit enforcement in client:** The current frontend integration does not implement client-side throttling/queueing.
+- **Network/provider dependency:** Generation fails when provider endpoint is unavailable or slow.
+- **Provider scope locked:** Only `pollinations` is supported right now; unsupported values for `VITE_AI_IMAGE_PROVIDER` throw a clear error.
+- **Prompt length capped:** Prompt input is limited to 500 characters to avoid oversized request payloads.
+- **Storage policy dependency:** Successful uploads depend on existing Supabase Storage bucket policy compatibility for authenticated authors.
+
+### Status
+
+Phase 5 Sprint 2 AI generation baseline is now active for dashboard author workflows.
