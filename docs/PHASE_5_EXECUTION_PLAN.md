@@ -38,11 +38,32 @@
 
 ### Workstream C — AI Asset Integration
 
+- [ ] **Pre-development approval gate (required):** share AI implementation plan and wait for explicit go-ahead before coding
+- [ ] Share exact additions list before coding (files/services/endpoints/schema-touchpoints/UI surfaces)
+- [ ] Share constraints alignment check before coding (RLS, storage policies, query projection discipline, env/security rules)
 - [ ] Add prompt capture inputs for collection background generation
 - [ ] Add prompt capture inputs for book cover generation
 - [ ] Save generated metadata in `generated_assets`
 - [ ] Upload generated files to Supabase Storage and persist URLs
 - [ ] Track prompt history + generation timestamps for reproducibility
+
+#### AI Pre-Development Notice Template (send before implementation)
+
+- Planned additions (exact):
+  - Components/pages to change
+  - Services/functions to add
+  - Any schema/policy/storage updates
+  - Environment variables required
+- Constraints alignment:
+  - No `select("*")`; use minimal column projections
+  - RLS maintained (`generated_assets` author-only write/read as intended)
+  - Storage bucket policy compatibility for generated assets
+  - No service role key exposure in frontend code
+  - AI endpoint guardrails/rate limiting plan
+- Practical validation plan (non-unit):
+  - Dashboard generation journey (prompt → image → saved URL)
+  - Role-based access verification (author vs anon)
+  - Error/timeout handling checks
 
 ### Workstream D — Editorial Refinement
 
