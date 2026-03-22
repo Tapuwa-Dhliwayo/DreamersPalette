@@ -68,9 +68,9 @@
 ### Workstream D — Editorial Refinement
 
 - [x] Add smooth theme/background transitions between reader contexts
-- [ ] Add subtle ReaderNavigation micro-interactions
-- [ ] Add optional accent underline style treatment
-- [ ] Refine edit → preview flow latency and visual continuity
+- [x] Add subtle ReaderNavigation micro-interactions
+- [x] Add optional accent underline style treatment
+- [x] Refine edit → preview flow latency and visual continuity
 
 ### Workstream E — Deployment Hardening
 

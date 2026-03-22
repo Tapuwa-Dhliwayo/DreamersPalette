@@ -103,14 +103,14 @@ export default function ReaderNavigation() {
 
             {/* ---------- CONTEXT NAV ---------- */}
             {showContextNav && (
-                <div className="flex items-center justify-between text-xs opacity-70 border-t border-white/10 p-4 mb-2">
+                <div className="context-nav-enter flex items-center justify-between text-xs opacity-70 border-t border-white/10 p-4 mb-2">
 
                     {/* Back Link */}
                     <div>
                         {level === "collection" && (
                             <Link
                                 to={PUBLIC_ROUTES.COLLECTIONS}
-                                className="accent-button"
+                                className="accent-button transition-all duration-200 hover:-translate-x-0.5"
                             >
                                 ← All Collections
                             </Link>
@@ -119,7 +119,7 @@ export default function ReaderNavigation() {
                         {level === "poem" && collection && (
                             <Link
                                 to={PUBLIC_ROUTES.COLLECTION_DETAIL(collection.slug)}
-                                className="accent-button"
+                                className="accent-button transition-all duration-200 hover:-translate-x-0.5"
                             >
                                 ← {collection.title}
                             </Link>
@@ -128,7 +128,7 @@ export default function ReaderNavigation() {
                         {level === "book" && (
                             <Link
                                 to={PUBLIC_ROUTES.BOOKS}
-                                className="accent-button"
+                                className="accent-button transition-all duration-200 hover:-translate-x-0.5"
                             >
                                 ← All Books
                             </Link>
@@ -137,7 +137,7 @@ export default function ReaderNavigation() {
                         {level === "chapter" && collection && (
                             <Link
                                 to={PUBLIC_ROUTES.BOOK_DETAIL(collection.slug)}
-                                className="accent-button"
+                                className="accent-button transition-all duration-200 hover:-translate-x-0.5"
                             >
                                 ← {collection.title}
                             </Link>
@@ -151,10 +151,10 @@ export default function ReaderNavigation() {
                             <Link
                                 to={previous ? PUBLIC_ROUTES.POEM(previous.slug) : "#"}
                                 aria-disabled={!previous}
-                                className={`accent-button transition-opacity ${
+                                className={`accent-button transition-all duration-200 ${
                                     !previous
                                         ? "opacity-30 pointer-events-none cursor-default"
-                                        : ""
+                                        : "hover:-translate-x-0.5"
                                 }`}
                             >
                                 Previous
@@ -163,10 +163,10 @@ export default function ReaderNavigation() {
                             <Link
                                 to={next ? PUBLIC_ROUTES.POEM(next.slug) : "#"}
                                 aria-disabled={!next}
-                                className={`accent-button transition-opacity ${
+                                className={`accent-button transition-all duration-200 ${
                                     !next
                                         ? "opacity-30 pointer-events-none cursor-default"
-                                        : ""
+                                        : "hover:translate-x-0.5"
                                 }`}
                             >
                                 Next
@@ -182,10 +182,10 @@ export default function ReaderNavigation() {
                             <Link
                                 to={previous ? PUBLIC_ROUTES.CHAPTER(collection.slug, previous.chapter_number) : "#"}
                                 aria-disabled={!previous}
-                                className={`accent-button transition-opacity ${
+                                className={`accent-button transition-all duration-200 ${
                                     !previous
                                         ? "opacity-30 pointer-events-none cursor-default"
-                                        : ""
+                                        : "hover:-translate-x-0.5"
                                 }`}
                             >
                                 Previous
@@ -194,10 +194,10 @@ export default function ReaderNavigation() {
                             <Link
                                 to={next ? PUBLIC_ROUTES.CHAPTER(collection.slug, next.chapter_number) : "#"}
                                 aria-disabled={!next}
-                                className={`accent-button transition-opacity ${
+                                className={`accent-button transition-all duration-200 ${
                                     !next
                                         ? "opacity-30 pointer-events-none cursor-default"
-                                        : ""
+                                        : "hover:translate-x-0.5"
                                 }`}
                             >
                                 Next

@@ -49,13 +49,13 @@ export default function ChapterPage() {
     }
 
     return (
-        <article className="space-y-8 md:space-y-12 text-neutral-500">
+        <article className="reader-fade-in space-y-8 md:space-y-12 text-neutral-500">
 
             <header className="space-y-4">
                 <p className="text-sm opacity-50">
                     Chapter {chapter.chapter_number}
                 </p>
-                <h1 className="text-4xl tracking-tight">
+                <h1 className="text-4xl tracking-tight accent-underline">
                     {chapter.title}
                 </h1>
             </header>

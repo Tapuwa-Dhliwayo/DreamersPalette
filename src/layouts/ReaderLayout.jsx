@@ -57,7 +57,7 @@ export default function ReaderLayout() {
                         <ReaderNavigation />
                     </div>
 
-                    <main className="max-w-3xl mx-auto px-4 md:px-6 pb-32">
+                    <main className="max-w-3xl mx-auto px-4 md:px-6 pb-32 transition-opacity duration-300">
                         <Outlet />
                     </main>
 
