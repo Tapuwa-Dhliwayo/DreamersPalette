@@ -497,3 +497,143 @@ A key architectural decision in this release: on mobile, the framed world model 
 
 #### Global
 - **index.html** — Viewport meta tag `width=device-width, initial-scale=1.0` confirmed present (no change needed)
+
+---
+
+## v0.5.0-sprint.1 — Books Theming Parity & Performance Discipline
+**Date:** 2026-03-22
+**Phase:** 5 — Literary Expansion & Production Hardening
+**Sprint:** 1
+
+### Overview
+
+Phase 5 Sprint 1 begins the transition from feature completeness to platform maturity.
+
+This sprint establishes books as a first-class content type with full theming parity alongside poetry collections, narrows all database queries for production-grade performance, and adds environment variable validation for deployment safety.
+
+---
+
+### ✨ Major Features
+
+#### 1. Book Service Layer (`bookService.js`)
+
+Full CRUD service for books and chapters, following the same patterns as `contentService.js`:
+
+- **Author methods:** `getMyBooks()`, `createBook()`, `updateBook()`, `deleteBook()`, `toggleBookPublish()`
+- **Chapter methods:** `getMyChaptersByBook()`, `createChapter()`, `updateChapter()`, `deleteChapter()`, `toggleChapterPublish()`
+- **Public methods:** `getPublishedBooks()`, `getBookBySlug()`, `getBookBySlugPreview()`
+- **Chapter public methods:** `getPublishedChaptersByBook()`, `getPublishedChapter()`
+- All queries use specific column projections (no `select("*")`)
+- Unique slug generation with retry logic for books
+
+#### 2. Book Detail Page (`/books/:slug`)
+
+- Displays book cover image, title, and synopsis
+- Lists published chapters ordered by chapter number
+- Chapter number prefix in listing
+- Preview badge for preview chapters
+- Follows CollectionDetailPage architectural pattern
+- Not-found and loading states
+
+#### 3. Chapter Reader Page (`/books/:slug/chapter/:number`)
+
+- Full Markdown rendering via `react-markdown`
+- Chapter number and title header
+- Same literary rendering components as PoemPage
+- `white-space: pre-wrap` for formatting preservation
+- HTML injection disabled (`skipHtml`)
+
+#### 4. Books Theming Parity
+
+Books now support the same theming engine as poetry collections:
+
+- `theme_background_url` — Background image
+- `theme_overlay_opacity` — Overlay intensity (default 0.65)
+- `accent_color` — Accent color
+- `theme_text_mode` — Light/dark contrast mode
+
+`useActiveCollection` hook extended to resolve theming context for:
+- `/books/:slug` → fetch book theming
+- `/books/:slug/chapter/:number` → inherit book theming
+- `/preview/books/:slug` → author preview (no publish filter)
+
+ReaderLayout automatically applies book theming using the same atmospheric engine.
+
+#### 5. Chapter Navigation
+
+`useReaderNavigation` extended with new levels:
+
+- **books-index** — Books listing page
+- **book** — Book detail with "← All Books" back link
+- **chapter** — Chapter reading with previous/next chapter navigation
+
+ReaderNavigation renders chapter sibling navigation using chapter numbers.
+
+#### 6. Books Listing Page
+
+BooksPage transformed from static "coming soon" to dynamic listing:
+
+- Fetches and displays published books
+- Grid layout with cover images
+- Synopsis preview with line clamping
+- Hover interactions matching collection cards
+- Graceful empty state fallback
+
+---
+
+### 🔒 Performance & Data Discipline
+
+#### Narrowed Select Projections
+
+All `select("*")` calls in `contentService.js` replaced with specific columns:
+
+| Function | Before | After |
+|---|---|---|
+| `getMyCollections()` | `*` | 11 specific columns |
+| `getCollectionBySlug()` | `*` | 9 specific columns |
+| `getCollectionBySlugPreview()` | `*` | 9 specific columns |
+| `getCollectionById()` | `*` | 8 specific columns |
+| `getMyPoems()` | `*` | 8 specific columns |
+| `getPoemsByCollection()` | `*` | 7 specific columns |
+| `getPublishedPoemBySlug()` | `*` | 7 specific columns |
+
+All `bookService.js` queries use specific column projections from the start.
+
+---
+
+### 🛡️ Deployment Hardening
+
+#### Environment Variable Validation
+
+`supabaseClient.js` now validates required environment variables at startup:
+
+- `VITE_SUPABASE_URL` — Required
+- `VITE_SUPABASE_ANON_KEY` — Required
+
+Missing variables throw a clear error message before any API calls.
+
+---
+
+### 📄 Database Migration
+
+New columns added to `books` table (see `DatabaseUpdatesHistory.sql`):
+
+```sql
+alter table books add column theme_background_url text;
+alter table books add column theme_overlay_opacity numeric default 0.65;
+alter table books add column accent_color text;
+alter table books add column theme_text_mode text default 'light';
+```
+
+---
+
+### Status
+
+Phase 5 Sprint 1 complete.
+
+Books now have:
+- Full service layer (CRUD + public queries)
+- Theming parity with poetry collections
+- Public reader pages with Markdown rendering
+- Chapter navigation with previous/next
+- Performance-optimized database queries

@@ -6,6 +6,10 @@ import {
     getCollectionById,
     getPublishedPoemBySlug
 } from "@/services/contentService"
+import {
+    getBookBySlug,
+    getBookBySlugPreview
+} from "@/services/bookService"
 
 export function useActiveCollection() {
     const { slug } = useParams()
@@ -13,6 +17,9 @@ export function useActiveCollection() {
     const isCollectionDetail = useMatch("/collections/:slug")
     const isPoemRoute = useMatch("/poems/:slug")
     const isPreviewRoute = useMatch("/preview/collections/:slug")
+    const isBookDetail = useMatch("/books/:slug")
+    const isChapterRoute = useMatch("/books/:slug/chapter/:number")
+    const isBookPreviewRoute = useMatch("/preview/books/:slug")
 
     const [collection, setCollection] = useState(null)
 
@@ -21,7 +28,10 @@ export function useActiveCollection() {
 
         async function resolve() {
             try {
-                if (!isCollectionDetail && !isPoemRoute && !isPreviewRoute) {
+                const isActive = isCollectionDetail || isPoemRoute || isPreviewRoute
+                    || isBookDetail || isChapterRoute || isBookPreviewRoute
+
+                if (!isActive) {
                     setCollection(null)
                     return
                 }
@@ -43,6 +53,14 @@ export function useActiveCollection() {
                     }
                 }
 
+                if (isBookDetail || isChapterRoute) {
+                    resolved = await getBookBySlug(slug)
+                }
+
+                if (isBookPreviewRoute) {
+                    resolved = await getBookBySlugPreview(slug)
+                }
+
                 if (!isMounted) return
                 setCollection(resolved || null)
 
@@ -54,7 +72,7 @@ export function useActiveCollection() {
         resolve()
 
         return () => { isMounted = false }
-    }, [slug, isCollectionDetail, isPoemRoute, isPreviewRoute])
+    }, [slug, isCollectionDetail, isPoemRoute, isPreviewRoute, isBookDetail, isChapterRoute, isBookPreviewRoute])
 
     return collection
 }

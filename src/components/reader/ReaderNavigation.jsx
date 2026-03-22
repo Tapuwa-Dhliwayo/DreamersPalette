@@ -27,10 +27,9 @@ export default function ReaderNavigation() {
 
     const showContextNav =
         level === "collection" ||
-        (level === "poem" && collection)
-
-    const showSiblingNav =
-        level === "poem" && (previous || next)
+        (level === "poem" && collection) ||
+        level === "book" ||
+        (level === "chapter" && collection)
 
     return (
         <header className="space-y-6">
@@ -125,9 +124,27 @@ export default function ReaderNavigation() {
                                 ← {collection.title}
                             </Link>
                         )}
+
+                        {level === "book" && (
+                            <Link
+                                to={PUBLIC_ROUTES.BOOKS}
+                                className="accent-button"
+                            >
+                                ← All Books
+                            </Link>
+                        )}
+
+                        {level === "chapter" && collection && (
+                            <Link
+                                to={PUBLIC_ROUTES.BOOK_DETAIL(collection.slug)}
+                                className="accent-button"
+                            >
+                                ← {collection.title}
+                            </Link>
+                        )}
                     </div>
 
-                    {/* Sibling Navigation (Always Rendered) */}
+                    {/* Sibling Navigation — Poems */}
                     {level === "poem" && (
                         <div className="flex items-center gap-6">
 
@@ -145,6 +162,37 @@ export default function ReaderNavigation() {
 
                             <Link
                                 to={next ? PUBLIC_ROUTES.POEM(next.slug) : "#"}
+                                aria-disabled={!next}
+                                className={`accent-button transition-opacity ${
+                                    !next
+                                        ? "opacity-30 pointer-events-none cursor-default"
+                                        : ""
+                                }`}
+                            >
+                                Next
+                            </Link>
+
+                        </div>
+                    )}
+
+                    {/* Sibling Navigation — Chapters */}
+                    {level === "chapter" && collection && (
+                        <div className="flex items-center gap-6">
+
+                            <Link
+                                to={previous ? PUBLIC_ROUTES.CHAPTER(collection.slug, previous.chapter_number) : "#"}
+                                aria-disabled={!previous}
+                                className={`accent-button transition-opacity ${
+                                    !previous
+                                        ? "opacity-30 pointer-events-none cursor-default"
+                                        : ""
+                                }`}
+                            >
+                                Previous
+                            </Link>
+
+                            <Link
+                                to={next ? PUBLIC_ROUTES.CHAPTER(collection.slug, next.chapter_number) : "#"}
                                 aria-disabled={!next}
                                 className={`accent-button transition-opacity ${
                                     !next
