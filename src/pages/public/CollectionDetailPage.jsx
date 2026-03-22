@@ -3,9 +3,10 @@ import { useParams, Link } from "react-router-dom"
 
 import {
     getCollectionBySlug,
-    getPublishedPoemsByCollection
+    getPublishedPoemsByCollectionPaginated
 } from "@/services/contentService"
 
+import Pagination, { DEFAULT_PAGE_SIZE } from "@/components/ui/Pagination"
 import { PUBLIC_ROUTES } from "@/app/routes"
 
 export default function CollectionDetailPage() {
@@ -15,25 +16,43 @@ export default function CollectionDetailPage() {
     const [poems, setPoems] = useState([])
     const [loading, setLoading] = useState(true)
     const [notFound, setNotFound] = useState(false)
+    const [page, setPage] = useState(1)
+    const [totalCount, setTotalCount] = useState(0)
 
     useEffect(() => {
-        async function load() {
+        async function loadCollection() {
             try {
                 const collectionData = await getCollectionBySlug(slug)
-                const poemsData = await getPublishedPoemsByCollection(slug)
-
                 setCollection(collectionData)
-                setPoems(poemsData)
             } catch (err) {
                 console.error("Collection not found:", err)
                 setNotFound(true)
+            }
+        }
+
+        setPage(1)
+        setNotFound(false)
+        loadCollection()
+    }, [slug])
+
+    useEffect(() => {
+        if (!collection) return
+
+        async function loadPoems() {
+            try {
+                setLoading(true)
+                const { data: poemsData, count } = await getPublishedPoemsByCollectionPaginated(slug, page, DEFAULT_PAGE_SIZE)
+                setPoems(poemsData)
+                setTotalCount(count)
+            } catch (err) {
+                console.error("Failed to load poems:", err)
             } finally {
                 setLoading(false)
             }
         }
 
-        load()
-    }, [slug])
+        loadPoems()
+    }, [slug, page, collection])
 
     if (loading) {
         return (
@@ -105,6 +124,14 @@ export default function CollectionDetailPage() {
                 ))}
 
             </section>
+
+            {/* Pagination */}
+            <Pagination
+                page={page}
+                pageSize={DEFAULT_PAGE_SIZE}
+                totalCount={totalCount}
+                onPageChange={setPage}
+            />
 
         </article>
     )

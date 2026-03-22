@@ -5,6 +5,8 @@ import Button from "@/components/ui/Button"
 import Input from "@/components/ui/Input"
 import Textarea from "@/components/ui/Textarea"
 import { generateBookCover, getAiProviderLabel } from "@/services/aiAssetService"
+import { uploadBackgroundImage, validateImageFile, compressImageIfNeeded } from "@/services/storageService"
+import { supabase } from "@/services/supabaseClient"
 
 import {
     getMyBooks,
@@ -22,6 +24,9 @@ export default function BookEditorPage() {
 
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [uploading, setUploading] = useState(false)
+    const [uploadError, setUploadError] = useState("")
+    const [uploadInfo, setUploadInfo] = useState("")
     const [generatingCover, setGeneratingCover] = useState(false)
     const [coverPrompt, setCoverPrompt] = useState("")
     const [generationError, setGenerationError] = useState("")
@@ -109,6 +114,43 @@ export default function BookEditorPage() {
         }
     }
 
+    async function handleCoverUpload(e) {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        try {
+            setUploading(true)
+            setUploadError("")
+            setUploadInfo("")
+
+            await validateImageFile(file)
+
+            const { file: processedFile, wasCompressed } = await compressImageIfNeeded(file)
+            if (wasCompressed) {
+                const originalKB = (file.size / 1024).toFixed(0)
+                const compressedKB = (processedFile.size / 1024).toFixed(0)
+                setUploadInfo(`Image optimized: ${originalKB} KB → ${compressedKB} KB`)
+            }
+
+            const {
+                data: { user }
+            } = await supabase.auth.getUser()
+
+            if (!user) throw new Error("Not authenticated")
+
+            const publicUrl = await uploadBackgroundImage(processedFile, user.id)
+            setForm((prev) => ({
+                ...prev,
+                cover_image_url: publicUrl
+            }))
+        } catch (error) {
+            console.error("Upload failed:", error)
+            setUploadError(error.message || "Upload failed.")
+        } finally {
+            setUploading(false)
+        }
+    }
+
     if (loading) {
         return (
             <div className="text-sm text-neutral-500">
@@ -161,6 +203,38 @@ export default function BookEditorPage() {
                     }
                     rows={5}
                 />
+
+                <div className="space-y-4">
+                    <label className="block text-sm text-neutral-600 dark:text-neutral-400">
+                        Cover Image
+                    </label>
+
+                    <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        onChange={handleCoverUpload}
+                        className="text-sm"
+                    />
+
+                    {uploading && (
+                        <div className="flex items-center gap-2 text-xs text-neutral-500">
+                            <div className="h-3 w-3 rounded-full border-2 border-neutral-400 border-t-transparent animate-spin" />
+                            Uploading...
+                        </div>
+                    )}
+
+                    {uploadError && (
+                        <p className="text-xs text-red-500">
+                            {uploadError}
+                        </p>
+                    )}
+
+                    {uploadInfo && !uploadError && (
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                            {uploadInfo}
+                        </p>
+                    )}
+                </div>
 
                 <Input
                     placeholder="Cover image URL (optional)"

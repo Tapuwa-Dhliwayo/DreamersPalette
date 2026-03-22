@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { uploadBackgroundImage } from "@/services/storageService"
+import { uploadBackgroundImage, validateImageFile, compressImageIfNeeded } from "@/services/storageService"
 import { supabase } from "@/services/supabaseClient"
 import { Card } from "@/components/ui/Card"
 import Button from "@/components/ui/Button"
@@ -28,6 +28,8 @@ export default function Collections() {
     const [generatingBackground, setGeneratingBackground] = useState(false)
     const [backgroundPrompt, setBackgroundPrompt] = useState("")
     const [generationError, setGenerationError] = useState("")
+    const [uploadError, setUploadError] = useState("")
+    const [uploadInfo, setUploadInfo] = useState("")
 
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingCollection, setEditingCollection] = useState(null)
@@ -68,6 +70,8 @@ export default function Collections() {
         })
         setBackgroundPrompt("")
         setGenerationError("")
+        setUploadError("")
+        setUploadInfo("")
         setIsModalOpen(true)
     }
 
@@ -83,6 +87,8 @@ export default function Collections() {
         })
         setBackgroundPrompt("")
         setGenerationError("")
+        setUploadError("")
+        setUploadInfo("")
         setIsModalOpen(true)
     }
 
@@ -145,6 +151,19 @@ export default function Collections() {
 
         try {
             setUploading(true)
+            setUploadError("")
+            setUploadInfo("")
+
+            // Validate file constraints
+            await validateImageFile(file)
+
+            // Compress if oversized
+            const { file: processedFile, wasCompressed } = await compressImageIfNeeded(file)
+            if (wasCompressed) {
+                const originalKB = (file.size / 1024).toFixed(0)
+                const compressedKB = (processedFile.size / 1024).toFixed(0)
+                setUploadInfo(`Image optimized: ${originalKB} KB → ${compressedKB} KB`)
+            }
 
             const {
                 data: { user }
@@ -153,7 +172,7 @@ export default function Collections() {
             if (!user) throw new Error("Not authenticated")
 
             const publicUrl = await uploadBackgroundImage(
-                file,
+                processedFile,
                 user.id
             )
 
@@ -163,6 +182,7 @@ export default function Collections() {
             }))
         } catch (error) {
             console.error("Upload failed:", error)
+            setUploadError(error.message || "Upload failed.")
         } finally {
             setUploading(false)
         }
@@ -333,7 +353,7 @@ export default function Collections() {
 
                             <input
                                 type="file"
-                                accept="image/*"
+                                accept="image/jpeg,image/png,image/webp,image/gif"
                                 onChange={handleBackgroundUpload}
                                 className="text-sm"
                             />
@@ -343,6 +363,18 @@ export default function Collections() {
                                     <div className="h-3 w-3 rounded-full border-2 border-neutral-400 border-t-transparent animate-spin" />
                                     Uploading...
                                 </div>
+                            )}
+
+                            {uploadError && (
+                                <p className="text-xs text-red-500">
+                                    {uploadError}
+                                </p>
+                            )}
+
+                            {uploadInfo && !uploadError && (
+                                <p className="text-xs text-green-600 dark:text-green-400">
+                                    {uploadInfo}
+                                </p>
                             )}
 
                             {form.theme_background_url && !uploading && (

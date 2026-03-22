@@ -23,24 +23,24 @@
 
 ### Workstream A — Pagination (Collections, Poems, Books)
 
-- [ ] Add page + page-size controls for public collection listings
-- [ ] Add page + page-size controls for poems within a collection
-- [ ] Add page + page-size controls for books in dashboard/public surfaces where needed
-- [ ] Preserve current sort/order semantics while paginating
-- [ ] Add loading/empty/end-of-results states for paginated views
+- [x] Add page + page-size controls for public collection listings
+- [x] Add page + page-size controls for poems within a collection
+- [x] Add page + page-size controls for books in dashboard/public surfaces where needed
+- [x] Preserve current sort/order semantics while paginating
+- [x] Add loading/empty/end-of-results states for paginated views
 
 ### Workstream B — Image Upload Optimization
 
-- [ ] Enforce client-side file constraints (size/type/dimensions) before upload
-- [ ] Add image compression/resizing flow for oversized assets
-- [ ] Keep metadata and storage paths consistent with existing content models
-- [ ] Add clear author feedback for rejected/optimized uploads
+- [x] Enforce client-side file constraints (size/type/dimensions) before upload
+- [x] Add image compression/resizing flow for oversized assets
+- [x] Keep metadata and storage paths consistent with existing content models
+- [x] Add clear author feedback for rejected/optimized uploads
 
 ### Workstream C — AI Asset Integration
 
-- [ ] **Pre-development approval gate (required):** share AI implementation plan and wait for explicit go-ahead before coding
-- [ ] Share exact additions list before coding (files/services/endpoints/schema-touchpoints/UI surfaces)
-- [ ] Share constraints alignment check before coding (RLS, storage policies, query projection discipline, env/security rules)
+- [x] **Pre-development approval gate (required):** share AI implementation plan and wait for explicit go-ahead before coding
+- [x] Share exact additions list before coding (files/services/endpoints/schema-touchpoints/UI surfaces)
+- [x] Share constraints alignment check before coding (RLS, storage policies, query projection discipline, env/security rules)
 - [x] Add prompt capture inputs for collection background generation
 - [x] Add prompt capture inputs for book cover generation
 - [x] Save generated metadata in `generated_assets`

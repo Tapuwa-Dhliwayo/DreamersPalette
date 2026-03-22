@@ -1,19 +1,26 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Card } from "@/components/ui/Card"
-import { getPublishedCollections } from "@/services/contentService"
+import Pagination, { DEFAULT_PAGE_SIZE } from "@/components/ui/Pagination"
+import { getPublishedCollectionsPaginated } from "@/services/contentService"
 import { PUBLIC_ROUTES } from "@/app/routes"
 
 export default function CollectionsPage() {
     const [mounted, setMounted] = useState(false)
     const [collections, setCollections] = useState([])
     const [loading, setLoading] = useState(true)
+    const [page, setPage] = useState(1)
+    const [totalCount, setTotalCount] = useState(0)
 
     useEffect(() => {
         async function load() {
             try {
-                const data = await getPublishedCollections()
+                setLoading(true)
+                // Reset mounted state to retrigger fade-in animations on page change
+                setMounted(false)
+                const { data, count } = await getPublishedCollectionsPaginated(page, DEFAULT_PAGE_SIZE)
                 setCollections(data)
+                setTotalCount(count)
             } catch (err) {
                 console.error("Failed to load collections:", err)
             } finally {
@@ -27,7 +34,7 @@ export default function CollectionsPage() {
         }
 
         load()
-    }, [])
+    }, [page])
 
     if (loading) {
         return (
@@ -118,6 +125,14 @@ export default function CollectionsPage() {
                 ))}
 
             </div>
+
+            {/* Pagination */}
+            <Pagination
+                page={page}
+                pageSize={DEFAULT_PAGE_SIZE}
+                totalCount={totalCount}
+                onPageChange={setPage}
+            />
 
         </div>
     )
