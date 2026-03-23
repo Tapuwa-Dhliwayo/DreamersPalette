@@ -10,6 +10,22 @@ html {
 
 body {
   @apply text-neutral-100 antialiased transition-colors duration-300;
+  /* Safe-area insets for modern mobile browsers */
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* ---------------------------
+   Viewport Height Fallback
+---------------------------- */
+
+/* dvh fallback for browsers without support */
+@supports not (height: 100dvh) {
+  .h-frame { height: 100vh; }
+}
+@supports (height: 100dvh) {
+  .h-frame { height: 100dvh; }
 }
 
 /* ---------------------------
@@ -114,4 +130,33 @@ a {
 ::-webkit-scrollbar-thumb {
   background: rgba(120, 120, 120, 0.4);
   border-radius: 9999px;
+}
+
+/* ---------------------------
+   Reader Text Contrast
+---------------------------- */
+
+/* Text shadow for readability on themed backgrounds */
+.reader-text-shadow-light {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 0 12px rgba(0, 0, 0, 0.25);
+}
+
+.reader-text-shadow-dark {
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.3), 0 0 12px rgba(255, 255, 255, 0.15);
+}
+
+/* Muted text using CSS custom property */
+.reader-muted {
+  color: var(--reader-muted);
+}
+
+/* Sticky header backdrop for reader */
+.reader-sticky-header {
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  backdrop-filter: blur(12px) saturate(150%);
+}
+
+/* Safe area bottom padding */
+.pb-safe {
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
 }
