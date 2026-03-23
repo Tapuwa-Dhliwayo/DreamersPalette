@@ -718,3 +718,76 @@ Generated asset storage target is controlled via:
 ### Status
 
 Phase 5 Sprint 2 AI generation baseline is now active for dashboard author workflows.
+
+---
+
+## v0.5.1 — Mobile Optimization + Visual Contrast
+**Date:** 2026-03-23
+
+### Overview
+Two-part optimization release focused on mobile usability and text readability across themed backgrounds.
+
+---
+
+### ✅ Part 1 — Mobile & Frame Optimization
+
+#### Fixed Viewport Frame
+- Reader and dashboard layouts use `100dvh` with `100vh` fallback via `.h-frame` CSS class
+- Content no longer overflows past mobile browser chrome/navigation buttons
+- On desktop, the framed world (`max-w-5xl`) contains all content flow with rounded corners
+
+#### Sticky Navigation
+- Reader header is now sticky at top of scroll container
+- Backdrop-blur glass effect adapts to text mode (dark bg → `bg-neutral-950/60`, light bg → `bg-white/60`)
+- Header stays visible as users scroll through poems, chapters, and collections
+
+#### Safe-Area Support
+- `viewport-fit=cover` added to viewport meta tag
+- `env(safe-area-inset-*)` padding applied to body and bottom content
+- `.pb-safe` utility ensures content clears notched/modern mobile browser UI
+
+#### Internal Scrolling
+- Framed world uses flex column layout with `overflow-y-auto` on content area
+- Eliminates page-level scrolling in favor of contained internal scroll
+
+---
+
+### ✅ Part 2 — Visual Contrast Improvements
+
+#### Dynamic Text Tone
+- `textMode` from collection theming now actively drives text color on the content layer
+- `text-neutral-100` for dark backgrounds (light text mode)
+- `text-neutral-900` for light backgrounds (dark text mode)
+- Previously, `textTone` was computed in `ReaderLayout` but never applied
+
+#### Content Text Fixes
+- **PoemPage / ChapterPage:** Removed broken `text-neutral-800 dark:text-neutral-800` (identical in both modes, invisible on dark backgrounds) and low-contrast `text-neutral-500`
+- **CollectionDetailPage:** Poem titles now inherit high-contrast color instead of hardcoded `text-neutral-500`
+- **BookDetailPage:** Chapter titles now inherit high-contrast color instead of hardcoded `text-neutral-500`
+- **Blockquotes:** Changed from hardcoded `border-neutral-800` to `border-current/30` for theme-adaptive borders
+
+#### Logo Color Fix
+- Removed forced `text-neutral-700!` that was invisible on dark atmospheric backgrounds
+- Logo now inherits contextual color from parent, working correctly in both light and dark text modes
+
+#### Text Shadow System
+- `.reader-text-shadow-light` — subtle dark shadow for light text on dark/image backgrounds
+- `.reader-text-shadow-dark` — subtle light shadow for dark text on light/image backgrounds
+- Applied automatically when collection themed backgrounds are active
+
+#### Muted Text System
+- `--reader-muted` CSS custom property set at layout level
+- Adapts to active text mode: `#a3a3a3` (neutral-400) for light text mode, `#737373` (neutral-500) for dark text mode
+
+---
+
+### Files Changed
+- `index.html` — viewport meta
+- `src/index.css` — dvh fallback, safe-area, text-shadow, sticky header, muted text
+- `src/layouts/ReaderLayout.jsx` — fixed frame, sticky header, dynamic text tone
+- `src/layouts/DashboardLayout.jsx` — dvh support
+- `src/pages/public/PoemPage.jsx` — contrast fix
+- `src/pages/public/ChapterPage.jsx` — contrast fix
+- `src/pages/public/CollectionDetailPage.jsx` — contrast fix
+- `src/pages/public/BookDetailPage.jsx` — contrast fix
+- `src/components/ui/Logo.jsx` — color inheritance fix
