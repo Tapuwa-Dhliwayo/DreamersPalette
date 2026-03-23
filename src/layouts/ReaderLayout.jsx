@@ -10,16 +10,13 @@ export default function ReaderLayout() {
         accentColor
     } = useCollectionTheme()
 
+    const isHomePage = window.location.pathname === "/"
     const isLight = textMode === "light"
 
     const textTone = isLight ? "text-neutral-100" : "text-neutral-900"
     const textShadowClass = backgroundUrl
         ? isLight ? "reader-text-shadow-light" : "reader-text-shadow-dark"
         : ""
-
-    const stickyBg = isLight
-        ? "bg-neutral-950/60"
-        : "bg-white/60"
 
     return (
         <div
@@ -57,21 +54,22 @@ export default function ReaderLayout() {
                     />
                 )}
 
-                {/* Scrollable Content */}
-                <div className={`relative z-10 flex-1 overflow-y-auto ${textTone} ${textShadowClass}`}>
-
-                    {/* Sticky Header */}
-                    <div className={`sticky top-0 z-20 reader-sticky-header ${stickyBg}`}>
+                {/* Fixed Nav */}
+                {!isHomePage && (
+                <div className={`relative z-10 shrink-0 ${textTone} ${textShadowClass}`}>
+                    <div className={`sticky top-0 z-20 reader-sticky-header`}>
                         <div className="max-w-3xl mx-auto px-4 md:px-6 pt-4 pb-2 md:pt-6 md:pb-3">
                             <ReaderNavigation />
                         </div>
                     </div>
+                </div>
+                )}
 
-                    {/* Main Content */}
-                    <main className="max-w-3xl mx-auto px-4 md:px-6 pb-safe transition-opacity duration-300">
+                {/* Scrollable Outlet */}
+                <div className={`relative z-10 flex-1 min-h-0 ${isHomePage ? "pt-4" : "overflow-y-auto"} ${textTone} ${textShadowClass}`}>
+                    <main className="max-w-3xl mx-auto px-4 md:px-6 h-full pb-safe transition-opacity duration-300">
                         <Outlet />
                     </main>
-
                 </div>
             </div>
         </div>
