@@ -10,16 +10,23 @@ export default function ReaderLayout() {
         accentColor
     } = useCollectionTheme()
 
-    const textTone =
-        textMode === "dark"
-            ? "text-neutral-900"
-            : "text-neutral-100"
+    const isLight = textMode === "light"
+
+    const textTone = isLight ? "text-neutral-100" : "text-neutral-900"
+    const textShadowClass = backgroundUrl
+        ? isLight ? "reader-text-shadow-light" : "reader-text-shadow-dark"
+        : ""
+
+    const stickyBg = isLight
+        ? "bg-neutral-950/60"
+        : "bg-white/60"
 
     return (
         <div
-            className={`relative min-h-screen text-neutral-100`}
+            className="relative h-frame overflow-hidden"
             style={{
-                "--accent-color": accentColor || "#cbd5e1"
+                "--accent-color": accentColor || "#cbd5e1",
+                "--reader-muted": isLight ? "#a3a3a3" : "#737373"
             }}
         >
             {/* ---------------- GLOBAL ATMOSPHERIC BACKGROUND ---------------- */}
@@ -32,12 +39,12 @@ export default function ReaderLayout() {
             <div className="fixed inset-0 -z-10 bg-linear-to-b from-neutral-950/70 to-neutral-900/60" />
 
             {/* ---------------- FRAMED WORLD ---------------- */}
-            <div className="relative max-w-full md:max-w-5xl mx-auto min-h-screen rounded-none md:rounded-3xl">
+            <div className="relative max-w-full md:max-w-5xl mx-auto h-full flex flex-col rounded-none md:rounded-3xl overflow-hidden">
 
                 {/* Collection Background (if exists) */}
                 {backgroundUrl && (
                     <div
-                        className="fixed inset-0 md:absolute md:inset-0 md:rounded-3xl bg-cover bg-center bg-no-repeat transition-opacity duration-500"
+                        className="absolute inset-0 md:rounded-3xl bg-cover bg-center bg-no-repeat transition-opacity duration-500"
                         style={{ backgroundImage: `url(${backgroundUrl})` }}
                     />
                 )}
@@ -45,19 +52,23 @@ export default function ReaderLayout() {
                 {/* Collection Overlay */}
                 {backgroundUrl && overlayColor && (
                     <div
-                        className="fixed inset-0 md:absolute md:inset-0 md:rounded-3xl transition-colors duration-500"
+                        className="absolute inset-0 md:rounded-3xl transition-colors duration-500"
                         style={{ backgroundColor: overlayColor }}
                     />
                 )}
 
-                {/* Content Layer */}
-                <div className="relative z-10">
+                {/* Scrollable Content */}
+                <div className={`relative z-10 flex-1 overflow-y-auto ${textTone} ${textShadowClass}`}>
 
-                    <div className="max-w-3xl mx-auto px-4 md:px-6 pt-6 md:pt-12">
-                        <ReaderNavigation />
+                    {/* Sticky Header */}
+                    <div className={`sticky top-0 z-20 reader-sticky-header ${stickyBg}`}>
+                        <div className="max-w-3xl mx-auto px-4 md:px-6 pt-4 pb-2 md:pt-6 md:pb-3">
+                            <ReaderNavigation />
+                        </div>
                     </div>
 
-                    <main className="max-w-3xl mx-auto px-4 md:px-6 pb-32 transition-opacity duration-300">
+                    {/* Main Content */}
+                    <main className="max-w-3xl mx-auto px-4 md:px-6 pb-safe transition-opacity duration-300">
                         <Outlet />
                     </main>
 

@@ -109,7 +109,7 @@ export default function CollectionDetailPage() {
                     >
                         <div className="space-y-3">
 
-                            <h2 className="text-2xl text-neutral-500 font-serif leading-relaxed group-hover:opacity-70 transition">
+                            <h2 className="text-2xl font-serif leading-relaxed group-hover:opacity-70 transition">
                                 {poem.title}
                             </h2>
 

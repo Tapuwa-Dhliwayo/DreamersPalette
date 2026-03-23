@@ -100,7 +100,7 @@ export default function BookDetailPage() {
                     >
                         <div className="space-y-2">
 
-                            <h2 className="text-2xl text-neutral-500 font-serif leading-relaxed group-hover:opacity-70 transition">
+                            <h2 className="text-2xl font-serif leading-relaxed group-hover:opacity-70 transition">
                                 <span className="opacity-50 mr-3">
                                     {chapter.chapter_number}.
                                 </span>

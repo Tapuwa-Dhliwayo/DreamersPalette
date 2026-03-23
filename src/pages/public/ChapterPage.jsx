@@ -49,7 +49,7 @@ export default function ChapterPage() {
     }
 
     return (
-        <article className="reader-fade-in space-y-8 md:space-y-12 text-neutral-500">
+        <article className="reader-fade-in space-y-8 md:space-y-12">
 
             <header className="space-y-4">
                 <p className="text-sm opacity-50">
@@ -67,13 +67,13 @@ export default function ChapterPage() {
                     components={{
                         p: ({ ...props }) => (
                             <p
-                                className="whitespace-pre-wrap leading-relaxed text-lg mb-6 text-neutral-800 dark:text-neutral-800"
+                                className="whitespace-pre-wrap leading-relaxed text-lg mb-6"
                                 {...props}
                             />
                         ),
                         blockquote: ({ ...props }) => (
                             <blockquote
-                                className="border-l-2 border-neutral-800 dark:border-neutral-700 pl-4 italic my-6 whitespace-pre-wrap"
+                                className="border-l-2 border-current/30 pl-4 italic my-6 whitespace-pre-wrap opacity-85"
                                 {...props}
                             />
                         ),
