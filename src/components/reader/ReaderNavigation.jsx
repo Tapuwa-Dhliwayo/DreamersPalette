@@ -112,7 +112,8 @@ export default function ReaderNavigation() {
                                 to={PUBLIC_ROUTES.COLLECTIONS}
                                 className="accent-button transition-all duration-200 hover:-translate-x-0.5"
                             >
-                                ← All Collections
+                                <span className="md:hidden">← Back</span>
+                                <span className="hidden md:inline">← All Collections</span>
                             </Link>
                         )}
 
@@ -121,7 +122,8 @@ export default function ReaderNavigation() {
                                 to={PUBLIC_ROUTES.COLLECTION_DETAIL(collection.slug)}
                                 className="accent-button transition-all duration-200 hover:-translate-x-0.5"
                             >
-                                ← {collection.title}
+                                <span className="md:hidden">← Back</span>
+                                <span className="hidden md:inline">← {collection.title}</span>
                             </Link>
                         )}
 
@@ -130,7 +132,8 @@ export default function ReaderNavigation() {
                                 to={PUBLIC_ROUTES.BOOKS}
                                 className="accent-button transition-all duration-200 hover:-translate-x-0.5"
                             >
-                                ← All Books
+                                <span className="md:hidden">← Back</span>
+                                <span className="hidden md:inline">← All Books</span>
                             </Link>
                         )}
 
@@ -139,7 +142,8 @@ export default function ReaderNavigation() {
                                 to={PUBLIC_ROUTES.BOOK_DETAIL(collection.slug)}
                                 className="accent-button transition-all duration-200 hover:-translate-x-0.5"
                             >
-                                ← {collection.title}
+                                <span className="md:hidden">← Back</span>
+                                <span className="hidden md:inline">← {collection.title}</span>
                             </Link>
                         )}
                     </div>

@@ -456,6 +456,8 @@ This version marks the transition from scaffold UI to cohesive literary platform
 
 ---
 
+---
+
 ## v0.4.3 — Mobile Responsiveness
 **Date:** 2026-02-26
 
@@ -791,3 +793,334 @@ Two-part optimization release focused on mobile usability and text readability a
 - `src/pages/public/CollectionDetailPage.jsx` — contrast fix
 - `src/pages/public/BookDetailPage.jsx` — contrast fix
 - `src/components/ui/Logo.jsx` — color inheritance fix
+
+---
+
+## v0.5.2 — Production Hardening & Platform Completeness
+**Date:** 2026-03-30
+**Phase:** 5 — Literary Expansion & Production Hardening
+**Sprint:** 3
+
+### Overview
+
+Sprint 3 completes the final production hardening push for Dreamer's Palette. This release migrates AI image generation to a secure server-side architecture, introduces intelligent prompt sanitization to ensure purely visual outputs, builds out the full dashboard experience, and adds platform-wide polish including pagination, analytics, and complete favicon/icon branding.
+
+---
+
+### ✨ Major Features
+
+#### 1. AI Provider Migration — Pollinations → Hugging Face FLUX.1-schnell
+
+The AI image generation pipeline has been fully rewritten:
+
+- **Previous:** Client-side calls to Pollinations (`image.pollinations.ai`)
+- **Current:** Server-side Supabase Edge Function calling Hugging Face Inference API
+- **Model:** `black-forest-labs/FLUX.1-schnell` via `router.huggingface.co`
+- Provider label updated to "Hugging Face" in dashboard UI
+- `aiAssetService.js` now calls the edge function via `supabase.functions.invoke`
+- All image generation is authenticated and server-proxied
+
+#### 2. Supabase Edge Function — `generate-asset`
+
+New Deno-based Edge Function (`supabase/functions/generate-asset/index.ts`):
+
+- **Auth verification** — validates JWT via Supabase Auth before generation
+- **Prompt validation** — enforces 500-character limit
+- **Prompt sanitization** — strips literary/text-related words to prevent text in images
+- **Visual prompt building** — transforms user prompts into image-optimized prompts per type
+- **Negative prompts** — explicitly excludes text, typography, watermarks, etc.
+- **Streaming upload** — streams HuggingFace response directly to Supabase Storage (avoids worker memory limits)
+- **DB record insertion** — logs generated assets in `generated_assets` table
+- **CORS support** — shared `_shared/cors.ts` for cross-origin requests
+
+#### 3. Intelligent Prompt Sanitization for AI Images
+
+Purpose-built system to ensure generated images contain no text:
+
+- `LITERARY_WORDS` — curated set of 50+ words that cause models to render text
+- `sanitizeForVisual()` — strips punctuation and literary terms from user prompts
+- `buildVisualPrompt()` — wraps sanitized prompt with style directives per type:
+  - **Background:** `beautiful painting of..., abstract art, atmospheric scene, textless artwork`
+  - **Cover:** `painting of..., epic fantasy book cover art, textless artwork`
+- `buildNegativePrompt()` — per-type negative prompt explicitly blocking text rendering
+- Fallback to `abstract atmospheric landscape` if sanitization strips everything
+
+#### 4. Dashboard Home Page
+
+Full author studio overview at `/dashboard`:
+
+- **Personalized greeting** — time-of-day based (morning/afternoon/evening) with author name
+- **Stat cards** — Collections, Poems, Novels, Chapters (total + published counts)
+- **Quick action buttons** — New Poem, New Novel, New Chapter, New Collection
+- **Recent poems list** — latest 4 poems with title, date, and Live/Draft badge
+- **Recent novels list** — latest 4 books with cover thumbnail, date, and Live/Draft badge
+- All stats derived from parallel API calls for performance
+
+#### 5. Collection Poem Count Badges
+
+- `getPoemCountsByCollection()` — lightweight count-only query (no row data transferred)
+- Fires parallel `count` queries per collection (total + published)
+- Collections dashboard cards now display:
+  - Total poem count badge (e.g., "3 poems")
+  - Published poem count badge when > 0 (e.g., "2 published")
+
+#### 6. Pagination System
+
+Reusable pagination component and paginated service queries:
+
+- **`Pagination` component** — Previous/Next buttons, page indicator, configurable page size
+- **`DEFAULT_PAGE_SIZE`** — exported constant (12 items)
+- **Paginated public queries:**
+  - `getPublishedCollectionsPaginated(page, pageSize)`
+  - `getPublishedBooksPaginated(page, pageSize)`
+  - `getPublishedPoemsByCollectionPaginated(slug, page, pageSize)`
+- Applied to: CollectionsPage, BooksPage, CollectionDetailPage
+
+#### 7. Image Upload Service — Validation & Compression
+
+`storageService.js` provides client-side image processing before upload:
+
+- **`validateImageFile()`** — type check (JPEG/PNG/WebP/GIF), size limit (5 MB), dimension limit (4096px)
+- **`compressImageIfNeeded()`** — canvas-based compression targeting 2 MB, WebP output, dimension scaling
+- **`uploadBackgroundImage()`** — authenticated upload to Supabase Storage `backgrounds` bucket
+- Used in both Collections (background upload) and BookEditorPage (cover upload)
+- Upload feedback: spinner, error messages, compression info (e.g., "Image optimized: 3200 KB → 1100 KB")
+
+#### 8. Homepage Architecture Redesign
+
+HomePage rebuilt with fixed-frame layout:
+
+- **CSS Grid layout** — `grid-rows-[auto_1fr_auto]` for fixed top, scrollable body, fixed footer
+- **Fixed top area** — Author Login button + Logo + tagline + navigation links
+- **Scrollable body** — Featured Collections + Novels sections with independent scroll
+- **Fixed footer** — "Every collection is a world." always visible
+- **`FeaturedCard` component** — shared card for both collections and novels (identical styling)
+- **Novel cards on homepage** — published novels now appear with same card design as collections
+- **Parallel data loading** — `Promise.allSettled` for independent collection/book loading
+- **Independent loading states** — separate loading indicators for collections and novels
+
+#### 9. Select Component Conversion
+
+- `Select.jsx` uses `bg-transparent` to respect system light/dark modes
+- All native `<select>` elements converted to `Select` component across:
+  - `Poems.jsx` (collection filter)
+  - `PoemEditorPage.jsx` (collection assignment)
+  - `Chapters.jsx` (book filter)
+  - `ChapterEditorPage.jsx` (book assignment)
+
+#### 10. Dashboard Layout Scroll Fix
+
+- Outer container uses `overflow-hidden` to prevent full-page scroll
+- Inner `<main>` uses `overflow-y-auto` for contained scrolling
+- Sidebar remains permanently visible regardless of content height
+- Large forms (e.g., New Collection modal) scroll within the dashboard frame
+
+---
+
+### 🛡️ Platform Infrastructure
+
+#### Vercel Analytics
+
+- `@vercel/analytics` package added as production dependency
+- `<Analytics />` component mounted once at app root in `main.jsx`
+- Automatic page view tracking for all routes
+
+#### Brand Favicon & Icon System
+
+Replaced default Vite favicon with complete brand icon coverage:
+
+- `favicon.svg` — SVG favicon matching Logo component's curved symbol
+- `favicon-32x32.png` — standard browser tab icon
+- `favicon-16x16.png` — small browser tab icon
+- `apple-touch-icon.png` — 180×180 iOS home screen icon
+- `android-chrome-192x192.png` — Android/PWA icon
+- `android-chrome-512x512.png` — Android/PWA splash icon
+- `site.webmanifest` — PWA manifest with app name, icons, theme colors
+- `<meta name="theme-color" content="#171717">` — browser chrome color
+
+All icons use the same dark rounded-square background with cream-colored curve mark.
+
+#### index.html Updates
+
+```html
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/site.webmanifest" />
+<meta name="theme-color" content="#171717" />
+```
+
+---
+
+### 📄 Files Changed
+
+**New Files:**
+- `supabase/functions/generate-asset/index.ts` — AI generation edge function
+- `supabase/functions/generate-asset/deno.json` — Deno config
+- `supabase/functions/_shared/cors.ts` — shared CORS headers
+- `src/components/ui/Pagination.jsx` — reusable pagination component
+- `src/components/ui/Badge.jsx` — status badge component
+- `public/favicon.svg` — brand SVG favicon
+- `public/favicon-16x16.png` — PNG favicon
+- `public/favicon-32x32.png` — PNG favicon
+- `public/apple-touch-icon.png` — iOS icon
+- `public/android-chrome-192x192.png` — Android icon
+- `public/android-chrome-512x512.png` — Android splash icon
+- `public/site.webmanifest` — PWA manifest
+
+**Modified Files:**
+- `src/main.jsx` — Analytics integration
+- `src/services/aiAssetService.js` — rewritten for edge function invocation
+- `src/services/storageService.js` — validation + compression pipeline
+- `src/services/contentService.js` — poem counts + paginated queries
+- `src/services/bookService.js` — paginated books query
+- `src/components/ui/Select.jsx` — transparent background
+- `src/pages/public/HomePage.jsx` — full redesign with novel cards
+- `src/pages/public/CollectionsPage.jsx` — pagination integration
+- `src/pages/public/CollectionDetailPage.jsx` — paginated poems
+- `src/pages/public/BooksPage.jsx` — paginated books
+- `src/pages/dashboard/DashboardHome.jsx` — new dashboard overview
+- `src/pages/dashboard/Collections.jsx` — poem count badges + AI provider label
+- `src/pages/dashboard/Poems.jsx` — Select component
+- `src/pages/dashboard/PoemEditorPage.jsx` — Select component
+- `src/pages/dashboard/BookEditorPage.jsx` — upload validation + AI provider label
+- `src/pages/dashboard/Chapters.jsx` — Select component
+- `src/pages/dashboard/ChapterEditorPage.jsx` — Select component
+- `src/layouts/DashboardLayout.jsx` — scroll containment fix
+- `index.html` — favicon + manifest + theme-color
+- `package.json` — @vercel/analytics dependency
+
+---
+
+### Status
+
+Phase 5 Sprint 3 complete.
+
+v0.5.2 is the final pre-release version. All planned Phase 5 features are implemented.
+
+---
+---
+
+## v1.0.0 — First Stable Release
+**Date:** 2026-03-30
+**Tag:** v1.0.0
+**Branch Merged:** dev → main
+
+### Overview
+
+Dreamer's Palette reaches its first stable release.
+
+v1.0.0 represents the culmination of five development phases spanning infrastructure, content backbone, literary rendering, immersive theming, and production hardening. The platform is now a complete, production-grade literary publishing system.
+
+---
+
+### 🏛️ Platform Capabilities at v1.0.0
+
+#### Content Types
+- **Poetry Collections** — themed, immersive poetic worlds with atmospheric backgrounds
+- **Poems** — Markdown-rendered poetry with preserved stanza spacing
+- **Novels (Books)** — long-form works with cover imagery and theming parity
+- **Chapters** — ordered chapter system with previous/next navigation
+
+#### Author Dashboard
+- **Dashboard Home** — personalized stats, quick actions, recent content
+- **Collections Management** — CRUD, theming, AI background generation, publish workflow, poem counts
+- **Poems Management** — CRUD, collection assignment, filter by collection, publish workflow
+- **Books Management** — CRUD, cover upload/generation, publish workflow
+- **Chapters Management** — CRUD, book assignment, chapter ordering, preview flag, publish workflow
+- **Markdown Editor** — split-pane editor with live preview
+- **AI Image Generation** — prompt-based background/cover generation via HuggingFace FLUX.1-schnell
+
+#### Public Reader
+- **Homepage** — featured collections + novels, fixed header/footer, scrollable body
+- **Collections Listing** — paginated, animated card grid
+- **Collection Detail** — themed reading environment with paginated poems
+- **Poem Reader** — immersive Markdown rendering with collection theming
+- **Books Listing** — paginated book grid with cover images
+- **Book Detail** — themed reading environment with chapter listing
+- **Chapter Reader** — Markdown rendering with previous/next navigation
+
+#### Theming Engine
+- Per-collection and per-book: background image, overlay opacity, accent color, text mode
+- Deterministic contrast system (author-controlled, no runtime analysis)
+- CSS variable injection (`--accent-color`, `--reader-muted`)
+- Text shadow system for readability on themed backgrounds
+- Framed world model with neutral outer surface
+
+#### Architecture
+- **SPA** — React 19 + React Router 7 + Vite
+- **Backend** — Supabase (Auth, PostgreSQL, Storage, Edge Functions)
+- **Styling** — Tailwind CSS 4 with PostCSS
+- **Rendering** — react-markdown with custom component overrides
+- **Analytics** — Vercel Analytics
+- **AI** — HuggingFace Inference API via Supabase Edge Function
+- **Deployment** — Vercel (SPA rewrites via `vercel.json`)
+
+#### Security & Performance
+- Row-Level Security (RLS) on all tables
+- Service-layer abstraction for all Supabase queries
+- Explicit column projections (no `select("*")`)
+- Environment variable validation at startup
+- JWT-authenticated edge functions
+- Client-side image validation and compression
+- Unique slug generation with retry logic
+
+#### UI System
+- Component library: Button, Card, Input, Textarea, Select, Modal, Badge, Pagination, Logo, Tabs, Container, Section
+- Responsive mobile-first design (Tailwind `md:` breakpoints)
+- Dark mode support
+- Safe-area insets for modern mobile browsers
+- `dvh` viewport height with fallback
+- Sticky navigation with backdrop blur
+- Custom scrollbar styling
+
+#### Brand Identity
+- Logo component (curved symbol + wordmark)
+- Complete favicon/icon set (SVG + PNG fallbacks)
+- Web manifest for PWA/installable app support
+- Theme color for browser chrome
+
+---
+
+### 🧠 Architectural Principles (Locked)
+
+1. **SPA only** — no SSR, no static generation
+2. **Supabase is the sole backend** — Auth, DB, Storage, Edge Functions
+3. **RLS is the security authority** — not client-side checks
+4. **Service layer is mandatory** — no inline Supabase queries in components
+5. **Markdown-first content** — all literary content stored as Markdown
+6. **Deterministic theming** — author-controlled contrast, no heuristics
+7. **Slug stability is critical** — once generated, slugs are permanent routes
+8. **Layout-based routing** — ReaderLayout (public) / DashboardLayout (protected)
+9. **Server-side AI generation** — edge functions proxy all external API calls
+10. **Explicit data queries** — specific column projections, no wildcard selects
+
+---
+
+### 📊 Project Statistics
+
+| Metric | Count |
+|---|---|
+| React Pages | 15 |
+| UI Components | 12 |
+| Service Modules | 7 |
+| Custom Hooks | 4 |
+| Layouts | 2 |
+| Edge Functions | 1 |
+| Utility Modules | 2 |
+| Total Source Files | ~45 |
+
+---
+
+### Phase History
+
+| Phase | Version | Focus |
+|---|---|---|
+| 1 | v0.1.0 | Infrastructure Foundation |
+| 2 | v0.2.0 | Collections Backbone + Public Rendering |
+| 3 | v0.3.0 | Poems System + Markdown Engine |
+| 4 | v0.4.0–v0.4.3 | Theming Engine + Immersive Reader + Mobile |
+| 5 | v0.5.0–v0.5.2 | Literary Expansion + Production Hardening |
+| — | **v1.0.0** | **First Stable Release** |
+
