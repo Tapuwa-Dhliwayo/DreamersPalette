@@ -106,7 +106,7 @@ export default function DashboardHome() {
             to: DASHBOARD_ROUTES.POEMS,
         },
         {
-            label: "Books",
+            label: "Novels",
             total: stats.books,
             published: stats.booksPublished,
             to: DASHBOARD_ROUTES.BOOKS,
@@ -161,7 +161,7 @@ export default function DashboardHome() {
                         <Button variant="subtle" size="sm">+ New Poem</Button>
                     </Link>
                     <Link to={DASHBOARD_ROUTES.BOOK_NEW}>
-                        <Button variant="subtle" size="sm">+ New Book</Button>
+                        <Button variant="subtle" size="sm">+ New Novel</Button>
                     </Link>
                     <Link to={DASHBOARD_ROUTES.CHAPTER_NEW}>
                         <Button variant="subtle" size="sm">+ New Chapter</Button>
@@ -223,7 +223,7 @@ export default function DashboardHome() {
                 <div>
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-medium tracking-tight">
-                            Recent Books
+                            Recent Novels
                         </h3>
                         <Link
                             to={DASHBOARD_ROUTES.BOOKS}
@@ -235,7 +235,7 @@ export default function DashboardHome() {
 
                     {recentBooks.length === 0 ? (
                         <Card className="p-6 text-center">
-                            <p className="text-sm text-neutral-500">No books yet. Begin your first novel!</p>
+                            <p className="text-sm text-neutral-500">No novels yet. Begin your first novel!</p>
                         </Card>
                     ) : (
                         <div className="space-y-3">

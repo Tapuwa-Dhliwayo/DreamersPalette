@@ -38,7 +38,7 @@ export default function Sidebar({ isOpen, onClose }) {
         { label: "Dashboard", to: DASHBOARD_ROUTES.ROOT },
         { label: "Collections", to: DASHBOARD_ROUTES.COLLECTIONS },
         { label: "Poems", to: DASHBOARD_ROUTES.POEMS },
-        { label: "Books", to: DASHBOARD_ROUTES.BOOKS },
+        { label: "Novels", to: DASHBOARD_ROUTES.BOOKS },
         { label: "Chapters", to: DASHBOARD_ROUTES.CHAPTERS },
     ]
 
