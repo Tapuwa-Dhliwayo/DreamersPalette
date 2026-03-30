@@ -43,7 +43,7 @@ export default function Sidebar({ isOpen, onClose }) {
     ]
 
     const sidebarContent = (
-        <aside className="w-64 h-full border-r border-neutral-200 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-sm flex flex-col justify-between overflow-y-auto">
+        <aside className="w-64 h-full border-r border-neutral-200 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-sm flex flex-col justify-between overflow-y-auto ">
 
             {/* Top */}
             <div className="p-6 space-y-10">

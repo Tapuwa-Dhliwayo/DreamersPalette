@@ -82,7 +82,7 @@ export default function CollectionsPage() {
                         <div
                             className={`
                             relative overflow-hidden rounded-3xl
-                            bg-white/85 dark:bg-neutral-900/80 backdrop-blur-sm
+                           dark:bg-neutral-900/80 backdrop-blur-sm
                             transition-all duration-500 ease-out
                             shadow-sm group-hover:shadow-xl
                             group-hover:-translate-y-1

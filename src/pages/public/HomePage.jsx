@@ -1,26 +1,76 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { getPublishedCollections } from "@/services/contentService"
+import { getPublishedBooks } from "@/services/bookService"
 import { PUBLIC_ROUTES } from "@/app/routes"
 import Logo from "@/components/ui/Logo.jsx";
 
+function FeaturedCard({ to, title, description, imageUrl }) {
+    return (
+        <Link
+            to={to}
+            className="block overflow-hidden rounded-2xl bg-white/85 shadow-sm backdrop-blur-sm transition hover:shadow-md dark:bg-neutral-900/80 text-neutral-900! dark:text-neutral-100!"
+        >
+            {imageUrl && (
+                <div
+                    className="h-40 bg-cover bg-center"
+                    style={{
+                        backgroundImage: `url(${imageUrl})`
+                    }}
+                />
+            )}
+
+            <div className="p-4 md:p-6">
+                <h3 className="mb-2 font-serif text-xl">
+                    {title}
+                </h3>
+                {description && (
+                    <p className="line-clamp-3 text-sm opacity-70">
+                        {description}
+                    </p>
+                )}
+            </div>
+        </Link>
+    )
+}
+
 export default function HomePage() {
     const [collections, setCollections] = useState([])
-    const [loading, setLoading] = useState(true)
+    const [books, setBooks] = useState([])
+    const [collectionsLoading, setCollectionsLoading] = useState(true)
+    const [booksLoading, setBooksLoading] = useState(true)
 
     useEffect(() => {
-        async function loadCollections() {
+        async function loadHomeContent() {
+            setCollectionsLoading(true)
+            setBooksLoading(true)
+
             try {
-                const data = await getPublishedCollections()
-                setCollections(data || [])
-            } catch (err) {
-                console.error("Failed to load collections:", err)
+                const [collectionsResult, booksResult] = await Promise.allSettled([
+                    getPublishedCollections(),
+                    getPublishedBooks(),
+                ])
+
+                if (collectionsResult.status === "fulfilled") {
+                    setCollections(collectionsResult.value || [])
+                } else {
+                    console.error("Failed to load collections:", collectionsResult.reason)
+                    setCollections([])
+                }
+
+                if (booksResult.status === "fulfilled") {
+                    setBooks(booksResult.value || [])
+                } else {
+                    console.error("Failed to load books:", booksResult.reason)
+                    setBooks([])
+                }
             } finally {
-                setLoading(false)
+                setCollectionsLoading(false)
+                setBooksLoading(false)
             }
         }
 
-        loadCollections()
+        loadHomeContent()
     }, [])
 
     return (
@@ -43,12 +93,12 @@ export default function HomePage() {
                     A sanctuary for poetry, imagined worlds, and quiet reading.
                 </p>
 
-                <div className="flex flex-wrap justify-center gap-8 text-sm">
+                <div className="flex flex-wrap justify-center gap-8 text-sm text-white">
                     <Link to={PUBLIC_ROUTES.COLLECTIONS}>
                         Browse Collections
                     </Link>
                     <Link to={PUBLIC_ROUTES.BOOKS}>
-                        Explore Books
+                        Explore Novels
                     </Link>
                 </div>
             </section>
@@ -63,44 +113,26 @@ export default function HomePage() {
                             Featured Collections
                         </h2>
 
-                        {loading && (
+                        {collectionsLoading && (
                             <p className="text-sm opacity-60">Loading collections...</p>
                         )}
 
-                        {!loading && collections.length === 0 && (
+                        {!collectionsLoading && collections.length === 0 && (
                             <p className="text-sm opacity-60">
                                 No published collections yet.
                             </p>
                         )}
 
-                        {!loading && collections.length > 0 && (
+                        {!collectionsLoading && collections.length > 0 && (
                             <div className="grid gap-6 sm:grid-cols-2">
                                 {collections.slice(0, 4).map((collection) => (
-                                    <Link
+                                    <FeaturedCard
                                         key={collection.id}
                                         to={PUBLIC_ROUTES.COLLECTION_DETAIL(collection.slug)}
-                                        className="block overflow-hidden rounded-2xl bg-white/85 shadow-sm backdrop-blur-sm transition hover:shadow-md dark:bg-neutral-900/80"
-                                    >
-                                        {collection.theme_background_url && (
-                                            <div
-                                                className="h-40 bg-cover bg-center"
-                                                style={{
-                                                    backgroundImage: `url(${collection.theme_background_url})`
-                                                }}
-                                            />
-                                        )}
-
-                                        <div className="p-4 md:p-6">
-                                            <h3 className="mb-2 font-serif text-xl">
-                                                {collection.title}
-                                            </h3>
-                                            {collection.description && (
-                                                <p className="line-clamp-3 text-sm opacity-70">
-                                                    {collection.description}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </Link>
+                                        title={collection.title}
+                                        description={collection.description}
+                                        imageUrl={collection.theme_background_url}
+                                    />
                                 ))}
                             </div>
                         )}
@@ -109,19 +141,39 @@ export default function HomePage() {
                     {/* ---------------- BOOKS SECTION ---------------- */}
                     <section className="py-16">
                         <h2 className="mb-6 text-2xl font-serif">
-                            Books
+                            Novels
                         </h2>
 
-                        <p className="text-sm opacity-60">
-                            Books are arriving soon.
-                        </p>
+                        {booksLoading && (
+                            <p className="text-sm opacity-60">Loading novels...</p>
+                        )}
+
+                        {!booksLoading && books.length === 0 && (
+                            <p className="text-sm opacity-60">
+                                Novels are arriving soon.
+                            </p>
+                        )}
+
+                        {!booksLoading && books.length > 0 && (
+                            <div className="grid gap-6 sm:grid-cols-2">
+                                {books.slice(0, 4).map((book) => (
+                                    <FeaturedCard
+                                        key={book.id}
+                                        to={PUBLIC_ROUTES.BOOK_DETAIL(book.slug)}
+                                        title={book.title}
+                                        description={book.synopsis}
+                                        imageUrl={book.theme_background_url || book.cover_image_url}
+                                    />
+                                ))}
+                            </div>
+                        )}
 
                         <div className="mt-6">
                             <Link
                                 to={PUBLIC_ROUTES.BOOKS}
                                 className="text-sm"
                             >
-                                Visit Books →
+                                Visit Novels →
                             </Link>
                         </div>
                     </section>

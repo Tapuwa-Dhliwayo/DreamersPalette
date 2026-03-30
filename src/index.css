@@ -65,7 +65,7 @@ p {
 
 /* Links */
 a {
-  @apply text-neutral-900 dark:text-neutral-100 underline-offset-4 hover:underline;
+  @apply underline-offset-4 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200;
 }
 
 /* Accent Button System */
