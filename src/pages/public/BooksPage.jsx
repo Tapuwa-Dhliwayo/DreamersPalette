@@ -33,7 +33,7 @@ export default function BooksPage() {
             {/* Header */}
             <header className="space-y-6 text-center">
                 <h1 className="text-5xl font-serif tracking-tight">
-                    Books
+                    Novels
                 </h1>
 
                 <p className="text-lg opacity-70 max-w-2xl mx-auto leading-relaxed">
@@ -45,7 +45,7 @@ export default function BooksPage() {
             {/* Books Grid */}
             {loading ? (
                 <div className="text-sm text-neutral-500 text-center">
-                    Loading books...
+                    Loading novels...
                 </div>
             ) : books.length === 0 ? (
                 <section className="flex justify-center">
@@ -61,7 +61,7 @@ export default function BooksPage() {
                     ">
 
                         <p className="text-base opacity-70 leading-relaxed">
-                            Books are being shaped in quiet rooms.
+                            Novels are being shaped in quiet rooms.
                             Chapters will arrive soon.
                         </p>
 

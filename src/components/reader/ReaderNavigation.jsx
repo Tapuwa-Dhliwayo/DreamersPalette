@@ -95,7 +95,7 @@ export default function ReaderNavigation() {
                         to={PUBLIC_ROUTES.BOOKS}
                         className="accent-button"
                     >
-                        Books
+                        Novels
                     </Link>
                 </nav>
 
@@ -133,7 +133,7 @@ export default function ReaderNavigation() {
                                 className="accent-button transition-all duration-200 hover:-translate-x-0.5"
                             >
                                 <span className="md:hidden">← Back</span>
-                                <span className="hidden md:inline">← All Books</span>
+                                <span className="hidden md:inline">← All Novels</span>
                             </Link>
                         )}
 
