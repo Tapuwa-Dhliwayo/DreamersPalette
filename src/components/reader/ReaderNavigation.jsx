@@ -59,7 +59,7 @@ export default function ReaderNavigation() {
                             to={PUBLIC_ROUTES.BOOKS}
                             className="accent-button"
                         >
-                            Books
+                            Novels
                         </Link>
                     </nav>
 
