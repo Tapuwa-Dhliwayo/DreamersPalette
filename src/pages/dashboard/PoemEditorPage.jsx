@@ -69,7 +69,7 @@ export default function PoemEditorPage() {
     }, [id, isEditMode, navigate])
 
     async function handleSave() {
-        if (!form.title.trim()) return
+        if (!form.title.trim() || !form.collection_id) return
 
         try {
             setSaving(true)
@@ -132,7 +132,7 @@ export default function PoemEditorPage() {
 
                     <Button
                         onClick={handleSave}
-                        disabled={saving}
+                        disabled={saving || collections.length === 0}
                     >
                         {saving ? "Saving..." : "Save"}
                     </Button>
@@ -141,6 +141,11 @@ export default function PoemEditorPage() {
 
             {/* Metadata */}
             <div className="space-y-4 max-w-full md:max-w-xl">
+                {collections.length === 0 && (
+                    <p className="text-sm text-neutral-500">
+                        Create a collection before saving a poem.
+                    </p>
+                )}
 
                 <Input
                     placeholder="Poem title"

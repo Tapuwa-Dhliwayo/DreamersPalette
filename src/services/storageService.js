@@ -9,7 +9,7 @@ const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024 // 5 MB
 const MAX_IMAGE_DIMENSION = 4096 // px
 const COMPRESSION_TARGET_BYTES = 2 * 1024 * 1024 // compress if > 2 MB
 const BACKGROUNDS_BUCKET = "backgrounds"
-const IMAGE_CACHE_CONTROL_SECONDS = "31536000"
+const IMAGE_CACHE_CONTROL = "31536000"
 
 /**
  * Validate an image file before upload.
@@ -97,7 +97,11 @@ async function createImageVariant(file, opts = {}) {
     bitmap.close()
 
     const blob = await canvas.convertToBlob({ type: "image/webp", quality })
-    const variantName = file.name.replace(/\.[^.]+$/, "") + "-preview.webp"
+    const extensionIndex = file.name.lastIndexOf(".")
+    const baseName = extensionIndex > 0
+        ? file.name.slice(0, extensionIndex)
+        : file.name
+    const variantName = `${baseName}-preview.webp`
 
     return new File([blob], variantName, {
         type: "image/webp",
@@ -171,7 +175,7 @@ export async function uploadBackgroundImage(file, userId) {
         .from(BACKGROUNDS_BUCKET)
         .upload(filePath, file, {
             upsert: false,
-            cacheControl: IMAGE_CACHE_CONTROL_SECONDS
+            cacheControl: IMAGE_CACHE_CONTROL
         })
 
     if (error) throw error
@@ -207,7 +211,7 @@ export async function uploadCollectionBackgroundImage(file, userId) {
             .from(BACKGROUNDS_BUCKET)
             .upload(fullPath, file, {
                 upsert: false,
-                cacheControl: IMAGE_CACHE_CONTROL_SECONDS
+                cacheControl: IMAGE_CACHE_CONTROL
             })
     ]
 
@@ -217,7 +221,7 @@ export async function uploadCollectionBackgroundImage(file, userId) {
                 .from(BACKGROUNDS_BUCKET)
                 .upload(previewPath, previewFile, {
                     upsert: false,
-                    cacheControl: IMAGE_CACHE_CONTROL_SECONDS
+                    cacheControl: IMAGE_CACHE_CONTROL
                 })
         )
     }
