@@ -28,15 +28,15 @@ export default function BooksPage() {
     }, [page])
 
     return (
-        <div className="space-y-20 pt-6 md:pt-12">
+        <div className="space-y-10 md:space-y-20 pt-4 md:pt-12">
 
             {/* Header */}
-            <header className="space-y-6 text-center">
-                <h1 className="text-5xl font-serif tracking-tight">
+            <header className="space-y-4 md:space-y-6 text-center">
+                <h1 className="text-3xl md:text-5xl font-serif tracking-tight">
                     Books
                 </h1>
 
-                <p className="text-lg opacity-70 max-w-2xl mx-auto leading-relaxed">
+                <p className="text-sm md:text-lg opacity-70 max-w-2xl mx-auto leading-relaxed">
                     Long-form works — immersive journeys that unfold
                     beyond a single poem.
                 </p>
@@ -77,7 +77,7 @@ export default function BooksPage() {
                     </div>
                 </section>
             ) : (
-                <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <section className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8">
                     {books.map((book, index) => (
                         <Link
                             key={book.id}
@@ -89,7 +89,7 @@ export default function BooksPage() {
                             }}
                         >
                             {book.cover_image_url && (
-                                <div className="h-48 overflow-hidden">
+                                <div className="h-40 md:h-48 overflow-hidden">
                                     <img
                                         src={book.cover_image_url}
                                         alt={book.title}
@@ -98,7 +98,7 @@ export default function BooksPage() {
                                 </div>
                             )}
 
-                            <div className="p-6 md:p-10 space-y-3">
+                            <div className="p-5 md:p-10 space-y-2 md:space-y-3">
                                 <h2 className="text-xl md:text-2xl font-serif tracking-tight group-hover:opacity-70 transition">
                                     {book.title}
                                 </h2>

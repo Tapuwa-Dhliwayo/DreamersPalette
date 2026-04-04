@@ -57,34 +57,34 @@ export default function BookDetailPage() {
     }
 
     return (
-        <article className="reader-fade-in space-y-12 md:space-y-20 pt-8 md:pt-12">
+        <article className="reader-fade-in space-y-8 md:space-y-20 pt-4 md:pt-12">
 
             {/* Header */}
-            <header className="space-y-6 text-center">
+            <header className="space-y-4 md:space-y-6 text-center">
 
                 {book.cover_image_url && (
                     <div className="flex justify-center">
                         <img
                             src={book.cover_image_url}
                             alt={book.title}
-                            className="max-h-72 rounded-2xl shadow-lg object-cover"
+                            className="max-h-56 md:max-h-72 rounded-2xl shadow-lg object-cover"
                         />
                     </div>
                 )}
 
-                <h1 className="text-3xl md:text-5xl font-serif tracking-tight accent-underline">
+                <h1 className="text-2xl sm:text-3xl md:text-5xl font-serif tracking-tight accent-underline">
                     {book.title}
                 </h1>
 
                 {book.synopsis && (
-                    <p className="text-base md:text-lg opacity-70 max-w-2xl mx-auto leading-relaxed">
+                    <p className="text-sm md:text-lg opacity-70 max-w-2xl mx-auto leading-relaxed">
                         {book.synopsis}
                     </p>
                 )}
             </header>
 
             {/* Chapters */}
-            <section className="space-y-8 border-t border-white/10 pt-8 md:pt-12">
+            <section className="space-y-5 md:space-y-8 border-t border-white/10 pt-6 md:pt-12">
 
                 {chapters.length === 0 && (
                     <p className="opacity-60 text-center">
@@ -100,7 +100,7 @@ export default function BookDetailPage() {
                     >
                         <div className="space-y-2">
 
-                            <h2 className="text-2xl font-serif leading-relaxed group-hover:opacity-70 transition">
+                            <h2 className="text-xl md:text-2xl font-serif leading-relaxed group-hover:opacity-70 transition">
                                 <span className="opacity-50 mr-3">
                                     {chapter.chapter_number}.
                                 </span>

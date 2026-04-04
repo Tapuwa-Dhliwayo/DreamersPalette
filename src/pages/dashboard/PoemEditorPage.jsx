@@ -10,7 +10,7 @@ import {
     getMyCollections,
     createPoem,
     updatePoem,
-    getMyPoems
+    getMyPoemById
 } from "@/services/contentService"
 
 import { DASHBOARD_ROUTES } from "@/app/routes"
@@ -33,40 +33,40 @@ export default function PoemEditorPage() {
     })
 
     useEffect(() => {
-        initialize()
-    }, [])
+        async function initialize() {
+            try {
+                const collectionsData = await getMyCollections()
+                setCollections(collectionsData)
 
-    async function initialize() {
-        try {
-            const collectionsData = await getMyCollections()
-            setCollections(collectionsData)
+                if (isEditMode) {
+                    const existingPoem = await getMyPoemById(id)
 
-            if (isEditMode) {
-                const poems = await getMyPoems()
-                const existingPoem = poems.find(p => p.id === id)
+                    if (!existingPoem) {
+                        navigate(DASHBOARD_ROUTES.POEMS)
+                        return
+                    }
 
-                if (!existingPoem) {
-                    navigate(DASHBOARD_ROUTES.POEMS)
-                    return
+                    setForm({
+                        title: existingPoem.title || "",
+                        content_md: existingPoem.content_md || "",
+                        collection_id: existingPoem.collection_id || collectionsData[0]?.id || ""
+                    })
+                } else {
+                    setForm((prev) => ({
+                        ...prev,
+                        collection_id: collectionsData[0]?.id || ""
+                    }))
                 }
-
-                setForm({
-                    title: existingPoem.title,
-                    content_md: existingPoem.content_md,
-                    collection_id: existingPoem.collection_id
-                })
-            } else {
-                setForm(prev => ({
-                    ...prev,
-                    collection_id: collectionsData[0]?.id || ""
-                }))
+            } catch (err) {
+                console.error("Failed to initialize editor:", err)
+                navigate(DASHBOARD_ROUTES.POEMS)
+            } finally {
+                setLoading(false)
             }
-        } catch (err) {
-            console.error("Failed to initialize editor:", err)
-        } finally {
-            setLoading(false)
         }
-    }
+
+        initialize()
+    }, [id, isEditMode, navigate])
 
     async function handleSave() {
         if (!form.title.trim()) return

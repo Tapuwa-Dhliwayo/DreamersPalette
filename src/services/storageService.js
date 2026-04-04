@@ -8,6 +8,8 @@ const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024 // 5 MB
 const MAX_IMAGE_DIMENSION = 4096 // px
 const COMPRESSION_TARGET_BYTES = 2 * 1024 * 1024 // compress if > 2 MB
+const BACKGROUNDS_BUCKET = "backgrounds"
+const IMAGE_CACHE_CONTROL_SECONDS = "31536000"
 
 /**
  * Validate an image file before upload.
@@ -65,6 +67,41 @@ function getImageDimensions(file) {
             reject(new Error("Unable to read image dimensions."))
         }
         img.src = url
+    })
+}
+
+async function createImageVariant(file, opts = {}) {
+    const compressible = ["image/jpeg", "image/png", "image/webp"]
+    if (!compressible.includes(file.type)) {
+        return null
+    }
+
+    const maxDimension = opts.maxDimension ?? 768
+    const quality = opts.quality ?? 0.72
+
+    const { width, height } = await getImageDimensions(file)
+
+    let targetWidth = width
+    let targetHeight = height
+
+    if (width > maxDimension || height > maxDimension) {
+        const ratio = Math.min(maxDimension / width, maxDimension / height)
+        targetWidth = Math.round(width * ratio)
+        targetHeight = Math.round(height * ratio)
+    }
+
+    const bitmap = await createImageBitmap(file)
+    const canvas = new OffscreenCanvas(targetWidth, targetHeight)
+    const ctx = canvas.getContext("2d")
+    ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight)
+    bitmap.close()
+
+    const blob = await canvas.convertToBlob({ type: "image/webp", quality })
+    const variantName = file.name.replace(/\.[^.]+$/, "") + "-preview.webp"
+
+    return new File([blob], variantName, {
+        type: "image/webp",
+        lastModified: Date.now()
     })
 }
 
@@ -131,16 +168,72 @@ export async function uploadBackgroundImage(file, userId) {
     const filePath = `${userId}/${fileName}`
 
     const { error } = await supabase.storage
-        .from("backgrounds")
+        .from(BACKGROUNDS_BUCKET)
         .upload(filePath, file, {
-            upsert: false
+            upsert: false,
+            cacheControl: IMAGE_CACHE_CONTROL_SECONDS
         })
 
     if (error) throw error
 
     const { data } = supabase.storage
-        .from("backgrounds")
+        .from(BACKGROUNDS_BUCKET)
         .getPublicUrl(filePath)
 
     return data.publicUrl
+}
+
+export function getCollectionPreviewImageUrl(publicUrl) {
+    if (!publicUrl) return null
+
+    const [baseUrl, queryString] = publicUrl.split("?")
+    const previewBaseUrl = baseUrl.replace(/(\.[^.]+)$/i, "-preview.webp")
+
+    return queryString ? `${previewBaseUrl}?${queryString}` : previewBaseUrl
+}
+
+export async function uploadCollectionBackgroundImage(file, userId) {
+    const baseName = `${Date.now()}`
+    const fileExt = file.name.split(".").pop()
+    const fullPath = `${userId}/${baseName}.${fileExt}`
+    const previewFile = await createImageVariant(file, {
+        maxDimension: 640,
+        quality: 0.68
+    })
+    const previewPath = previewFile ? `${userId}/${baseName}-preview.webp` : null
+
+    const uploads = [
+        supabase.storage
+            .from(BACKGROUNDS_BUCKET)
+            .upload(fullPath, file, {
+                upsert: false,
+                cacheControl: IMAGE_CACHE_CONTROL_SECONDS
+            })
+    ]
+
+    if (previewFile && previewPath) {
+        uploads.push(
+            supabase.storage
+                .from(BACKGROUNDS_BUCKET)
+                .upload(previewPath, previewFile, {
+                    upsert: false,
+                    cacheControl: IMAGE_CACHE_CONTROL_SECONDS
+                })
+        )
+    }
+
+    const results = await Promise.all(uploads)
+    const uploadError = results.find((result) => result.error)?.error
+    if (uploadError) throw uploadError
+
+    const { data: fullData } = supabase.storage
+        .from(BACKGROUNDS_BUCKET)
+        .getPublicUrl(fullPath)
+
+    return {
+        fullUrl: fullData.publicUrl,
+        previewUrl: previewPath
+            ? supabase.storage.from(BACKGROUNDS_BUCKET).getPublicUrl(previewPath).data.publicUrl
+            : null
+    }
 }

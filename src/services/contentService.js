@@ -268,6 +268,20 @@ export async function getMyPoems() {
 }
 
 /**
+ * Get single poem owned by current author
+ */
+export async function getMyPoemById(id) {
+    const { data, error } = await supabase
+        .from("poems")
+        .select("id, collection_id, title, slug, content_md, excerpt, is_published, created_at, updated_at")
+        .eq("id", id)
+        .single()
+
+    if (error) throw error
+    return data
+}
+
+/**
  * Get poems by collection (author view)
  */
 export async function getPoemsByCollection(collectionId) {

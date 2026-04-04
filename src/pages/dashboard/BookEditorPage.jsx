@@ -9,7 +9,7 @@ import { uploadBackgroundImage, validateImageFile, compressImageIfNeeded } from 
 import { supabase } from "@/services/supabaseClient"
 
 import {
-    getMyBooks,
+    getMyBookById,
     createBook,
     updateBook
 } from "@/services/bookService"
@@ -41,8 +41,7 @@ export default function BookEditorPage() {
         async function initialize() {
             try {
                 if (isEditMode) {
-                    const books = await getMyBooks()
-                    const existingBook = books.find((book) => book.id === id)
+                    const existingBook = await getMyBookById(id)
 
                     if (!existingBook) {
                         navigate(DASHBOARD_ROUTES.BOOKS)
@@ -58,6 +57,7 @@ export default function BookEditorPage() {
                 }
             } catch (err) {
                 console.error("Failed to initialize editor:", err)
+                navigate(DASHBOARD_ROUTES.BOOKS)
             } finally {
                 setLoading(false)
             }

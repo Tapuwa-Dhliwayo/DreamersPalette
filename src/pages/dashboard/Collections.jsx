@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { uploadBackgroundImage, validateImageFile, compressImageIfNeeded } from "@/services/storageService"
+import {
+    uploadCollectionBackgroundImage,
+    validateImageFile,
+    compressImageIfNeeded
+} from "@/services/storageService"
 import { supabase } from "@/services/supabaseClient"
 import { Card } from "@/components/ui/Card"
 import Button from "@/components/ui/Button"
@@ -178,14 +182,14 @@ export default function Collections() {
 
             if (!user) throw new Error("Not authenticated")
 
-            const publicUrl = await uploadBackgroundImage(
+            const { fullUrl } = await uploadCollectionBackgroundImage(
                 processedFile,
                 user.id
             )
 
             setForm(prev => ({
                 ...prev,
-                theme_background_url: publicUrl
+                theme_background_url: fullUrl
             }))
         } catch (error) {
             console.error("Upload failed:", error)
