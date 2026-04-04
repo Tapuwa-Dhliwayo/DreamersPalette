@@ -13,7 +13,6 @@ export default function ReaderNavigation() {
     const location = useLocation()
     const isHome = location.pathname === PUBLIC_ROUTES.HOME
     const isLogin = location.pathname === PUBLIC_ROUTES.LOGIN
-
     useEffect(() => {
         supabase.auth.getSession().then(({ data }) => {
             setIsAuthenticated(!!data.session)
@@ -32,10 +31,10 @@ export default function ReaderNavigation() {
         (level === "chapter" && collection)
 
     return (
-        <header className="space-y-6">
+        <header className="space-y-3 md:space-y-6">
 
-            {/* ---------- GLOBAL HEADER ---------- */}
-            <div className="text-sm space-y-3">
+             {/* ---------- GLOBAL HEADER ---------- */}
+            <div className="text-[13px] md:text-sm space-y-2 md:space-y-3">
 
                 {/* Row 1: Logo (left) + Auth button (right) — always */}
                 <div className="flex items-center justify-between">
@@ -83,27 +82,27 @@ export default function ReaderNavigation() {
                 </div>
 
                 {/* Row 2: Nav links — mobile only */}
-                <nav className="flex md:hidden items-center justify-center gap-3">
-                    <Link
-                        to={PUBLIC_ROUTES.COLLECTIONS}
-                        className="accent-button"
-                    >
-                        Collections
-                    </Link>
+                    <nav className="flex md:hidden items-center justify-center gap-2">
+                        <Link
+                            to={PUBLIC_ROUTES.COLLECTIONS}
+                            className="accent-button"
+                        >
+                            Collections
+                        </Link>
 
-                    <Link
-                        to={PUBLIC_ROUTES.BOOKS}
-                        className="accent-button"
-                    >
-                        Books
-                    </Link>
-                </nav>
+                        <Link
+                            to={PUBLIC_ROUTES.BOOKS}
+                            className="accent-button"
+                        >
+                            Books
+                        </Link>
+                    </nav>
 
             </div>
 
             {/* ---------- CONTEXT NAV ---------- */}
             {showContextNav && (
-                <div className="context-nav-enter flex items-center justify-between text-xs opacity-70 border-t border-white/10 p-4 mb-2">
+                <div className="context-nav-enter flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-[11px] md:text-xs opacity-70 border-t border-white/10 pt-3 px-2 pb-1 md:p-4 mb-1 md:mb-2">
 
                     {/* Back Link */}
                     <div>
@@ -146,7 +145,7 @@ export default function ReaderNavigation() {
 
                     {/* Sibling Navigation — Poems */}
                     {level === "poem" && (
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-3 sm:gap-6">
 
                             <Link
                                 to={previous ? PUBLIC_ROUTES.POEM(previous.slug) : "#"}
@@ -177,7 +176,7 @@ export default function ReaderNavigation() {
 
                     {/* Sibling Navigation — Chapters */}
                     {level === "chapter" && collection && (
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-3 sm:gap-6">
 
                             <Link
                                 to={previous ? PUBLIC_ROUTES.CHAPTER(collection.slug, previous.chapter_number) : "#"}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { Card } from "@/components/ui/Card"
 import Pagination, { DEFAULT_PAGE_SIZE } from "@/components/ui/Pagination"
+import OptimizedCollectionImage from "@/components/ui/OptimizedCollectionImage"
 import { getPublishedCollectionsPaginated } from "@/services/contentService"
 import { PUBLIC_ROUTES } from "@/app/routes"
 
@@ -58,20 +58,20 @@ export default function CollectionsPage() {
     }
 
     return (
-        <div className="space-y-16">
+        <div className="space-y-10 md:space-y-16">
 
             {/* Header */}
-            <header className="space-y-4 text-center pt-8">
-                <h1 className="text-4xl font-serif tracking-tight">
+            <header className="space-y-3 md:space-y-4 text-center pt-4 md:pt-8">
+                <h1 className="text-3xl md:text-4xl font-serif tracking-tight">
                     Collections
                 </h1>
-                <p className="text-base opacity-70 leading-relaxed max-w-2xl mx-auto">
+                <p className="text-sm md:text-base opacity-70 leading-relaxed max-w-2xl mx-auto">
                     Enter curated poetic worlds shaped by atmosphere and memory.
                 </p>
             </header>
 
             {/* Grid */}
-            <div className="grid gap-10">
+            <div className="grid gap-5 md:gap-10">
 
                 {collections.map((collection, index) => (
                     <Link
@@ -97,23 +97,22 @@ export default function CollectionsPage() {
 
                             {/* Background Preview */}
                             {collection.theme_background_url && (
-                                <div
-                                    className="absolute inset-0 bg-cover bg-center opacity-30 group-hover:opacity-40 transition-opacity duration-500"
-                                    style={{
-                                        backgroundImage: `url(${collection.theme_background_url})`
-                                    }}
+                                <OptimizedCollectionImage
+                                    src={collection.theme_background_url}
+                                    alt={collection.title}
+                                    className="absolute inset-0 h-full w-full object-cover opacity-30 group-hover:opacity-40 transition-opacity duration-500"
                                 />
                             )}
 
                             {/* Content Layer */}
-                            <div className="relative z-10 p-6 md:p-10 space-y-4">
+                            <div className="relative z-10 p-5 md:p-10 space-y-3 md:space-y-4">
 
-                                <h3 className="text-xl md:text-2xl font-serif tracking-tight group-hover:opacity-80 transition">
+                                <h3 className="text-lg md:text-2xl font-serif tracking-tight group-hover:opacity-80 transition">
                                     {collection.title}
                                 </h3>
 
                                 {collection.description && (
-                                    <p className="text-sm opacity-70 max-w-xl leading-relaxed">
+                                    <p className="text-xs md:text-sm opacity-70 max-w-xl leading-relaxed">
                                         {collection.description}
                                     </p>
                                 )}

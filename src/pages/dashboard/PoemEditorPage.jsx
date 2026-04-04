@@ -10,7 +10,7 @@ import {
     getMyCollections,
     createPoem,
     updatePoem,
-    getMyPoems
+    getMyPoemById
 } from "@/services/contentService"
 
 import { DASHBOARD_ROUTES } from "@/app/routes"
@@ -23,6 +23,7 @@ export default function PoemEditorPage() {
 
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [validationError, setValidationError] = useState("")
 
     const [collections, setCollections] = useState([])
 
@@ -33,46 +34,55 @@ export default function PoemEditorPage() {
     })
 
     useEffect(() => {
-        initialize()
-    }, [])
+        async function initialize() {
+            try {
+                const collectionsData = await getMyCollections()
+                setCollections(collectionsData)
 
-    async function initialize() {
-        try {
-            const collectionsData = await getMyCollections()
-            setCollections(collectionsData)
+                if (isEditMode) {
+                    const existingPoem = await getMyPoemById(id)
 
-            if (isEditMode) {
-                const poems = await getMyPoems()
-                const existingPoem = poems.find(p => p.id === id)
+                    if (!existingPoem) {
+                        navigate(DASHBOARD_ROUTES.POEMS)
+                        return
+                    }
 
-                if (!existingPoem) {
-                    navigate(DASHBOARD_ROUTES.POEMS)
-                    return
+                    setForm({
+                        title: existingPoem.title || "",
+                        content_md: existingPoem.content_md || "",
+                        collection_id: existingPoem.collection_id || collectionsData[0]?.id || ""
+                    })
+                } else {
+                    setForm((prev) => ({
+                        ...prev,
+                        collection_id: collectionsData[0]?.id || ""
+                    }))
                 }
-
-                setForm({
-                    title: existingPoem.title,
-                    content_md: existingPoem.content_md,
-                    collection_id: existingPoem.collection_id
-                })
-            } else {
-                setForm(prev => ({
-                    ...prev,
-                    collection_id: collectionsData[0]?.id || ""
-                }))
+            } catch (err) {
+                console.error("Failed to initialize editor:", err)
+                navigate(DASHBOARD_ROUTES.POEMS)
+            } finally {
+                setLoading(false)
             }
-        } catch (err) {
-            console.error("Failed to initialize editor:", err)
-        } finally {
-            setLoading(false)
         }
-    }
+
+        initialize()
+    }, [id, isEditMode, navigate])
 
     async function handleSave() {
-        if (!form.title.trim()) return
+        if (!form.title.trim()) {
+            setValidationError("A poem title is required.")
+            return
+        }
+
+        if (!form.collection_id) {
+            setValidationError("Select a collection before saving.")
+            return
+        }
 
         try {
             setSaving(true)
+            setValidationError("")
 
             if (isEditMode) {
                 await updatePoem(id, {
@@ -132,7 +142,7 @@ export default function PoemEditorPage() {
 
                     <Button
                         onClick={handleSave}
-                        disabled={saving}
+                        disabled={saving || collections.length === 0}
                     >
                         {saving ? "Saving..." : "Save"}
                     </Button>
@@ -141,20 +151,33 @@ export default function PoemEditorPage() {
 
             {/* Metadata */}
             <div className="space-y-4 max-w-full md:max-w-xl">
+                {collections.length === 0 && (
+                    <p className="text-sm text-neutral-500">
+                        Create a collection before saving a poem.
+                    </p>
+                )}
+
+                {validationError && (
+                    <p className="text-sm text-red-500">
+                        {validationError}
+                    </p>
+                )}
 
                 <Input
                     placeholder="Poem title"
                     value={form.title}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                        setValidationError("")
                         setForm({ ...form, title: e.target.value })
-                    }
+                    }}
                 />
 
                 <Select
                     value={form.collection_id}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                        setValidationError("")
                         setForm({ ...form, collection_id: e.target.value })
-                    }
+                    }}
                 >
                     {collections.map((collection) => (
                         <option

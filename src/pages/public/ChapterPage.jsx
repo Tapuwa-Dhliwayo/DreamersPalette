@@ -49,13 +49,13 @@ export default function ChapterPage() {
     }
 
     return (
-        <article className="reader-fade-in space-y-8 md:space-y-12">
+        <article className="reader-fade-in space-y-6 md:space-y-12 pt-2 md:pt-0">
 
-            <header className="space-y-4">
-                <p className="text-sm opacity-50">
+            <header className="space-y-3 md:space-y-4">
+                <p className="text-xs md:text-sm opacity-50">
                     Chapter {chapter.chapter_number}
                 </p>
-                <h1 className="text-4xl tracking-tight accent-underline">
+                <h1 className="text-3xl md:text-4xl tracking-tight accent-underline">
                     {chapter.title}
                 </h1>
             </header>
@@ -67,7 +67,7 @@ export default function ChapterPage() {
                     components={{
                         p: ({ ...props }) => (
                             <p
-                                className="whitespace-pre-wrap leading-relaxed text-lg mb-6"
+                                className="whitespace-pre-wrap leading-relaxed text-base md:text-lg mb-5 md:mb-6"
                                 {...props}
                             />
                         ),
@@ -79,7 +79,7 @@ export default function ChapterPage() {
                         ),
                         h2: ({ ...props }) => (
                             <h2
-                                className="text-2xl font-medium mt-8 mb-4"
+                                className="text-xl md:text-2xl font-medium mt-8 mb-4"
                                 {...props}
                             />
                         )

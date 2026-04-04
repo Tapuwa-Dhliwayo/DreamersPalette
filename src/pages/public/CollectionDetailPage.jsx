@@ -76,24 +76,24 @@ export default function CollectionDetailPage() {
     }
 
     return (
-        <article className="reader-fade-in space-y-12 md:space-y-20 pt-8 md:pt-12">
+        <article className="reader-fade-in space-y-8 md:space-y-20 pt-4 md:pt-12">
 
             {/* Header */}
-            <header className="space-y-6 text-center">
+            <header className="space-y-4 md:space-y-6 text-center">
 
-                <h1 className="text-3xl md:text-5xl font-serif tracking-tight accent-underline">
+                <h1 className="text-2xl sm:text-3xl md:text-5xl font-serif tracking-tight accent-underline">
                     {collection.title}
                 </h1>
 
                 {collection.description && (
-                    <p className="text-base md:text-lg opacity-70 max-w-2xl mx-auto leading-relaxed">
+                    <p className="text-sm md:text-lg opacity-70 max-w-2xl mx-auto leading-relaxed">
                         {collection.description}
                     </p>
                 )}
             </header>
 
             {/* Poems */}
-            <section className="space-y-8 border-t border-white/10 pt-8 md:pt-12">
+            <section className="space-y-5 md:space-y-8 border-t border-white/10 pt-6 md:pt-12">
 
                 {poems.length === 0 && (
                     <p className="opacity-60 text-center">
@@ -109,12 +109,12 @@ export default function CollectionDetailPage() {
                     >
                         <div className="space-y-3">
 
-                            <h2 className="text-2xl font-serif leading-relaxed group-hover:opacity-70 transition">
+                            <h2 className="text-xl md:text-2xl font-serif leading-relaxed group-hover:opacity-70 transition">
                                 {poem.title}
                             </h2>
 
                             {poem.excerpt && (
-                                <p className="text-sm opacity-60 leading-relaxed max-w-xl">
+                                <p className="text-xs md:text-sm opacity-60 leading-relaxed max-w-xl">
                                     {poem.excerpt}
                                 </p>
                             )}
