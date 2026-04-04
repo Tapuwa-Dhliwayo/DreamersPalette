@@ -13,8 +13,6 @@ export default function ReaderNavigation() {
     const location = useLocation()
     const isHome = location.pathname === PUBLIC_ROUTES.HOME
     const isLogin = location.pathname === PUBLIC_ROUTES.LOGIN
-    const isBookSection = location.pathname.startsWith(PUBLIC_ROUTES.BOOKS)
-
     useEffect(() => {
         supabase.auth.getSession().then(({ data }) => {
             setIsAuthenticated(!!data.session)
@@ -92,14 +90,12 @@ export default function ReaderNavigation() {
                             Collections
                         </Link>
 
-                        {isBookSection && (
-                            <Link
-                                to={PUBLIC_ROUTES.BOOKS}
-                                className="accent-button"
-                            >
-                                Books
-                            </Link>
-                        )}
+                        <Link
+                            to={PUBLIC_ROUTES.BOOKS}
+                            className="accent-button"
+                        >
+                            Books
+                        </Link>
                     </nav>
 
             </div>

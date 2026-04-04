@@ -129,7 +129,10 @@ export default function EditorPanel({
         {
             label: "1.",
             onClick: () => transformSelectedLines(
-                (selectedBlock) => selectedBlock.split("\n").map((line, index) => `${index + 1}. ${line}`).join("\n"),
+                (selectedBlock) => selectedBlock
+                    .split("\n")
+                    .map((line, index) => line.match(/^\d+\.\s+/) ? line : `${index + 1}. ${line}`)
+                    .join("\n"),
                 "List item"
             )
         },

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { getCollectionPreviewImageUrl } from "@/services/storageService"
 
 export default function OptimizedCollectionImage({
@@ -13,24 +13,25 @@ export default function OptimizedCollectionImage({
         () => usePreviewVariant ? getCollectionPreviewImageUrl(src) : src,
         [src, usePreviewVariant]
     )
-    const [currentSrc, setCurrentSrc] = useState(previewSrc || src)
-
-    useEffect(() => {
-        setCurrentSrc(previewSrc || src)
-    }, [previewSrc, src])
+    const [failedPreviewSrc, setFailedPreviewSrc] = useState(null)
 
     if (!src) return null
 
+    const hasPreviewFallback = failedPreviewSrc === src
+    const resolvedSrc = hasPreviewFallback
+        ? src
+        : (previewSrc || src)
+
     return (
         <img
-            src={currentSrc}
+            src={resolvedSrc}
             alt={alt}
             loading={priority ? "eager" : "lazy"}
             decoding="async"
             fetchPriority={priority ? "high" : "auto"}
             onError={() => {
-                if (currentSrc !== src) {
-                    setCurrentSrc(src)
+                if (resolvedSrc !== src) {
+                    setFailedPreviewSrc(src)
                 }
             }}
             className={className}
