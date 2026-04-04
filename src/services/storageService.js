@@ -191,6 +191,9 @@ export function getCollectionPreviewImageUrl(publicUrl) {
     if (!publicUrl) return null
 
     const [baseUrl, queryString] = publicUrl.split("?")
+    if (!baseUrl.match(/\.(jpe?g|png|webp)$/i)) {
+        return null
+    }
     const previewBaseUrl = baseUrl.replace(/(\.[^.]+)$/i, "-preview.webp")
 
     return queryString ? `${previewBaseUrl}?${queryString}` : previewBaseUrl

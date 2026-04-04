@@ -29,11 +29,7 @@ export default function OptimizedCollectionImage({
             loading={priority ? "eager" : "lazy"}
             decoding="async"
             fetchPriority={priority ? "high" : "auto"}
-            onError={() => {
-                if (resolvedSrc !== src) {
-                    setFailedPreviewSrc(src)
-                }
-            }}
+            onError={resolvedSrc !== src ? () => setFailedPreviewSrc(src) : undefined}
             className={className}
             {...props}
         />

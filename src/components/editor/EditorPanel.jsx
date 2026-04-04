@@ -131,7 +131,10 @@ export default function EditorPanel({
             onClick: () => transformSelectedLines(
                 (selectedBlock) => selectedBlock
                     .split("\n")
-                    .map((line, index) => line.match(/^\s*\d+\.\s+/) ? line : `${index + 1}. ${line}`)
+                    .map((line, index) => {
+                        if (!line.trim()) return line
+                        return line.match(/^\s*\d+\.\s+/) ? line : `${index + 1}. ${line}`
+                    })
                     .join("\n"),
                 "List item"
             )

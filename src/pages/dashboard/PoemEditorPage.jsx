@@ -23,6 +23,7 @@ export default function PoemEditorPage() {
 
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [validationError, setValidationError] = useState("")
 
     const [collections, setCollections] = useState([])
 
@@ -69,10 +70,19 @@ export default function PoemEditorPage() {
     }, [id, isEditMode, navigate])
 
     async function handleSave() {
-        if (!form.title.trim() || !form.collection_id) return
+        if (!form.title.trim()) {
+            setValidationError("A poem title is required.")
+            return
+        }
+
+        if (!form.collection_id) {
+            setValidationError("Select a collection before saving.")
+            return
+        }
 
         try {
             setSaving(true)
+            setValidationError("")
 
             if (isEditMode) {
                 await updatePoem(id, {
@@ -147,19 +157,27 @@ export default function PoemEditorPage() {
                     </p>
                 )}
 
+                {validationError && (
+                    <p className="text-sm text-red-500">
+                        {validationError}
+                    </p>
+                )}
+
                 <Input
                     placeholder="Poem title"
                     value={form.title}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                        setValidationError("")
                         setForm({ ...form, title: e.target.value })
-                    }
+                    }}
                 />
 
                 <Select
                     value={form.collection_id}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                        setValidationError("")
                         setForm({ ...form, collection_id: e.target.value })
-                    }
+                    }}
                 >
                     {collections.map((collection) => (
                         <option
