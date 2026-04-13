@@ -58,7 +58,7 @@ export default function CollectionsPage() {
     }
 
     return (
-        <div className="space-y-16">
+        <div className="space-y-16 pb-safe">
 
             {/* Header */}
             <header className="space-y-4 text-center pt-8">

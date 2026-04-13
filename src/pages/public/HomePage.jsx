@@ -87,7 +87,12 @@ export default function HomePage() {
                     </Link>
                 </div>
 
-                <Logo size="xl" stacked variant="subtle" />
+                <div className="md:hidden">
+                    <Logo size="md" stacked variant="subtle" />
+                </div>
+                <div className="hidden md:block">
+                    <Logo size="xl" stacked variant="subtle" />
+                </div>
 
                 <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed opacity-70">
                     A sanctuary for poetry, imagined worlds, and quiet reading.
@@ -188,7 +193,7 @@ export default function HomePage() {
             </div>
 
             {/* ---------------- FIXED DESKTOP FOOTER NOTE ---------------- */}
-            <section className="py-6 text-center md:block">
+            <section className="py-6 text-center hidden md:block">
                 <p className="text-sm opacity-50">
                     Every collection is a world.
                 </p>
