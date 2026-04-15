@@ -199,6 +199,7 @@ export default function DashboardHome() {
                                 <Link
                                     key={poem.id}
                                     to={DASHBOARD_ROUTES.POEM_EDIT(poem.id)}
+                                    className={"block"}
                                 >
                                     <Card className="p-4 flex items-center justify-between hover:ring-1 hover:ring-neutral-300 dark:hover:ring-neutral-700 transition-all">
                                         <div className="min-w-0">

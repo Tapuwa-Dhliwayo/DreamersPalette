@@ -6,7 +6,9 @@ export default function DashboardLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false)
 
     return (
-        <div className="h-frame flex overflow-hidden bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors">
+        <div className="h-frame flex overflow-hidden bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors bg-cover bg-center bg-no-repeat"
+             style={{ backgroundImage: "url('/assets/global_atmosphere.png')" }}
+        >
 
             {/* Sidebar */}
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />

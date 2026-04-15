@@ -20,7 +20,7 @@ export default function ReaderLayout() {
 
     return (
         <div
-            className="relative h-frame overflow-hidden"
+            className="relative h-dvh w-screen flex flex-col overflow-hidden"
             style={{
                 "--accent-color": accentColor || "#cbd5e1",
                 "--reader-muted": isLight ? "#a3a3a3" : "#737373"
