@@ -66,6 +66,20 @@ export async function getMyBooks() {
 }
 
 /**
+ * Get single book owned by current author
+ */
+export async function getMyBookById(bookId) {
+    const { data, error } = await supabase
+        .from("books")
+        .select("id, title, slug, synopsis, cover_image_url, is_published, created_at, updated_at")
+        .eq("id", bookId)
+        .single()
+
+    if (error) throw error
+    return data
+}
+
+/**
  * Create new book with unique slug
  */
 export async function createBook(payload) {

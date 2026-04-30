@@ -4,19 +4,20 @@ import { getPublishedCollections } from "@/services/contentService"
 import { getPublishedBooks } from "@/services/bookService"
 import { PUBLIC_ROUTES } from "@/app/routes"
 import Logo from "@/components/ui/Logo.jsx";
+import OptimizedCollectionImage from "@/components/ui/OptimizedCollectionImage"
 
-function FeaturedCard({ to, title, description, imageUrl }) {
+function FeaturedCard({ to, title, description, imageUrl, usePreviewVariant = false }) {
     return (
         <Link
             to={to}
-            className="block overflow-hidden rounded-2xl bg-white/85 shadow-sm backdrop-blur-sm transition hover:shadow-md dark:bg-neutral-900/80 text-neutral-900! dark:text-neutral-100!"
+            className="block overflow-hidden rounded-2xl bg-white/85 shadow-sm backdrop-blur-sm transition hover:shadow-md text-neutral-900!"
         >
             {imageUrl && (
-                <div
-                    className="h-40 bg-cover bg-center"
-                    style={{
-                        backgroundImage: `url(${imageUrl})`
-                    }}
+                <OptimizedCollectionImage
+                    src={imageUrl}
+                    alt={title}
+                    usePreviewVariant={usePreviewVariant}
+                    className="h-40 w-full object-cover"
                 />
             )}
 
@@ -77,7 +78,7 @@ export default function HomePage() {
         <div className="grid h-full min-h-0 grid-rows-[auto_1fr_auto]">
 
             {/* ---------------- FIXED TOP AREA ---------------- */}
-            <section className="relative py-12 text-center md:py-20">
+            <section className="relative py-8 text-center md:py-20">
                 <div className="absolute top-2 right-0 md:top-0 md:right-0">
                     <Link
                         to={PUBLIC_ROUTES.LOGIN}
@@ -94,7 +95,7 @@ export default function HomePage() {
                     <Logo size="xl" stacked variant="subtle" />
                 </div>
 
-                <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed opacity-70">
+                <p className="mx-auto mb-8 md:mb-10 max-w-2xl text-base md:text-lg leading-relaxed opacity-70">
                     A sanctuary for poetry, imagined worlds, and quiet reading.
                 </p>
 
@@ -137,6 +138,7 @@ export default function HomePage() {
                                         title={collection.title}
                                         description={collection.description}
                                         imageUrl={collection.theme_background_url}
+                                        usePreviewVariant
                                     />
                                 ))}
                             </div>

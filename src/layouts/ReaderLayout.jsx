@@ -58,7 +58,7 @@ export default function ReaderLayout() {
                 {!isHomePage && (
                 <div className={`relative z-10 shrink-0 ${textTone} ${textShadowClass}`}>
                     <div className={`sticky top-0 z-20 reader-sticky-header`}>
-                        <div className="max-w-3xl mx-auto px-4 md:px-6 pt-4 pb-2 md:pt-6 md:pb-3">
+                        <div className="max-w-3xl mx-auto px-3 sm:px-4 md:px-6 pt-3 pb-1.5 md:pt-6 md:pb-3">
                             <ReaderNavigation />
                         </div>
                     </div>
@@ -67,7 +67,7 @@ export default function ReaderLayout() {
 
                 {/* Scrollable Outlet */}
                 <div className={`relative z-10 flex-1 min-h-0 ${isHomePage ? "pt-4" : "overflow-y-auto"} ${textTone} ${textShadowClass}`}>
-                    <main className="max-w-3xl mx-auto px-4 md:px-6 h-full pb-safe transition-opacity duration-300">
+                    <main className="max-w-3xl mx-auto px-3 sm:px-4 md:px-6 h-full pb-safe transition-opacity duration-300">
                         <Outlet />
                     </main>
                 </div>

@@ -9,7 +9,7 @@ import { uploadBackgroundImage, validateImageFile, compressImageIfNeeded } from 
 import { supabase } from "@/services/supabaseClient"
 
 import {
-    getMyBooks,
+    getMyBookById,
     createBook,
     updateBook
 } from "@/services/bookService"
@@ -41,8 +41,7 @@ export default function BookEditorPage() {
         async function initialize() {
             try {
                 if (isEditMode) {
-                    const books = await getMyBooks()
-                    const existingBook = books.find((book) => book.id === id)
+                    const existingBook = await getMyBookById(id)
 
                     if (!existingBook) {
                         navigate(DASHBOARD_ROUTES.BOOKS)
@@ -58,6 +57,7 @@ export default function BookEditorPage() {
                 }
             } catch (err) {
                 console.error("Failed to initialize editor:", err)
+                navigate(DASHBOARD_ROUTES.BOOKS)
             } finally {
                 setLoading(false)
             }
@@ -205,7 +205,7 @@ export default function BookEditorPage() {
                 />
 
                 <div className="space-y-4">
-                    <label className="block text-sm text-neutral-600 dark:text-neutral-400">
+                    <label className="block text-sm text-neutral-600">
                         Cover Image
                     </label>
 
@@ -230,7 +230,7 @@ export default function BookEditorPage() {
                     )}
 
                     {uploadInfo && !uploadError && (
-                        <p className="text-xs text-green-600 dark:text-green-400">
+                        <p className="text-xs text-green-600">
                             {uploadInfo}
                         </p>
                     )}
@@ -277,7 +277,7 @@ export default function BookEditorPage() {
                         <img
                             src={form.cover_image_url}
                             alt="Cover preview"
-                            className="w-full h-56 object-cover rounded-lg border border-neutral-200 dark:border-neutral-800"
+                            className="w-full h-56 object-cover rounded-lg border border-neutral-200"
                         />
                     </div>
                 )}

@@ -49,10 +49,10 @@ export default function PoemPage() {
     }
 
     return (
-        <article className="reader-fade-in space-y-8 md:space-y-12">
+        <article className="reader-fade-in space-y-6 md:space-y-12 pt-2 md:pt-0">
 
-            <header className="space-y-4">
-                <h1 className="text-4xl tracking-tight accent-underline">
+            <header className="space-y-3 md:space-y-4">
+                <h1 className="text-3xl md:text-4xl tracking-tight accent-underline">
                     {poem.title}
                 </h1>
             </header>
@@ -62,21 +62,21 @@ export default function PoemPage() {
                 <ReactMarkdown
                     skipHtml
                     components={{
-                        p: ({ node, ...props }) => (
+                        p: ({ ...props }) => (
                             <p
-                                className="whitespace-pre-wrap leading-relaxed text-lg mb-6"
+                                className="whitespace-pre-wrap leading-relaxed text-base md:text-lg mb-5 md:mb-6"
                                 {...props}
                             />
                         ),
-                        blockquote: ({ node, ...props }) => (
+                        blockquote: ({ ...props }) => (
                             <blockquote
                                 className="border-l-2 border-current/30 pl-4 italic my-6 whitespace-pre-wrap opacity-85"
                                 {...props}
                             />
                         ),
-                        h2: ({ node, ...props }) => (
+                        h2: ({ ...props }) => (
                             <h2
-                                className="text-2xl font-medium mt-8 mb-4"
+                                className="text-xl md:text-2xl font-medium mt-8 mb-4"
                                 {...props}
                             />
                         )
