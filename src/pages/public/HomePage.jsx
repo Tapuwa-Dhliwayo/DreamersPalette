@@ -10,7 +10,7 @@ function FeaturedCard({ to, title, description, imageUrl, usePreviewVariant = fa
     return (
         <Link
             to={to}
-            className="block overflow-hidden rounded-2xl bg-white/85 shadow-sm backdrop-blur-sm transition hover:shadow-md dark:bg-neutral-900/80 text-neutral-900! dark:text-neutral-100!"
+            className="block overflow-hidden rounded-2xl bg-white/85 shadow-sm backdrop-blur-sm transition hover:shadow-md text-neutral-900!"
         >
             {imageUrl && (
                 <OptimizedCollectionImage

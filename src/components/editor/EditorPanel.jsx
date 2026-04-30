@@ -179,11 +179,11 @@ export default function EditorPanel({
 
                     <textarea
                         ref={textareaRef}
-                        value={value}
+                        value={value ?? ""}
                         onChange={(e) => onChange(e.target.value)}
                         placeholder={placeholder}
                         className="
-                            w-full h-full resize-none
+                            w-full min-h-[260px] md:min-h-[420px] resize-none
                             bg-transparent
                             outline-none
                             text-sm md:text-base leading-relaxed

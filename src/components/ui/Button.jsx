@@ -12,11 +12,11 @@ export default function Button({
 
     const variants = {
         primary:
-            "bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200",
+            "bg-neutral-900 text-white hover:bg-neutral-800",
         subtle:
-            "bg-neutral-100 text-neutral-900 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700",
+            "bg-neutral-100 text-neutral-900 hover:bg-neutral-200",
         ghost:
-            "bg-transparent text-neutral-900 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-neutral-800",
+            "bg-transparent text-neutral-900 hover:bg-neutral-100",
         danger:
             "bg-red-600 text-white hover:bg-red-500",
     };

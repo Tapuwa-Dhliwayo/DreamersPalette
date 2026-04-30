@@ -120,7 +120,7 @@ a {
 
 /* Selection */
 ::selection {
-  @apply bg-neutral-900 text-white dark:bg-white dark:text-neutral-900;
+  @apply bg-neutral-900 text-white;
 }
 
 /* Subtle scrollbar (modern minimal aesthetic) */

@@ -46,8 +46,7 @@ export default function Collections() {
         description: "",
         theme_background_url: "",
         theme_overlay_opacity: 0.6,
-        accent_color: "#d4d4d8",
-        theme_text_mode: "light"
+        accent_color: "#d4d4d8"
     })
 
     useEffect(() => {
@@ -76,8 +75,7 @@ export default function Collections() {
             description: "",
             theme_background_url: "",
             theme_overlay_opacity: 0.6,
-            accent_color: "#d4d4d8",
-            theme_text_mode: "light"
+            accent_color: "#d4d4d8"
         })
         setBackgroundPrompt("")
         setGenerationError("")
@@ -93,8 +91,7 @@ export default function Collections() {
             description: collection.description || "",
             theme_background_url: collection.theme_background_url || "",
             theme_overlay_opacity: collection.theme_overlay_opacity ?? 0.6,
-            accent_color: collection.accent_color || "#d4d4d8",
-            theme_text_mode: collection.theme_text_mode
+            accent_color: collection.accent_color || "#d4d4d8"
         })
         setBackgroundPrompt("")
         setGenerationError("")
@@ -115,8 +112,7 @@ export default function Collections() {
                     description: form.description,
                     theme_background_url: form.theme_background_url || null,
                     theme_overlay_opacity: form.theme_overlay_opacity ?? null,
-                    accent_color: form.accent_color || null,
-                    theme_text_mode: form.theme_text_mode
+                    accent_color: form.accent_color || null
                 })
             } else {
                 await createCollection({
@@ -125,8 +121,7 @@ export default function Collections() {
                     is_published: false,
                     theme_background_url: form.theme_background_url || null,
                     theme_overlay_opacity: form.theme_overlay_opacity ?? null,
-                    accent_color: form.accent_color || null,
-                    theme_text_mode: form.theme_text_mode
+                    accent_color: form.accent_color || null
                 })
             }
 
@@ -291,7 +286,7 @@ export default function Collections() {
                                 <Link
                                     to={`/preview/collections/${collection.slug}`}
                                     target="_blank"
-                                    className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 transition no-underline!"
+                                    className="text-xs text-neutral-500 hover:text-neutral-900 transition no-underline!"
                                 >
                                     View
                                 </Link>
@@ -360,7 +355,7 @@ export default function Collections() {
                         />
                     </div>
 
-                    <div className="space-y-6 pt-8 border-t border-neutral-200 dark:border-neutral-800">
+                    <div className="space-y-6 pt-8 border-t border-neutral-200">
 
                         <h3 className="text-lg font-medium">
                             Theme Settings
@@ -368,7 +363,7 @@ export default function Collections() {
 
                         {/* Background Upload */}
                         <div className="space-y-4">
-                            <label className="block text-sm text-neutral-600 dark:text-neutral-400">
+                            <label className="block text-sm text-neutral-600">
                                 Background Image
                             </label>
 
@@ -393,7 +388,7 @@ export default function Collections() {
                             )}
 
                             {uploadInfo && !uploadError && (
-                                <p className="text-xs text-green-600 dark:text-green-400">
+                                <p className="text-xs text-green-600">
                                     {uploadInfo}
                                 </p>
                             )}
@@ -403,7 +398,7 @@ export default function Collections() {
                                     <img
                                         src={form.theme_background_url}
                                         alt="Background preview"
-                                        className="w-full h-40 object-cover rounded-lg border border-neutral-200 dark:border-neutral-800"
+                                        className="w-full h-40 object-cover rounded-lg border border-neutral-200"
                                     />
                                     <p className="text-xs text-neutral-500 break-all">
                                         {form.theme_background_url}
@@ -442,7 +437,7 @@ export default function Collections() {
 
                         {/* Overlay Opacity */}
                         <div className="space-y-2">
-                            <label className="text-sm text-neutral-600 dark:text-neutral-400">
+                            <label className="text-sm text-neutral-600">
                                 Overlay Opacity
                             </label>
 
@@ -468,7 +463,7 @@ export default function Collections() {
 
                         {/* Accent Color */}
                         <div className="space-y-3">
-                            <label className="block text-sm text-neutral-600 dark:text-neutral-400">
+                            <label className="block text-sm text-neutral-600">
                                 Accent Color
                             </label>
 
@@ -482,49 +477,12 @@ export default function Collections() {
                                             accent_color: e.target.value
                                         })
                                     }
-                                    className="h-10 w-10 rounded-md border border-neutral-300 dark:border-neutral-700 bg-transparent cursor-pointer"
+                                    className="h-10 w-10 rounded-md border border-neutral-300 bg-transparent cursor-pointer"
                                 />
 
                                 <span className="text-xs text-neutral-500">
       {form.accent_color || "#d4d4d8"}
     </span>
-                            </div>
-                        </div>
-
-                        {/*Text Mode*/}
-                        <div className="space-y-3">
-                            <label className="block text-sm text-neutral-600 dark:text-neutral-400">
-                                Text Mode
-                            </label>
-
-                            <div className="flex gap-4">
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setForm(prev => ({ ...prev, theme_text_mode: "light" }))
-                                    }
-                                    className={`px-4 py-2 rounded-lg border text-sm ${
-                                        form.theme_text_mode === "light"
-                                            ? "border-neutral-900 bg-neutral-900 text-white"
-                                            : "border-neutral-300"
-                                    }`}
-                                >
-                                    Light Text
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setForm(prev => ({ ...prev, theme_text_mode: "dark" }))
-                                    }
-                                    className={`px-4 py-2 rounded-lg border text-sm ${
-                                        form.theme_text_mode === "dark"
-                                            ? "border-neutral-900 bg-neutral-900 text-white"
-                                            : "border-neutral-300"
-                                    }`}
-                                >
-                                    Dark Text
-                                </button>
                             </div>
                         </div>
 

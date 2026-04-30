@@ -127,7 +127,7 @@ export default function DashboardHome() {
                 <h2 className="text-2xl font-semibold tracking-tight">
                     {getGreeting()}, {profile?.display_name || "Author"}
                 </h2>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+                <p className="text-sm text-neutral-500 mt-1">
                     Here's an overview of your creative world.
                 </p>
             </div>
@@ -136,14 +136,14 @@ export default function DashboardHome() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {statCards.map((stat) => (
                     <Link key={stat.label} to={stat.to}>
-                        <Card className="p-5 hover:ring-1 hover:ring-neutral-300 dark:hover:ring-neutral-700 transition-all">
-                            <p className="text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                        <Card className="p-5 hover:ring-1 hover:ring-neutral-300 transition-all">
+                            <p className="text-xs uppercase tracking-wider text-neutral-500">
                                 {stat.label}
                             </p>
                             <p className="text-3xl font-semibold mt-2">
                                 {stat.total}
                             </p>
-                            <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+                            <p className="text-xs text-neutral-400 mt-1">
                                 {stat.published} published
                             </p>
                         </Card>
@@ -183,7 +183,7 @@ export default function DashboardHome() {
                         </h3>
                         <Link
                             to={DASHBOARD_ROUTES.POEMS}
-                            className="text-xs text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors"
+                            className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
                         >
                             View all →
                         </Link>
@@ -200,12 +200,12 @@ export default function DashboardHome() {
                                     key={poem.id}
                                     to={DASHBOARD_ROUTES.POEM_EDIT(poem.id)}
                                 >
-                                    <Card className="p-4 flex items-center justify-between hover:ring-1 hover:ring-neutral-300 dark:hover:ring-neutral-700 transition-all">
+                                    <Card className="p-4 flex items-center justify-between hover:ring-1 hover:ring-neutral-300 transition-all">
                                         <div className="min-w-0">
                                             <p className="text-sm font-medium truncate">
                                                 {poem.title}
                                             </p>
-                                            <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
+                                            <p className="text-xs text-neutral-400 mt-0.5">
                                                 {formatDate(poem.created_at)}
                                             </p>
                                         </div>
@@ -227,7 +227,7 @@ export default function DashboardHome() {
                         </h3>
                         <Link
                             to={DASHBOARD_ROUTES.BOOKS}
-                            className="text-xs text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors"
+                            className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
                         >
                             View all →
                         </Link>
@@ -244,7 +244,7 @@ export default function DashboardHome() {
                                     key={book.id}
                                     to={DASHBOARD_ROUTES.BOOK_EDIT(book.id)}
                                 >
-                                    <Card className="p-4 flex items-center justify-between hover:ring-1 hover:ring-neutral-300 dark:hover:ring-neutral-700 transition-all">
+                                    <Card className="p-4 flex items-center justify-between hover:ring-1 hover:ring-neutral-300 transition-all">
                                         <div className="min-w-0 flex items-center gap-3">
                                             {book.cover_image_url ? (
                                                 <img
@@ -253,13 +253,13 @@ export default function DashboardHome() {
                                                     className="h-10 w-8 rounded object-cover shrink-0"
                                                 />
                                             ) : (
-                                                <div className="h-10 w-8 rounded bg-neutral-200 dark:bg-neutral-800 shrink-0" />
+                                                <div className="h-10 w-8 rounded bg-neutral-200 shrink-0" />
                                             )}
                                             <div className="min-w-0">
                                                 <p className="text-sm font-medium truncate">
                                                     {book.title}
                                                 </p>
-                                                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
+                                                <p className="text-xs text-neutral-400 mt-0.5">
                                                     {formatDate(book.created_at)}
                                                 </p>
                                             </div>

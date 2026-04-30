@@ -51,7 +51,7 @@ export default function BooksPage() {
                 <section className="flex justify-center">
                     <div className="
                         rounded-3xl
-                        bg-neutral-400/85 dark:bg-neutral-900/80
+                        bg-neutral-400/85
                         backdrop-blur-md
                         shadow-xl
                         px-8 md:px-12 py-12 md:py-16
@@ -82,7 +82,7 @@ export default function BooksPage() {
                         <Link
                             key={book.id}
                             to={PUBLIC_ROUTES.BOOK_DETAIL(book.slug)}
-                            className="group block rounded-3xl overflow-hidden bg-neutral-400/85 dark:bg-neutral-900/80 backdrop-blur-md shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]"
+                            className="group block rounded-3xl overflow-hidden bg-neutral-400/85 backdrop-blur-md shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]"
                             style={{
                                 animationDelay: `${index * 80}ms`,
                                 animationFillMode: "backwards"
