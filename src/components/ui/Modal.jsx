@@ -21,7 +21,7 @@ export default function Modal({ open, onClose, children }) {
             />
 
             {/* Modal Content */}
-            <div className="relative bg-white dark:bg-neutral-900 rounded-none md:rounded-3xl shadow-xl w-full h-full md:h-auto md:max-h-[85vh] md:max-w-lg p-6 md:p-8 overflow-y-auto">
+            <div className="relative bg-white rounded-none md:rounded-3xl shadow-xl w-full h-full md:h-auto md:max-h-[85vh] md:max-w-lg p-6 md:p-8 overflow-y-auto">
                 {children}
             </div>
 

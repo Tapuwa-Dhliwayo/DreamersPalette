@@ -6,7 +6,7 @@ export default function DashboardLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false)
 
     return (
-        <div className="h-frame flex overflow-hidden bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors">
+        <div className="h-frame flex overflow-hidden bg-neutral-50 text-neutral-900 transition-colors">
 
             {/* Sidebar */}
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
