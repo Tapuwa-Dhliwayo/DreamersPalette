@@ -4,7 +4,7 @@ export function Card({ children, className }) {
     return (
         <div
             className={clsx(
-                "bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm py-2 px-8",
+                "bg-white border border-neutral-200 rounded-2xl shadow-sm py-2 px-8",
                 className
             )}
         >
@@ -26,5 +26,5 @@ export function CardTitle({ children }) {
 }
 
 export function CardContent({ children }) {
-    return <div className="text-sm text-neutral-600 dark:text-neutral-400">{children}</div>;
+    return <div className="text-sm text-neutral-600">{children}</div>;
 }
