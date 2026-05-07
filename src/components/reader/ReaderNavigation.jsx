@@ -38,7 +38,7 @@ export default function ReaderNavigation() {
             <div className="text-sm space-y-3">
 
                 {/* Row 1: Logo (left) + Auth button (right) — always */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-y-1">
                     <Link
                         to={PUBLIC_ROUTES.HOME}
                         className="hover:opacity-80 transition-opacity"
