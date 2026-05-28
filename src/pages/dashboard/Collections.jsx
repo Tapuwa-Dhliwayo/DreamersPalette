@@ -12,6 +12,7 @@ import Badge from "@/components/ui/Badge"
 import Input from "@/components/ui/Input"
 import Textarea from "@/components/ui/Textarea"
 import Modal from "@/components/ui/Modal"
+import CollectionThemePreview from "@/components/dashboard/CollectionThemePreview"
 import {
     generateCollectionBackground,
     getAiProviderLabel
@@ -46,7 +47,8 @@ export default function Collections() {
         description: "",
         theme_background_url: "",
         theme_overlay_opacity: 0.6,
-        accent_color: "#d4d4d8"
+        accent_color: "#d4d4d8",
+        theme_text_mode: "light"
     })
 
     useEffect(() => {
@@ -75,7 +77,8 @@ export default function Collections() {
             description: "",
             theme_background_url: "",
             theme_overlay_opacity: 0.6,
-            accent_color: "#d4d4d8"
+            accent_color: "#d4d4d8",
+            theme_text_mode: "light"
         })
         setBackgroundPrompt("")
         setGenerationError("")
@@ -91,7 +94,8 @@ export default function Collections() {
             description: collection.description || "",
             theme_background_url: collection.theme_background_url || "",
             theme_overlay_opacity: collection.theme_overlay_opacity ?? 0.6,
-            accent_color: collection.accent_color || "#d4d4d8"
+            accent_color: collection.accent_color || "#d4d4d8",
+            theme_text_mode: collection.theme_text_mode || "light"
         })
         setBackgroundPrompt("")
         setGenerationError("")
@@ -112,7 +116,8 @@ export default function Collections() {
                     description: form.description,
                     theme_background_url: form.theme_background_url || null,
                     theme_overlay_opacity: form.theme_overlay_opacity ?? null,
-                    accent_color: form.accent_color || null
+                    accent_color: form.accent_color || null,
+                    theme_text_mode: form.theme_text_mode || "light"
                 })
             } else {
                 await createCollection({
@@ -121,7 +126,8 @@ export default function Collections() {
                     is_published: false,
                     theme_background_url: form.theme_background_url || null,
                     theme_overlay_opacity: form.theme_overlay_opacity ?? null,
-                    accent_color: form.accent_color || null
+                    accent_color: form.accent_color || null,
+                    theme_text_mode: form.theme_text_mode || "light"
                 })
             }
 
@@ -331,164 +337,198 @@ export default function Collections() {
             <Modal
                 open={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
+                className="md:max-w-6xl"
             >
                 <div className="space-y-6">
-                    <h3 className="text-lg font-medium">
-                        {editingCollection ? "Edit Collection" : "New Collection"}
-                    </h3>
-
-                    <div className="space-y-4">
-                        <Input
-                            placeholder="Collection title"
-                            value={form.title}
-                            onChange={(e) =>
-                                setForm({ ...form, title: e.target.value })
-                            }
-                        />
-
-                        <Textarea
-                            placeholder="Short description"
-                            value={form.description}
-                            onChange={(e) =>
-                                setForm({ ...form, description: e.target.value })
-                            }
-                        />
-                    </div>
-
-                    <div className="space-y-6 pt-8 border-t border-neutral-200">
-
+                    <div>
                         <h3 className="text-lg font-medium">
-                            Theme Settings
+                            {editingCollection ? "Edit Collection" : "New Collection"}
                         </h3>
-
-                        {/* Background Upload */}
-                        <div className="space-y-4">
-                            <label className="block text-sm text-neutral-600">
-                                Background Image
-                            </label>
-
-                            <input
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp,image/gif"
-                                onChange={handleBackgroundUpload}
-                                className="text-sm"
-                            />
-
-                            {uploading && (
-                                <div className="flex items-center gap-2 text-xs text-neutral-500">
-                                    <div className="h-3 w-3 rounded-full border-2 border-neutral-400 border-t-transparent animate-spin" />
-                                    Uploading...
-                                </div>
-                            )}
-
-                            {uploadError && (
-                                <p className="text-xs text-red-500">
-                                    {uploadError}
-                                </p>
-                            )}
-
-                            {uploadInfo && !uploadError && (
-                                <p className="text-xs text-green-600">
-                                    {uploadInfo}
-                                </p>
-                            )}
-
-                            {form.theme_background_url && !uploading && (
-                                <div className="space-y-2">
-                                    <img
-                                        src={form.theme_background_url}
-                                        alt="Background preview"
-                                        className="w-full h-40 object-cover rounded-lg border border-neutral-200"
-                                    />
-                                    <p className="text-xs text-neutral-500 break-all">
-                                        {form.theme_background_url}
-                                    </p>
-                                </div>
-                            )}
-
-                            <div className="space-y-2">
-                                <Input
-                                    placeholder="AI prompt for background (optional)"
-                                    value={backgroundPrompt}
-                                    onChange={(e) => setBackgroundPrompt(e.target.value)}
-                                    maxLength={500}
-                                />
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        type="button"
-                                        variant="subtle"
-                                        size="sm"
-                                        onClick={handleGenerateBackground}
-                                        disabled={generatingBackground || !backgroundPrompt.trim()}
-                                    >
-                                        {generatingBackground ? "Generating..." : "Generate with AI"}
-                                    </Button>
-                                    <span className="text-xs text-neutral-500">
-                                        Provider: {providerLabel}
-                                    </span>
-                                </div>
-                                {generationError && (
-                                    <p className="text-xs text-red-500">
-                                        {generationError}
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Overlay Opacity */}
-                        <div className="space-y-2">
-                            <label className="text-sm text-neutral-600">
-                                Overlay Opacity
-                            </label>
-
-                            <input
-                                type="range"
-                                min="0.4"
-                                max="0.75"
-                                step="0.05"
-                                value={form.theme_overlay_opacity || 0.6}
-                                onChange={(e) =>
-                                    setForm({
-                                        ...form,
-                                        theme_overlay_opacity: parseFloat(e.target.value)
-                                    })
-                                }
-                                className="w-full"
-                            />
-
-                            <p className="text-xs text-neutral-500">
-                                {form.theme_overlay_opacity || 0.6}
-                            </p>
-                        </div>
-
-                        {/* Accent Color */}
-                        <div className="space-y-3">
-                            <label className="block text-sm text-neutral-600">
-                                Accent Color
-                            </label>
-
-                            <div className="flex items-center gap-4">
-                                <input
-                                    type="color"
-                                    value={form.accent_color || "#d4d4d8"}
-                                    onChange={(e) =>
-                                        setForm({
-                                            ...form,
-                                            accent_color: e.target.value
-                                        })
-                                    }
-                                    className="h-10 w-10 rounded-md border border-neutral-300 bg-transparent cursor-pointer"
-                                />
-
-                                <span className="text-xs text-neutral-500">
-      {form.accent_color || "#d4d4d8"}
-    </span>
-                            </div>
-                        </div>
-
+                        <p className="mt-1 text-sm text-neutral-500">
+                            Tune the collection details and judge the reader theme before saving.
+                        </p>
                     </div>
 
-                    <div className="flex justify-end gap-3">
+                    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] lg:items-start">
+                        <div className="space-y-6">
+                            <div className="space-y-4">
+                                <Input
+                                    placeholder="Collection title"
+                                    value={form.title}
+                                    onChange={(e) =>
+                                        setForm({ ...form, title: e.target.value })
+                                    }
+                                />
+
+                                <Textarea
+                                    placeholder="Short description"
+                                    value={form.description}
+                                    onChange={(e) =>
+                                        setForm({ ...form, description: e.target.value })
+                                    }
+                                />
+                            </div>
+
+                            <div className="space-y-6 pt-8 border-t border-neutral-200">
+
+                                <h3 className="text-lg font-medium">
+                                    Theme Settings
+                                </h3>
+
+                                {/* Background Upload */}
+                                <div className="space-y-4">
+                                    <label className="block text-sm text-neutral-600">
+                                        Background Image
+                                    </label>
+
+                                    <input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp,image/gif"
+                                        onChange={handleBackgroundUpload}
+                                        className="text-sm"
+                                    />
+
+                                    {uploading && (
+                                        <div className="flex items-center gap-2 text-xs text-neutral-500">
+                                            <div className="h-3 w-3 rounded-full border-2 border-neutral-400 border-t-transparent animate-spin" />
+                                            Uploading...
+                                        </div>
+                                    )}
+
+                                    {uploadError && (
+                                        <p className="text-xs text-red-500">
+                                            {uploadError}
+                                        </p>
+                                    )}
+
+                                    {uploadInfo && !uploadError && (
+                                        <p className="text-xs text-green-600">
+                                            {uploadInfo}
+                                        </p>
+                                    )}
+
+                                    {form.theme_background_url && !uploading && (
+                                        <p className="text-xs text-neutral-500 break-all">
+                                            {form.theme_background_url}
+                                        </p>
+                                    )}
+
+                                    <div className="space-y-2">
+                                        <Input
+                                            placeholder="AI prompt for background (optional)"
+                                            value={backgroundPrompt}
+                                            onChange={(e) => setBackgroundPrompt(e.target.value)}
+                                            maxLength={500}
+                                        />
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Button
+                                                type="button"
+                                                variant="subtle"
+                                                size="sm"
+                                                onClick={handleGenerateBackground}
+                                                disabled={generatingBackground || !backgroundPrompt.trim()}
+                                            >
+                                                {generatingBackground ? "Generating..." : "Generate with AI"}
+                                            </Button>
+                                            <span className="text-xs text-neutral-500">
+                                                Provider: {providerLabel}
+                                            </span>
+                                        </div>
+                                        {generationError && (
+                                            <p className="text-xs text-red-500">
+                                                {generationError}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Overlay Opacity */}
+                                <div className="space-y-2">
+                                    <label className="text-sm text-neutral-600">
+                                        Overlay Opacity
+                                    </label>
+
+                                    <input
+                                        type="range"
+                                        min="0.4"
+                                        max="0.75"
+                                        step="0.05"
+                                        value={form.theme_overlay_opacity || 0.6}
+                                        onChange={(e) =>
+                                            setForm({
+                                                ...form,
+                                                theme_overlay_opacity: parseFloat(e.target.value)
+                                            })
+                                        }
+                                        className="w-full"
+                                    />
+
+                                    <p className="text-xs text-neutral-500">
+                                        {form.theme_overlay_opacity || 0.6}
+                                    </p>
+                                </div>
+
+                                {/* Text Mode */}
+                                <div className="space-y-3">
+                                    <label className="block text-sm text-neutral-600">
+                                        Text Contrast
+                                    </label>
+
+                                    <div className="grid grid-cols-2 gap-2 rounded-xl bg-neutral-100 p-1">
+                                        {[
+                                            { value: "light", label: "Light text" },
+                                            { value: "dark", label: "Dark text" }
+                                        ].map((option) => (
+                                            <button
+                                                key={option.value}
+                                                type="button"
+                                                onClick={() => setForm({ ...form, theme_text_mode: option.value })}
+                                                className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                                                    form.theme_text_mode === option.value
+                                                        ? "bg-white text-neutral-950 shadow-sm"
+                                                        : "text-neutral-500 hover:text-neutral-900"
+                                                }`}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Accent Color */}
+                                <div className="space-y-3">
+                                    <label className="block text-sm text-neutral-600">
+                                        Accent Color
+                                    </label>
+
+                                    <div className="flex items-center gap-4">
+                                        <input
+                                            type="color"
+                                            value={form.accent_color || "#d4d4d8"}
+                                            onChange={(e) =>
+                                                setForm({
+                                                    ...form,
+                                                    accent_color: e.target.value
+                                                })
+                                            }
+                                            className="h-10 w-10 rounded-md border border-neutral-300 bg-transparent cursor-pointer"
+                                        />
+
+                                        <span className="text-xs text-neutral-500">
+                                            {form.accent_color || "#d4d4d8"}
+                                        </span>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div className="lg:sticky lg:top-0">
+                            <CollectionThemePreview collection={form} />
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 border-t border-neutral-200 pt-6">
                         <Button
                             variant="ghost"
                             onClick={() => setIsModalOpen(false)}

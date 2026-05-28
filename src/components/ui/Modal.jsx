@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
+import clsx from "clsx";
 
-export default function Modal({ open, onClose, children }) {
+export default function Modal({ open, onClose, children, className }) {
     useEffect(() => {
         document.body.style.overflow = open ? "hidden" : "auto";
         return () => {
@@ -21,7 +22,12 @@ export default function Modal({ open, onClose, children }) {
             />
 
             {/* Modal Content */}
-            <div className="relative bg-white rounded-none md:rounded-3xl shadow-xl w-full h-full md:h-auto md:max-h-[85vh] md:max-w-lg p-6 md:p-8 overflow-y-auto">
+            <div
+                className={clsx(
+                    "relative bg-white rounded-none md:rounded-3xl shadow-xl w-full h-full md:h-auto md:max-h-[85vh] p-6 md:p-8 overflow-y-auto",
+                    className || "md:max-w-lg"
+                )}
+            >
                 {children}
             </div>
 
