@@ -1,10 +1,20 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { getPublishedCollections } from "@/services/contentService"
+import { getPublishedCollections, getRecentlyAddedPoems } from "@/services/contentService"
 import { getPublishedBooks } from "@/services/bookService"
 import { PUBLIC_ROUTES } from "@/app/routes"
 import Logo from "@/components/ui/Logo.jsx";
 import OptimizedCollectionImage from "@/components/ui/OptimizedCollectionImage"
+
+function formatDate(value) {
+    if (!value) return null
+
+    return new Intl.DateTimeFormat("en", {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+    }).format(new Date(value))
+}
 
 function FeaturedCard({ to, title, description, imageUrl, usePreviewVariant = false }) {
     return (
@@ -38,18 +48,22 @@ function FeaturedCard({ to, title, description, imageUrl, usePreviewVariant = fa
 export default function HomePage() {
     const [collections, setCollections] = useState([])
     const [books, setBooks] = useState([])
+    const [recentPoems, setRecentPoems] = useState([])
     const [collectionsLoading, setCollectionsLoading] = useState(true)
     const [booksLoading, setBooksLoading] = useState(true)
+    const [recentPoemsLoading, setRecentPoemsLoading] = useState(true)
 
     useEffect(() => {
         async function loadHomeContent() {
             setCollectionsLoading(true)
             setBooksLoading(true)
+            setRecentPoemsLoading(true)
 
             try {
-                const [collectionsResult, booksResult] = await Promise.allSettled([
+                const [collectionsResult, booksResult, recentPoemsResult] = await Promise.allSettled([
                     getPublishedCollections(),
                     getPublishedBooks(),
+                    getRecentlyAddedPoems(4),
                 ])
 
                 if (collectionsResult.status === "fulfilled") {
@@ -65,9 +79,17 @@ export default function HomePage() {
                     console.error("Failed to load books:", booksResult.reason)
                     setBooks([])
                 }
+
+                if (recentPoemsResult.status === "fulfilled") {
+                    setRecentPoems(recentPoemsResult.value || [])
+                } else {
+                    console.error("Failed to load recent poems:", recentPoemsResult.reason)
+                    setRecentPoems([])
+                }
             } finally {
                 setCollectionsLoading(false)
                 setBooksLoading(false)
+                setRecentPoemsLoading(false)
             }
         }
 
@@ -112,6 +134,110 @@ export default function HomePage() {
             {/* ---------------- SCROLLABLE BODY ---------------- */}
             <div className="min-h-0 overflow-y-auto">
                 <div className="space-y-12 md:space-y-16">
+
+                    {/* ---------------- RECENT POEMS ---------------- */}
+                    <section className="py-8 md:pt-2 md:pb-12">
+                        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                            <div>
+                                <h2 className="text-2xl font-serif">
+                                    Recently Added Poems
+                                </h2>
+                                <p className="mt-2 text-sm opacity-60">
+                                    New public pieces from the latest collection updates.
+                                </p>
+                            </div>
+
+                            <Link
+                                to={PUBLIC_ROUTES.COLLECTIONS}
+                                className="text-sm"
+                            >
+                                Browse all collections →
+                            </Link>
+                        </div>
+
+                        {recentPoemsLoading && (
+                            <p className="text-sm opacity-60">Loading recent poems...</p>
+                        )}
+
+                        {!recentPoemsLoading && recentPoems.length === 0 && (
+                            <p className="text-sm opacity-60">
+                                No published poems yet.
+                            </p>
+                        )}
+
+                        {!recentPoemsLoading && recentPoems.length > 0 && (
+                            <div className="grid gap-4">
+                                {recentPoems.map((poem) => {
+                                    const dateLabel = formatDate(poem.created_at)
+                                    const collection = Array.isArray(poem.poetry_collections)
+                                        ? poem.poetry_collections[0]
+                                        : poem.poetry_collections
+                                    const hasCollectionBackground = Boolean(collection?.theme_background_url)
+                                    const textMode = collection?.theme_text_mode || "light"
+                                    const overlayOpacity = collection?.theme_overlay_opacity ?? 0.65
+                                    const overlayColor = hasCollectionBackground
+                                        ? textMode === "light"
+                                            ? `rgba(0,0,0,${overlayOpacity})`
+                                            : `rgba(255,255,255,${overlayOpacity})`
+                                        : null
+                                    const textToneClass = hasCollectionBackground && textMode === "light"
+                                        ? "text-neutral-100! reader-text-shadow-light"
+                                        : "text-neutral-900!"
+
+                                    return (
+                                        <Link
+                                            key={poem.id}
+                                            to={PUBLIC_ROUTES.POEM(poem.slug)}
+                                            className={`group relative block overflow-hidden rounded-2xl p-4 shadow-sm backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md md:p-5 ${hasCollectionBackground ? textToneClass : "bg-white/85 text-neutral-900!"}`}
+                                        >
+                                            {hasCollectionBackground && (
+                                                <>
+                                                    <OptimizedCollectionImage
+                                                        src={collection.theme_background_url}
+                                                        alt={collection.title}
+                                                        className="absolute inset-0 h-full w-full object-cover"
+                                                    />
+                                                    <div
+                                                        className="absolute inset-0"
+                                                        style={{ backgroundColor: overlayColor }}
+                                                    />
+                                                </>
+                                            )}
+
+                                            <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                                <div className="min-w-0 space-y-2">
+                                                    <h3 className="font-serif text-xl leading-tight group-hover:opacity-75">
+                                                        {poem.title}
+                                                    </h3>
+
+                                                    {poem.excerpt && (
+                                                        <p className="line-clamp-2 text-sm opacity-70">
+                                                            {poem.excerpt}
+                                                        </p>
+                                                    )}
+
+                                                    {collection && (
+                                                        <p className="text-xs opacity-55">
+                                                            From {collection.title}
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                {dateLabel && (
+                                                    <time
+                                                        dateTime={poem.created_at}
+                                                        className="shrink-0 text-xs opacity-55"
+                                                    >
+                                                        {dateLabel}
+                                                    </time>
+                                                )}
+                                            </div>
+                                        </Link>
+                                    )
+                                })}
+                            </div>
+                        )}
+                    </section>
 
                     {/* ---------------- FEATURED COLLECTIONS ---------------- */}
                     <section className="py-8 md:pt-2 md:pb-16">

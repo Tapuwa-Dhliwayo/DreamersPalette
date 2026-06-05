@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import {
     uploadCollectionBackgroundImage,
@@ -12,6 +12,7 @@ import Badge from "@/components/ui/Badge"
 import Input from "@/components/ui/Input"
 import Textarea from "@/components/ui/Textarea"
 import Modal from "@/components/ui/Modal"
+import Pagination from "@/components/ui/Pagination"
 import CollectionThemePreview from "@/components/dashboard/CollectionThemePreview"
 import {
     generateCollectionBackground,
@@ -27,6 +28,8 @@ import {
     togglePublish
 } from "@/services/contentService"
 
+const DASHBOARD_PAGE_SIZE = 10
+
 export default function Collections() {
     const providerLabel = getAiProviderLabel()
     const [collections, setCollections] = useState([])
@@ -41,6 +44,7 @@ export default function Collections() {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingCollection, setEditingCollection] = useState(null)
     const [poemCounts, setPoemCounts] = useState({})
+    const [page, setPage] = useState(1)
 
     const [form, setForm] = useState({
         title: "",
@@ -54,6 +58,18 @@ export default function Collections() {
     useEffect(() => {
         fetchCollections()
     }, [])
+
+    const paginatedCollections = useMemo(() => {
+        const start = (page - 1) * DASHBOARD_PAGE_SIZE
+        return collections.slice(start, start + DASHBOARD_PAGE_SIZE)
+    }, [collections, page])
+
+    useEffect(() => {
+        const totalPages = Math.max(1, Math.ceil(collections.length / DASHBOARD_PAGE_SIZE))
+        if (page > totalPages) {
+            setPage(totalPages)
+        }
+    }, [collections.length, page])
 
     async function fetchCollections() {
         try {
@@ -132,6 +148,7 @@ export default function Collections() {
             }
 
             setIsModalOpen(false)
+            setPage(1)
             await fetchCollections()
 
         } catch (err) {
@@ -261,7 +278,7 @@ export default function Collections() {
 
             {/* Collection List */}
             <div className="grid gap-6">
-                {collections.map((collection) => (
+                {paginatedCollections.map((collection) => (
                     <Card key={collection.id} className="p-4 md:p-6 space-y-4">
 
                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -331,6 +348,13 @@ export default function Collections() {
                     </Card>
                 ))}
             </div>
+
+            <Pagination
+                page={page}
+                pageSize={DASHBOARD_PAGE_SIZE}
+                totalCount={collections.length}
+                onPageChange={setPage}
+            />
 
             {/* Modal */}
 

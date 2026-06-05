@@ -378,6 +378,35 @@ export async function getPublishedPoemBySlug(slug) {
 }
 
 /**
+ * Fetch the latest published poems for the public home page
+ */
+export async function getRecentlyAddedPoems(limit = 4) {
+    const { data, error } = await supabase
+        .from("poems")
+        .select(`
+            id,
+            title,
+            slug,
+            excerpt,
+            created_at,
+            poetry_collections!inner(
+                title,
+                slug,
+                theme_background_url,
+                theme_overlay_opacity,
+                theme_text_mode
+            )
+        `)
+        .eq("is_published", true)
+        .eq("poetry_collections.is_published", true)
+        .order("created_at", { ascending: false })
+        .limit(limit)
+
+    if (error) throw error
+    return data
+}
+
+/**
  * Fetch published poems by collection slug
  */
 export async function getPublishedPoemsByCollection(collectionSlug) {

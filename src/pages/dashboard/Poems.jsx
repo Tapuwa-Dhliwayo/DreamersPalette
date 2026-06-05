@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Card } from "@/components/ui/Card"
 import Button from "@/components/ui/Button"
 import Select from "@/components/ui/Select"
+import Pagination from "@/components/ui/Pagination"
 
 import {
     getMyPoems,
@@ -13,6 +14,8 @@ import {
     togglePoemPublish
 } from "@/services/contentService"
 
+const DASHBOARD_PAGE_SIZE = 10
+
 export default function Poems() {
     const navigate = useNavigate()
 
@@ -20,10 +23,23 @@ export default function Poems() {
     const [collections, setCollections] = useState([])
     const [selectedCollection, setSelectedCollection] = useState("all")
     const [loading, setLoading] = useState(true)
+    const [page, setPage] = useState(1)
 
     useEffect(() => {
         initialize()
     }, [])
+
+    const paginatedPoems = useMemo(() => {
+        const start = (page - 1) * DASHBOARD_PAGE_SIZE
+        return poems.slice(start, start + DASHBOARD_PAGE_SIZE)
+    }, [poems, page])
+
+    useEffect(() => {
+        const totalPages = Math.max(1, Math.ceil(poems.length / DASHBOARD_PAGE_SIZE))
+        if (page > totalPages) {
+            setPage(totalPages)
+        }
+    }, [poems.length, page])
 
     async function initialize() {
         try {
@@ -43,6 +59,7 @@ export default function Poems() {
 
     async function handleFilterChange(value) {
         setSelectedCollection(value)
+        setPage(1)
         setLoading(true)
 
         try {
@@ -133,7 +150,7 @@ export default function Poems() {
 
             {/* Poems List */}
             <div className="grid gap-6">
-                {poems.map((poem) => (
+                {paginatedPoems.map((poem) => (
                     <Card key={poem.id} className="p-4 md:p-6 space-y-4">
 
                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -190,6 +207,13 @@ export default function Poems() {
                     </Card>
                 ))}
             </div>
+
+            <Pagination
+                page={page}
+                pageSize={DASHBOARD_PAGE_SIZE}
+                totalCount={poems.length}
+                onPageChange={setPage}
+            />
 
         </div>
     )

@@ -337,6 +337,35 @@ export async function getPublishedChaptersByBook(bookSlug) {
 }
 
 /**
+ * Fetch published chapters for a book by book slug with pagination
+ * @param {string} bookSlug
+ * @param {number} page - 1-based page number
+ * @param {number} pageSize - items per page
+ * @returns {{ data: Array, count: number }}
+ */
+export async function getPublishedChaptersByBookPaginated(bookSlug, page = 1, pageSize = 12) {
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+
+    const { data, error, count } = await supabase
+        .from("chapters")
+        .select(`
+            id,
+            title,
+            chapter_number,
+            is_preview,
+            books!inner(slug)
+        `, { count: "exact" })
+        .eq("is_published", true)
+        .eq("books.slug", bookSlug)
+        .order("chapter_number", { ascending: true })
+        .range(from, to)
+
+    if (error) throw error
+    return { data, count }
+}
+
+/**
  * Fetch single published chapter by book slug and chapter number
  */
 export async function getPublishedChapter(bookSlug, chapterNumber) {

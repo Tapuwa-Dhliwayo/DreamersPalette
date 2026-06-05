@@ -3,9 +3,10 @@ import { useParams, Link } from "react-router-dom"
 
 import {
     getBookBySlug,
-    getPublishedChaptersByBook
+    getPublishedChaptersByBookPaginated
 } from "@/services/bookService"
 
+import Pagination, { DEFAULT_PAGE_SIZE } from "@/components/ui/Pagination"
 import { PUBLIC_ROUTES } from "@/app/routes"
 
 export default function BookDetailPage() {
@@ -14,16 +15,22 @@ export default function BookDetailPage() {
     const [book, setBook] = useState(null)
     const [chapters, setChapters] = useState([])
     const [loading, setLoading] = useState(true)
+    const [chaptersLoading, setChaptersLoading] = useState(false)
     const [notFound, setNotFound] = useState(false)
+    const [page, setPage] = useState(1)
+    const [totalCount, setTotalCount] = useState(0)
 
     useEffect(() => {
-        async function load() {
+        async function loadBook() {
             try {
-                const bookData = await getBookBySlug(slug)
-                const chaptersData = await getPublishedChaptersByBook(slug)
+                setLoading(true)
+                setNotFound(false)
+                setBook(null)
+                setChapters([])
+                setTotalCount(0)
 
+                const bookData = await getBookBySlug(slug)
                 setBook(bookData)
-                setChapters(chaptersData)
             } catch (err) {
                 console.error("Book not found:", err)
                 setNotFound(true)
@@ -32,8 +39,30 @@ export default function BookDetailPage() {
             }
         }
 
-        load()
+        setPage(1)
+        loadBook()
     }, [slug])
+
+    useEffect(() => {
+        if (!book || book.slug !== slug) return
+
+        async function loadChapters() {
+            try {
+                setChaptersLoading(true)
+                const { data, count } = await getPublishedChaptersByBookPaginated(slug, page, DEFAULT_PAGE_SIZE)
+                setChapters(data)
+                setTotalCount(count)
+            } catch (err) {
+                console.error("Failed to load chapters:", err)
+                setChapters([])
+                setTotalCount(0)
+            } finally {
+                setChaptersLoading(false)
+            }
+        }
+
+        loadChapters()
+    }, [slug, page, book])
 
     if (loading) {
         return (
@@ -86,13 +115,19 @@ export default function BookDetailPage() {
             {/* Chapters */}
             <section className="space-y-5 md:space-y-8 border-t border-white/10 pt-6 md:pt-12">
 
-                {chapters.length === 0 && (
+                {chaptersLoading && (
+                    <p className="opacity-60 text-center">
+                        Loading chapters...
+                    </p>
+                )}
+
+                {!chaptersLoading && chapters.length === 0 && (
                     <p className="opacity-60 text-center">
                         No published chapters yet.
                     </p>
                 )}
 
-                {chapters.map((chapter) => (
+                {!chaptersLoading && chapters.map((chapter) => (
                     <Link
                         key={chapter.id}
                         to={PUBLIC_ROUTES.CHAPTER(slug, chapter.chapter_number)}
@@ -118,6 +153,13 @@ export default function BookDetailPage() {
                 ))}
 
             </section>
+
+            <Pagination
+                page={page}
+                pageSize={DEFAULT_PAGE_SIZE}
+                totalCount={totalCount}
+                onPageChange={setPage}
+            />
 
         </article>
     )

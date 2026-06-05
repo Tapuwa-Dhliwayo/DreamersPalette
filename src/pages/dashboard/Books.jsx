@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Card } from "@/components/ui/Card"
 import Button from "@/components/ui/Button"
+import Pagination from "@/components/ui/Pagination"
 
 import {
     getMyBooks,
@@ -11,11 +12,14 @@ import {
 } from "@/services/bookService"
 import { DASHBOARD_ROUTES } from "@/app/routes"
 
+const DASHBOARD_PAGE_SIZE = 10
+
 export default function Books() {
     const navigate = useNavigate()
 
     const [books, setBooks] = useState([])
     const [loading, setLoading] = useState(true)
+    const [page, setPage] = useState(1)
 
     useEffect(() => {
         async function load() {
@@ -23,6 +27,18 @@ export default function Books() {
         }
         load()
     }, [])
+
+    const paginatedBooks = useMemo(() => {
+        const start = (page - 1) * DASHBOARD_PAGE_SIZE
+        return books.slice(start, start + DASHBOARD_PAGE_SIZE)
+    }, [books, page])
+
+    useEffect(() => {
+        const totalPages = Math.max(1, Math.ceil(books.length / DASHBOARD_PAGE_SIZE))
+        if (page > totalPages) {
+            setPage(totalPages)
+        }
+    }, [books.length, page])
 
     async function initialize() {
         try {
@@ -87,7 +103,7 @@ export default function Books() {
             )}
 
             <div className="grid gap-6">
-                {books.map((book) => (
+                {paginatedBooks.map((book) => (
                     <Card key={book.id} className="p-4 md:p-6 space-y-4">
                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                             <div>
@@ -139,6 +155,13 @@ export default function Books() {
                     </Card>
                 ))}
             </div>
+
+            <Pagination
+                page={page}
+                pageSize={DASHBOARD_PAGE_SIZE}
+                totalCount={books.length}
+                onPageChange={setPage}
+            />
         </div>
     )
 }

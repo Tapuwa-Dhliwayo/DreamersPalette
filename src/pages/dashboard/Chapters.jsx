@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Card } from "@/components/ui/Card"
 import Button from "@/components/ui/Button"
 import Select from "@/components/ui/Select"
+import Pagination from "@/components/ui/Pagination"
 
 import {
     getMyBooks,
@@ -13,6 +14,8 @@ import {
 } from "@/services/bookService"
 import { DASHBOARD_ROUTES } from "@/app/routes"
 
+const DASHBOARD_PAGE_SIZE = 10
+
 export default function Chapters() {
     const navigate = useNavigate()
 
@@ -20,6 +23,7 @@ export default function Chapters() {
     const [chapters, setChapters] = useState([])
     const [selectedBookId, setSelectedBookId] = useState("")
     const [loading, setLoading] = useState(true)
+    const [page, setPage] = useState(1)
 
     useEffect(() => {
         async function load() {
@@ -27,6 +31,18 @@ export default function Chapters() {
         }
         load()
     }, [])
+
+    const paginatedChapters = useMemo(() => {
+        const start = (page - 1) * DASHBOARD_PAGE_SIZE
+        return chapters.slice(start, start + DASHBOARD_PAGE_SIZE)
+    }, [chapters, page])
+
+    useEffect(() => {
+        const totalPages = Math.max(1, Math.ceil(chapters.length / DASHBOARD_PAGE_SIZE))
+        if (page > totalPages) {
+            setPage(totalPages)
+        }
+    }, [chapters.length, page])
 
     async function initialize() {
         try {
@@ -51,6 +67,7 @@ export default function Chapters() {
 
     async function handleBookChange(bookId) {
         setSelectedBookId(bookId)
+        setPage(1)
         setLoading(true)
 
         try {
@@ -154,7 +171,7 @@ export default function Chapters() {
             )}
 
             <div className="grid gap-6">
-                {chapters.map((chapter) => (
+                {paginatedChapters.map((chapter) => (
                     <Card key={chapter.id} className="p-4 md:p-6 space-y-4">
                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                             <div>
@@ -201,6 +218,13 @@ export default function Chapters() {
                     </Card>
                 ))}
             </div>
+
+            <Pagination
+                page={page}
+                pageSize={DASHBOARD_PAGE_SIZE}
+                totalCount={chapters.length}
+                onPageChange={setPage}
+            />
         </div>
     )
 }
