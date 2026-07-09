@@ -4,6 +4,12 @@ import { useNavigate, useParams } from "react-router-dom"
 import Button from "@/components/ui/Button"
 import Input from "@/components/ui/Input"
 import Textarea from "@/components/ui/Textarea"
+import FormField from "@/components/ui/FormField"
+import StatusMessage from "@/components/ui/StatusMessage"
+import ConfirmDialog from "@/components/ui/ConfirmDialog"
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges"
+import { useLocalDraft } from "@/hooks/useLocalDraft"
+import EditorSaveState from "@/components/dashboard/EditorSaveState"
 import { generateBookCover, getAiProviderLabel } from "@/services/aiAssetService"
 import { uploadBackgroundImage, validateImageFile, compressImageIfNeeded } from "@/services/storageService"
 import { supabase } from "@/services/supabaseClient"
@@ -30,12 +36,22 @@ export default function BookEditorPage() {
     const [generatingCover, setGeneratingCover] = useState(false)
     const [coverPrompt, setCoverPrompt] = useState("")
     const [generationError, setGenerationError] = useState("")
+    const [saveError, setSaveError] = useState("")
+    const [validationError, setValidationError] = useState("")
+    const [initialForm, setInitialForm] = useState(null)
 
     const [form, setForm] = useState({
         title: "",
         synopsis: "",
         cover_image_url: ""
     })
+    const localDraft = useLocalDraft({
+        key: `dreamers-palette:novel:${id || "new"}`,
+        form,
+        initialForm,
+        setForm
+    })
+    const navigationGuard = useUnsavedChanges(localDraft.isDirty && !saving)
 
     useEffect(() => {
         async function initialize() {
@@ -48,16 +64,22 @@ export default function BookEditorPage() {
                         return
                     }
 
-                    setForm((prev) => ({
-                        ...prev,
+                    const nextForm = {
                         title: existingBook.title || "",
                         synopsis: existingBook.synopsis || "",
                         cover_image_url: existingBook.cover_image_url || ""
-                    }))
+                    }
+                    setForm(nextForm)
+                    setInitialForm(nextForm)
+                } else {
+                    setInitialForm({
+                        title: "",
+                        synopsis: "",
+                        cover_image_url: ""
+                    })
                 }
             } catch (err) {
-                console.error("Failed to initialize editor:", err)
-                navigate(DASHBOARD_ROUTES.BOOKS)
+                setSaveError(err.message || "The novel editor could not be loaded. Try returning to Novels and opening it again.")
             } finally {
                 setLoading(false)
             }
@@ -67,10 +89,15 @@ export default function BookEditorPage() {
     }, [id, isEditMode, navigate])
 
     async function handleSave() {
-        if (!form.title.trim()) return
+        if (!form.title.trim()) {
+            setValidationError("Enter a novel title.")
+            return
+        }
 
         try {
             setSaving(true)
+            setSaveError("")
+            setValidationError("")
 
             const payload = {
                 title: form.title,
@@ -87,9 +114,11 @@ export default function BookEditorPage() {
                 })
             }
 
+            localDraft.clearDraft()
+            navigationGuard.markSafe()
             navigate(DASHBOARD_ROUTES.BOOKS)
         } catch (err) {
-            console.error("Save failed:", err)
+            setSaveError(err.message || "The novel could not be saved. Your changes are still here.")
         } finally {
             setSaving(false)
         }
@@ -107,7 +136,6 @@ export default function BookEditorPage() {
                 cover_image_url: imageUrl
             }))
         } catch (err) {
-            console.error("Cover generation failed:", err)
             setGenerationError(err.message || "Failed to generate cover image.")
         } finally {
             setGeneratingCover(false)
@@ -144,7 +172,6 @@ export default function BookEditorPage() {
                 cover_image_url: publicUrl
             }))
         } catch (error) {
-            console.error("Upload failed:", error)
             setUploadError(error.message || "Upload failed.")
         } finally {
             setUploading(false)
@@ -164,7 +191,7 @@ export default function BookEditorPage() {
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h2 className="text-2xl font-semibold tracking-tight">
-                        {isEditMode ? "Edit Book" : "New Book"}
+                        {isEditMode ? "Edit Novel" : "New Novel"}
                     </h2>
                     <p className="text-sm text-neutral-500 mt-1">
                         {isEditMode
@@ -174,35 +201,50 @@ export default function BookEditorPage() {
                 </div>
 
                 <div className="flex gap-3">
+                    <EditorSaveState
+                        saving={saving}
+                        isDirty={localDraft.isDirty}
+                        persistedAt={localDraft.persistedAt}
+                        recoveredAt={localDraft.recoveredAt}
+                        error={saveError}
+                    />
                     <Button
                         variant="ghost"
                         onClick={() => navigate(DASHBOARD_ROUTES.BOOKS)}
                     >
                         Cancel
                     </Button>
-                    <Button onClick={handleSave} disabled={saving}>
+                    <Button onClick={handleSave} disabled={saving || (isEditMode && !initialForm)}>
                         {saving ? "Saving..." : "Save"}
                     </Button>
                 </div>
             </div>
 
             <div className="space-y-4 max-w-full md:max-w-2xl">
-                <Input
-                    placeholder="Book title"
-                    value={form.title}
-                    onChange={(e) =>
-                        setForm({ ...form, title: e.target.value })
-                    }
-                />
+                <StatusMessage tone="error">{validationError || saveError}</StatusMessage>
+                <FormField label="Novel title" htmlFor="book-title" required>
+                    <Input
+                        id="book-title"
+                        value={form.title}
+                        maxLength={160}
+                        onChange={(e) => {
+                            setValidationError("")
+                            setForm({ ...form, title: e.target.value })
+                        }}
+                    />
+                </FormField>
 
-                <Textarea
-                    placeholder="Synopsis"
-                    value={form.synopsis}
-                    onChange={(e) =>
-                        setForm({ ...form, synopsis: e.target.value })
-                    }
-                    rows={5}
-                />
+                <FormField label="Synopsis" htmlFor="book-synopsis" hint="A concise introduction for readers.">
+                    <Textarea
+                        id="book-synopsis"
+                        value={form.synopsis}
+                        maxLength={2000}
+                        onChange={(e) =>
+                            setForm({ ...form, synopsis: e.target.value })
+                        }
+                        rows={5}
+                    />
+                </FormField>
 
                 <div className="space-y-4">
                     <label className="block text-sm text-neutral-600">
@@ -236,17 +278,25 @@ export default function BookEditorPage() {
                     )}
                 </div>
 
-                <Input
-                    placeholder="Cover image URL (optional)"
-                    value={form.cover_image_url}
-                    onChange={(e) =>
-                        setForm({ ...form, cover_image_url: e.target.value })
-                    }
-                />
-
-                <div className="space-y-2">
+                <FormField label="Cover image URL" htmlFor="book-cover-url" hint="Optional. Uploading or generating a cover fills this automatically.">
                     <Input
-                        placeholder="AI prompt for cover (optional)"
+                        id="book-cover-url"
+                        type="url"
+                        value={form.cover_image_url}
+                        onChange={(e) =>
+                            setForm({ ...form, cover_image_url: e.target.value })
+                        }
+                    />
+                </FormField>
+
+                <FormField
+                    label="Generate a cover with AI"
+                    htmlFor="book-cover-prompt"
+                    hint={`Describe the setting, mood, light, and composition. Provider: ${providerLabel}.`}
+                >
+                    <Input
+                        id="book-cover-prompt"
+                        placeholder="A distant house at dusk, painterly, no text"
                         value={coverPrompt}
                         onChange={(e) => setCoverPrompt(e.target.value)}
                         maxLength={500}
@@ -261,16 +311,13 @@ export default function BookEditorPage() {
                         >
                             {generatingCover ? "Generating..." : "Generate Cover with AI"}
                         </Button>
-                        <span className="text-xs text-neutral-500">
-                            Provider: {providerLabel}
-                        </span>
                     </div>
                     {generationError && (
                         <p className="text-xs text-red-500">
                             {generationError}
                         </p>
                     )}
-                </div>
+                </FormField>
 
                 {form.cover_image_url && (
                     <div className="space-y-2">
@@ -282,6 +329,15 @@ export default function BookEditorPage() {
                     </div>
                 )}
             </div>
+
+            <ConfirmDialog
+                open={navigationGuard.blocked}
+                title="Discard unsaved novel?"
+                description="Your latest changes have not been saved."
+                confirmLabel="Discard changes"
+                onClose={navigationGuard.reset}
+                onConfirm={navigationGuard.proceed}
+            />
         </div>
     )
 }

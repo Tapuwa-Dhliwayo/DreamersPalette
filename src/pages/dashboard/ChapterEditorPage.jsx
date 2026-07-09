@@ -5,6 +5,12 @@ import Button from "@/components/ui/Button"
 import Input from "@/components/ui/Input"
 import Select from "@/components/ui/Select"
 import EditorPanel from "@/components/editor/EditorPanel"
+import FormField from "@/components/ui/FormField"
+import StatusMessage from "@/components/ui/StatusMessage"
+import ConfirmDialog from "@/components/ui/ConfirmDialog"
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges"
+import { useLocalDraft } from "@/hooks/useLocalDraft"
+import EditorSaveState from "@/components/dashboard/EditorSaveState"
 
 import {
     getMyBooks,
@@ -25,6 +31,9 @@ export default function ChapterEditorPage() {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [books, setBooks] = useState([])
+    const [initialForm, setInitialForm] = useState(null)
+    const [validationError, setValidationError] = useState("")
+    const [saveError, setSaveError] = useState("")
 
     const [form, setForm] = useState({
         book_id: "",
@@ -33,6 +42,13 @@ export default function ChapterEditorPage() {
         content_md: "",
         is_preview: false
     })
+    const localDraft = useLocalDraft({
+        key: `dreamers-palette:chapter:${id || "new"}`,
+        form,
+        initialForm,
+        setForm
+    })
+    const navigationGuard = useUnsavedChanges(localDraft.isDirty && !saving)
 
     useEffect(() => {
         async function initialize() {
@@ -46,22 +62,28 @@ export default function ChapterEditorPage() {
                 if (isEditMode) {
                     const existingChapter = await getMyChapterById(id)
 
-                    setForm({
+                    const nextForm = {
                         book_id: existingChapter.book_id || defaultBookId,
                         title: existingChapter.title || "",
                         chapter_number: existingChapter.chapter_number || 1,
                         content_md: existingChapter.content_md || "",
                         is_preview: Boolean(existingChapter.is_preview)
-                    })
+                    }
+                    setForm(nextForm)
+                    setInitialForm(nextForm)
                 } else {
-                    setForm((prev) => ({
-                        ...prev,
+                    const nextForm = {
+                        title: "",
+                        chapter_number: 1,
+                        content_md: "",
+                        is_preview: false,
                         book_id: defaultBookId
-                    }))
+                    }
+                    setForm(nextForm)
+                    setInitialForm(nextForm)
                 }
             } catch (err) {
-                console.error("Failed to initialize editor:", err)
-                navigate(DASHBOARD_ROUTES.CHAPTERS)
+                setSaveError(err.message || "The chapter editor could not be loaded. Try returning to Chapters and opening it again.")
             } finally {
                 setLoading(false)
             }
@@ -78,10 +100,15 @@ export default function ChapterEditorPage() {
             !form.book_id ||
             Number.isNaN(chapterNumber) ||
             chapterNumber < 1
-        ) return
+        ) {
+            setValidationError("Choose a novel, enter a title, and use a chapter number of 1 or greater.")
+            return
+        }
 
         try {
             setSaving(true)
+            setValidationError("")
+            setSaveError("")
 
             const payload = {
                 book_id: form.book_id,
@@ -100,9 +127,11 @@ export default function ChapterEditorPage() {
                 })
             }
 
+            localDraft.clearDraft()
+            navigationGuard.markSafe()
             navigate(DASHBOARD_ROUTES.CHAPTERS)
         } catch (err) {
-            console.error("Save failed:", err)
+            setSaveError(err.message || "The chapter could not be saved. Your writing is still here.")
         } finally {
             setSaving(false)
         }
@@ -131,6 +160,13 @@ export default function ChapterEditorPage() {
                 </div>
 
                 <div className="flex gap-3">
+                    <EditorSaveState
+                        saving={saving}
+                        isDirty={localDraft.isDirty}
+                        persistedAt={localDraft.persistedAt}
+                        recoveredAt={localDraft.recoveredAt}
+                        error={saveError}
+                    />
                     <Button
                         variant="ghost"
                         onClick={() => navigate(DASHBOARD_ROUTES.CHAPTERS)}
@@ -140,7 +176,7 @@ export default function ChapterEditorPage() {
 
                     <Button
                         onClick={handleSave}
-                        disabled={saving}
+                        disabled={saving || (isEditMode && !initialForm)}
                     >
                         {saving ? "Saving..." : "Save"}
                     </Button>
@@ -148,37 +184,46 @@ export default function ChapterEditorPage() {
             </div>
 
             <div className="space-y-4 max-w-full md:max-w-xl">
-                <Select
-                    value={form.book_id}
-                    onChange={(e) => setForm({ ...form, book_id: e.target.value })}
-                >
-                    {books.map((book) => (
-                        <option key={book.id} value={book.id}>
-                            {book.title}
-                        </option>
-                    ))}
-                </Select>
+                <StatusMessage tone="error">{validationError || saveError}</StatusMessage>
+                <FormField label="Novel" htmlFor="chapter-book" required>
+                    <Select
+                        id="chapter-book"
+                        value={form.book_id}
+                        onChange={(e) => setForm({ ...form, book_id: e.target.value })}
+                    >
+                        {books.map((book) => (
+                            <option key={book.id} value={book.id}>
+                                {book.title}
+                            </option>
+                        ))}
+                    </Select>
+                </FormField>
 
-                <Input
-                    placeholder="Chapter title"
-                    value={form.title}
-                    onChange={(e) =>
-                        setForm({ ...form, title: e.target.value })
-                    }
-                />
+                <FormField label="Chapter title" htmlFor="chapter-title" required>
+                    <Input
+                        id="chapter-title"
+                        value={form.title}
+                        maxLength={160}
+                        onChange={(e) =>
+                            setForm({ ...form, title: e.target.value })
+                        }
+                    />
+                </FormField>
 
-                <Input
-                    type="number"
-                    min="1"
-                    placeholder="Chapter number"
-                    value={form.chapter_number}
-                    onChange={(e) =>
-                        setForm({
-                            ...form,
-                            chapter_number: Number(e.target.value)
-                        })
-                    }
-                />
+                <FormField label="Chapter number" htmlFor="chapter-number" required>
+                    <Input
+                        id="chapter-number"
+                        type="number"
+                        min="1"
+                        value={form.chapter_number}
+                        onChange={(e) =>
+                            setForm({
+                                ...form,
+                                chapter_number: Number(e.target.value)
+                            })
+                        }
+                    />
+                </FormField>
 
                 <label className="flex items-center gap-2 text-sm text-neutral-600">
                     <input
@@ -198,6 +243,15 @@ export default function ChapterEditorPage() {
                     setForm({ ...form, content_md: value })
                 }
                 placeholder="Write chapter content in markdown..."
+            />
+
+            <ConfirmDialog
+                open={navigationGuard.blocked}
+                title="Discard unsaved chapter?"
+                description="Your latest changes have not been saved."
+                confirmLabel="Discard changes"
+                onClose={navigationGuard.reset}
+                onConfirm={navigationGuard.proceed}
             />
         </div>
     )

@@ -1,282 +1,189 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-
-import { Card } from "@/components/ui/Card"
 import Button from "@/components/ui/Button"
 import Badge from "@/components/ui/Badge"
-
+import StatusMessage from "@/components/ui/StatusMessage"
+import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton"
 import { getMyProfile } from "@/services/profileService"
 import { getMyCollections, getMyPoems } from "@/services/contentService"
 import { getMyBooks, getMyChaptersByBook } from "@/services/bookService"
 import { DASHBOARD_ROUTES } from "@/app/routes"
 
+function formatDate(value) {
+    return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(value))
+}
+
 export default function DashboardHome() {
     const [profile, setProfile] = useState(null)
+    const [collections, setCollections] = useState([])
+    const [poems, setPoems] = useState([])
+    const [books, setBooks] = useState([])
+    const [chapters, setChapters] = useState([])
     const [loading, setLoading] = useState(true)
-
-    const [stats, setStats] = useState({
-        collections: 0,
-        collectionsPublished: 0,
-        poems: 0,
-        poemsPublished: 0,
-        books: 0,
-        booksPublished: 0,
-        chapters: 0,
-        chaptersPublished: 0,
-    })
-
-    const [recentPoems, setRecentPoems] = useState([])
-    const [recentBooks, setRecentBooks] = useState([])
+    const [error, setError] = useState("")
 
     useEffect(() => {
-        async function load() {
-            try {
-                const [profileData, collections, poems, books] = await Promise.all([
-                    getMyProfile(),
-                    getMyCollections(),
-                    getMyPoems(),
-                    getMyBooks(),
-                ])
-
-                setProfile(profileData)
-
-                // Gather all chapters across books
-                const chapterResults = await Promise.all(
-                    books.map((book) => getMyChaptersByBook(book.id))
-                )
-                const allChapters = chapterResults.flat()
-
-                setStats({
-                    collections: collections.length,
-                    collectionsPublished: collections.filter((c) => c.is_published).length,
-                    poems: poems.length,
-                    poemsPublished: poems.filter((p) => p.is_published).length,
-                    books: books.length,
-                    booksPublished: books.filter((b) => b.is_published).length,
-                    chapters: allChapters.length,
-                    chaptersPublished: allChapters.filter((ch) => ch.is_published).length,
-                })
-
-                setRecentPoems(poems.slice(0, 4))
-                setRecentBooks(books.slice(0, 4))
-            } catch (err) {
-                console.error("Dashboard load failed:", err)
-            } finally {
-                setLoading(false)
-            }
-        }
-
-        load()
+        loadDashboard()
     }, [])
 
-    function getGreeting() {
-        const hour = new Date().getHours()
-        if (hour < 12) return "Good morning"
-        if (hour < 18) return "Good afternoon"
-        return "Good evening"
+    async function loadDashboard() {
+        try {
+            setLoading(true)
+            setError("")
+            const [profileData, collectionData, poemData, bookData] = await Promise.all([
+                getMyProfile(),
+                getMyCollections(),
+                getMyPoems(),
+                getMyBooks()
+            ])
+            const chapterData = (await Promise.all(
+                bookData.map((book) => getMyChaptersByBook(book.id))
+            )).flat()
+            setProfile(profileData)
+            setCollections(collectionData)
+            setPoems(poemData)
+            setBooks(bookData)
+            setChapters(chapterData)
+        } catch (err) {
+            setError(err.message || "Your studio overview could not be loaded.")
+        } finally {
+            setLoading(false)
+        }
     }
 
-    function formatDate(dateStr) {
-        return new Date(dateStr).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-        })
-    }
+    const continueWriting = useMemo(() => {
+        const poemDrafts = poems
+            .filter((item) => !item.is_published)
+            .map((item) => ({
+                ...item,
+                type: "Poem",
+                to: DASHBOARD_ROUTES.POEM_EDIT(item.id)
+            }))
+        const bookDrafts = books
+            .filter((item) => !item.is_published)
+            .map((item) => ({
+                ...item,
+                type: "Novel",
+                to: DASHBOARD_ROUTES.BOOK_EDIT(item.id)
+            }))
+        const chapterDrafts = chapters
+            .filter((item) => !item.is_published)
+            .map((item) => ({
+                ...item,
+                type: "Chapter",
+                updated_at: item.created_at,
+                to: DASHBOARD_ROUTES.CHAPTER_EDIT(item.id)
+            }))
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center py-20">
-                <p className="text-sm text-neutral-500">Loading your studio…</p>
-            </div>
-        )
-    }
+        return [...poemDrafts, ...bookDrafts, ...chapterDrafts]
+            .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
+            .slice(0, 5)
+    }, [books, chapters, poems])
 
-    const statCards = [
-        {
-            label: "Collections",
-            total: stats.collections,
-            published: stats.collectionsPublished,
-            to: DASHBOARD_ROUTES.COLLECTIONS,
-        },
-        {
-            label: "Poems",
-            total: stats.poems,
-            published: stats.poemsPublished,
-            to: DASHBOARD_ROUTES.POEMS,
-        },
-        {
-            label: "Novels",
-            total: stats.books,
-            published: stats.booksPublished,
-            to: DASHBOARD_ROUTES.BOOKS,
-        },
-        {
-            label: "Chapters",
-            total: stats.chapters,
-            published: stats.chaptersPublished,
-            to: DASHBOARD_ROUTES.CHAPTERS,
-        },
+    const totals = [
+        { label: "Collections", value: collections.length, to: DASHBOARD_ROUTES.COLLECTIONS },
+        { label: "Poems", value: poems.length, to: DASHBOARD_ROUTES.POEMS },
+        { label: "Novels", value: books.length, to: DASHBOARD_ROUTES.BOOKS },
+        { label: "Chapters", value: chapters.length, to: DASHBOARD_ROUTES.CHAPTERS }
     ]
+
+    if (loading) return <DashboardSkeleton rows={5} />
 
     return (
         <div className="space-y-10">
-
-            {/* Greeting */}
-            <div>
-                <h2 className="text-2xl font-semibold tracking-tight">
-                    {getGreeting()}, {profile?.display_name || "Author"}
-                </h2>
-                <p className="text-sm text-neutral-500 mt-1">
-                    Here's an overview of your creative world.
-                </p>
-            </div>
-
-            {/* Stat cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {statCards.map((stat) => (
-                    <Link key={stat.label} to={stat.to}>
-                        <Card className="p-5 hover:ring-1 hover:ring-neutral-300 transition-all">
-                            <p className="text-xs uppercase tracking-wider text-neutral-500">
-                                {stat.label}
-                            </p>
-                            <p className="text-3xl font-semibold mt-2">
-                                {stat.total}
-                            </p>
-                            <p className="text-xs text-neutral-400 mt-1">
-                                {stat.published} published
-                            </p>
-                        </Card>
+            <header className="flex flex-col gap-5 border-b border-neutral-200 pb-7 md:flex-row md:items-end md:justify-between">
+                <div>
+                    <h2 className="text-2xl font-semibold tracking-tight">
+                        Welcome back, {profile?.display_name || "Author"}
+                    </h2>
+                    <p className="mt-1 text-sm text-neutral-600">
+                        Continue the work in progress, or begin a new piece.
+                    </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    <Link to={DASHBOARD_ROUTES.POEM_NEW} className="no-underline!">
+                        <Button>New Poem</Button>
                     </Link>
-                ))}
-            </div>
-
-            {/* Quick actions */}
-            <div>
-                <h3 className="text-lg font-medium tracking-tight mb-4">
-                    Quick Actions
-                </h3>
-                <div className="flex flex-wrap gap-3">
-                    <Link to={DASHBOARD_ROUTES.POEM_NEW}>
-                        <Button variant="subtle" size="sm">+ New Poem</Button>
-                    </Link>
-                    <Link to={DASHBOARD_ROUTES.BOOK_NEW}>
-                        <Button variant="subtle" size="sm">+ New Novel</Button>
-                    </Link>
-                    <Link to={DASHBOARD_ROUTES.CHAPTER_NEW}>
-                        <Button variant="subtle" size="sm">+ New Chapter</Button>
-                    </Link>
-                    <Link to={DASHBOARD_ROUTES.COLLECTIONS}>
-                        <Button variant="subtle" size="sm">+ New Collection</Button>
+                    <Link to={DASHBOARD_ROUTES.COLLECTION_NEW} className="no-underline!">
+                        <Button variant="subtle">New Collection</Button>
                     </Link>
                 </div>
-            </div>
+            </header>
 
-            {/* Recent content */}
-            <div className="grid gap-8 lg:grid-cols-2">
+            <StatusMessage tone="error" action={
+                error ? <Button size="sm" variant="ghost" onClick={loadDashboard}>Try again</Button> : null
+            }>
+                {error}
+            </StatusMessage>
 
-                {/* Recent poems */}
-                <div>
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-medium tracking-tight">
-                            Recent Poems
-                        </h3>
-                        <Link
-                            to={DASHBOARD_ROUTES.POEMS}
-                            className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
-                        >
-                            View all →
+            <section aria-labelledby="continue-writing-title">
+                <div className="flex items-end justify-between gap-4">
+                    <div>
+                        <h3 id="continue-writing-title" className="text-xl font-semibold">Continue writing</h3>
+                        <p className="mt-1 text-sm text-neutral-600">Your most recently updated drafts.</p>
+                    </div>
+                </div>
+
+                {continueWriting.length === 0 ? (
+                    <div className="mt-5 border-y border-neutral-200 py-8">
+                        <p className="m-0 text-sm text-neutral-600">You have no unfinished writing.</p>
+                        <Link to={DASHBOARD_ROUTES.POEM_NEW} className="mt-3 inline-flex text-sm font-medium text-neutral-900">
+                            Start a poem
                         </Link>
                     </div>
+                ) : (
+                    <div className="mt-5 divide-y divide-neutral-200 border-y border-neutral-200">
+                        {continueWriting.map((item) => (
+                            <Link
+                                key={`${item.type}-${item.id}`}
+                                to={item.to}
+                                className="flex items-center justify-between gap-4 py-4 text-neutral-900 no-underline! transition-colors hover:bg-neutral-100/70"
+                            >
+                                <div className="min-w-0">
+                                    <p className="m-0 truncate font-medium">{item.title}</p>
+                                    <p className="mt-1 text-xs text-neutral-600">
+                                        {item.type} · Updated {formatDate(item.updated_at || item.created_at)}
+                                    </p>
+                                </div>
+                                <Badge>Draft</Badge>
+                            </Link>
+                        ))}
+                    </div>
+                )}
+            </section>
 
-                    {recentPoems.length === 0 ? (
-                        <Card className="p-6 text-center">
-                            <p className="text-sm text-neutral-500">No poems yet. Start writing!</p>
-                        </Card>
-                    ) : (
-                        <div className="space-y-3">
-                            {recentPoems.map((poem) => (
-                                <Link
-                                    key={poem.id}
-                                    to={DASHBOARD_ROUTES.POEM_EDIT(poem.id)}
-                                    className={"block"}
-                                >
-                                    <Card className="p-4 flex items-center justify-between hover:ring-1 hover:ring-neutral-300 transition-all">
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-medium truncate">
-                                                {poem.title}
-                                            </p>
-                                            <p className="text-xs text-neutral-400 mt-0.5">
-                                                {formatDate(poem.created_at)}
-                                            </p>
-                                        </div>
-                                        <Badge variant={poem.is_published ? "success" : "default"}>
-                                            {poem.is_published ? "Live" : "Draft"}
-                                        </Badge>
-                                    </Card>
-                                </Link>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* Recent books */}
+            <section className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
                 <div>
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-medium tracking-tight">
-                            Recent Novels
-                        </h3>
-                        <Link
-                            to={DASHBOARD_ROUTES.BOOKS}
-                            className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
-                        >
-                            View all →
+                    <h3 className="text-lg font-semibold">Create</h3>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                        <Link to={DASHBOARD_ROUTES.BOOK_NEW} className="no-underline!">
+                            <Button variant="subtle">New Novel</Button>
+                        </Link>
+                        <Link to={DASHBOARD_ROUTES.CHAPTER_NEW} className="no-underline!">
+                            <Button variant="subtle">New Chapter</Button>
+                        </Link>
+                        <Link to={DASHBOARD_ROUTES.TRASH} className="no-underline!">
+                            <Button variant="ghost">Review Trash</Button>
                         </Link>
                     </div>
-
-                    {recentBooks.length === 0 ? (
-                        <Card className="p-6 text-center">
-                            <p className="text-sm text-neutral-500">No novels yet. Begin your first novel!</p>
-                        </Card>
-                    ) : (
-                        <div className="space-y-3">
-                            {recentBooks.map((book) => (
-                                <Link
-                                    key={book.id}
-                                    to={DASHBOARD_ROUTES.BOOK_EDIT(book.id)}
-                                >
-                                    <Card className="p-4 flex items-center justify-between hover:ring-1 hover:ring-neutral-300 transition-all">
-                                        <div className="min-w-0 flex items-center gap-3">
-                                            {book.cover_image_url ? (
-                                                <img
-                                                    src={book.cover_image_url}
-                                                    alt=""
-                                                    className="h-10 w-8 rounded object-cover shrink-0"
-                                                />
-                                            ) : (
-                                                <div className="h-10 w-8 rounded bg-neutral-200 shrink-0" />
-                                            )}
-                                            <div className="min-w-0">
-                                                <p className="text-sm font-medium truncate">
-                                                    {book.title}
-                                                </p>
-                                                <p className="text-xs text-neutral-400 mt-0.5">
-                                                    {formatDate(book.created_at)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <Badge variant={book.is_published ? "success" : "default"}>
-                                            {book.is_published ? "Live" : "Draft"}
-                                        </Badge>
-                                    </Card>
-                                </Link>
-                            ))}
-                        </div>
-                    )}
                 </div>
 
-            </div>
-
+                <div>
+                    <h3 className="text-lg font-semibold">Studio overview</h3>
+                    <dl className="mt-4 divide-y divide-neutral-200 border-y border-neutral-200">
+                        {totals.map((item) => (
+                            <div key={item.label} className="flex items-center justify-between py-3">
+                                <dt>
+                                    <Link to={item.to} className="text-sm text-neutral-700 no-underline! hover:text-neutral-950">
+                                        {item.label}
+                                    </Link>
+                                </dt>
+                                <dd className="m-0 text-sm font-semibold tabular-nums text-neutral-950">{item.value}</dd>
+                            </div>
+                        ))}
+                    </dl>
+                </div>
+            </section>
         </div>
     )
 }

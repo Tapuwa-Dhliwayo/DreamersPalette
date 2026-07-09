@@ -17,6 +17,8 @@ export const PUBLIC_ROUTES = {
 export const DASHBOARD_ROUTES = {
     ROOT: "/dashboard",
     COLLECTIONS: "/dashboard/collections",
+    COLLECTION_NEW: "/dashboard/collections/new",
+    COLLECTION_EDIT: (id) => `/dashboard/collections/${id}/edit`,
     POEMS: "/dashboard/poems",
     POEM_NEW: "/dashboard/poems/new",
     POEM_EDIT: (id) => `/dashboard/poems/${id}/edit`,
@@ -26,6 +28,7 @@ export const DASHBOARD_ROUTES = {
     CHAPTERS: "/dashboard/chapters",
     CHAPTER_NEW: "/dashboard/chapters/new",
     CHAPTER_EDIT: (id) => `/dashboard/chapters/${id}/edit`,
+    TRASH: "/dashboard/trash",
 };
 
 /* ---------- OPTIONAL: ROUTE META ---------- */

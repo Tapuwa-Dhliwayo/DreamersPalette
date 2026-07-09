@@ -18,12 +18,14 @@ const LoginPage = lazy(() => import("@/pages/public/LoginPage"));
 /* ---------- Dashboard Pages ---------- */
 const DashboardHome = lazy(() => import("@/pages/dashboard/DashboardHome"));
 const DashboardCollections = lazy(() => import("@/pages/dashboard/Collections"));
+const DashboardCollectionEditor = lazy(() => import("@/pages/dashboard/CollectionEditorPage"));
 const DashboardPoems = lazy(() => import("@/pages/dashboard/Poems"));
 const DashboardBooks = lazy(() => import("@/pages/dashboard/Books"));
 const DashboardChapters = lazy(() => import("@/pages/dashboard/Chapters"));
 const DashboardPoemEditor = lazy(() => import("@/pages/dashboard/PoemEditorPage"));
 const DashboardBookEditor = lazy(() => import("@/pages/dashboard/BookEditorPage"));
 const DashboardChapterEditor = lazy(() => import("@/pages/dashboard/ChapterEditorPage"));
+const DashboardTrash = lazy(() => import("@/pages/dashboard/TrashPage"));
 
 export const router = createBrowserRouter([
     /* ---------- PUBLIC READER ---------- */
@@ -61,6 +63,8 @@ export const router = createBrowserRouter([
         children: [
             { index: true, element: <DashboardHome /> },
             { path: "collections", element: <DashboardCollections /> },
+            { path: "collections/new", element: <DashboardCollectionEditor /> },
+            { path: "collections/:id/edit", element: <DashboardCollectionEditor /> },
             { path: "poems", element: <DashboardPoems /> },
             { path: "poems/new", element: <DashboardPoemEditor /> },
             { path: "poems/:id/edit", element: <DashboardPoemEditor /> },
@@ -70,6 +74,7 @@ export const router = createBrowserRouter([
             { path: "chapters", element: <DashboardChapters /> },
             { path: "chapters/new", element: <DashboardChapterEditor /> },
             { path: "chapters/:id/edit", element: <DashboardChapterEditor /> },
+            { path: "trash", element: <DashboardTrash /> },
         ],
     },
 ]);

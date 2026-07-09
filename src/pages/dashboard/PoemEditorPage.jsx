@@ -5,6 +5,12 @@ import Button from "@/components/ui/Button"
 import Input from "@/components/ui/Input"
 import Select from "@/components/ui/Select"
 import EditorPanel from "@/components/editor/EditorPanel"
+import FormField from "@/components/ui/FormField"
+import StatusMessage from "@/components/ui/StatusMessage"
+import ConfirmDialog from "@/components/ui/ConfirmDialog"
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges"
+import { useLocalDraft } from "@/hooks/useLocalDraft"
+import EditorSaveState from "@/components/dashboard/EditorSaveState"
 
 import {
     getMyCollections,
@@ -24,6 +30,8 @@ export default function PoemEditorPage() {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [validationError, setValidationError] = useState("")
+    const [saveError, setSaveError] = useState("")
+    const [initialForm, setInitialForm] = useState(null)
 
     const [collections, setCollections] = useState([])
 
@@ -32,6 +40,13 @@ export default function PoemEditorPage() {
         content_md: "",
         collection_id: ""
     })
+    const localDraft = useLocalDraft({
+        key: `dreamers-palette:poem:${id || "new"}`,
+        form,
+        initialForm,
+        setForm
+    })
+    const navigationGuard = useUnsavedChanges(localDraft.isDirty && !saving)
 
     useEffect(() => {
         async function initialize() {
@@ -52,15 +67,26 @@ export default function PoemEditorPage() {
                         content_md: existingPoem.content_md || "",
                         collection_id: existingPoem.collection_id || collectionsData[0]?.id || ""
                     })
+                    setInitialForm({
+                        title: existingPoem.title || "",
+                        content_md: existingPoem.content_md || "",
+                        collection_id: existingPoem.collection_id || collectionsData[0]?.id || ""
+                    })
                 } else {
-                    setForm((prev) => ({
-                        ...prev,
+                    const nextForm = {
+                        title: "",
+                        content_md: "",
                         collection_id: collectionsData[0]?.id || ""
-                    }))
+                    }
+                    setForm({
+                        ...nextForm
+                    })
+                    setInitialForm({
+                        ...nextForm
+                    })
                 }
             } catch (err) {
-                console.error("Failed to initialize editor:", err)
-                navigate(DASHBOARD_ROUTES.POEMS)
+                setSaveError(err.message || "The poem editor could not be loaded. Try returning to Poems and opening it again.")
             } finally {
                 setLoading(false)
             }
@@ -83,6 +109,7 @@ export default function PoemEditorPage() {
         try {
             setSaving(true)
             setValidationError("")
+            setSaveError("")
 
             if (isEditMode) {
                 await updatePoem(id, {
@@ -99,10 +126,12 @@ export default function PoemEditorPage() {
                 })
             }
 
+            localDraft.clearDraft()
+            navigationGuard.markSafe()
             navigate(DASHBOARD_ROUTES.POEMS)
 
         } catch (err) {
-            console.error("Save failed:", err)
+            setSaveError(err.message || "The poem could not be saved. Your writing is still here.")
         } finally {
             setSaving(false)
         }
@@ -133,6 +162,13 @@ export default function PoemEditorPage() {
                 </div>
 
                 <div className="flex gap-3">
+                    <EditorSaveState
+                        saving={saving}
+                        isDirty={localDraft.isDirty}
+                        persistedAt={localDraft.persistedAt}
+                        recoveredAt={localDraft.recoveredAt}
+                        error={saveError}
+                    />
                     <Button
                         variant="ghost"
                         onClick={() => navigate(DASHBOARD_ROUTES.POEMS)}
@@ -142,7 +178,7 @@ export default function PoemEditorPage() {
 
                     <Button
                         onClick={handleSave}
-                        disabled={saving || collections.length === 0}
+                        disabled={saving || collections.length === 0 || (isEditMode && !initialForm)}
                     >
                         {saving ? "Saving..." : "Save"}
                     </Button>
@@ -157,37 +193,36 @@ export default function PoemEditorPage() {
                     </p>
                 )}
 
-                {validationError && (
-                    <p className="text-sm text-red-500">
-                        {validationError}
-                    </p>
-                )}
+                <StatusMessage tone="error">{validationError || saveError}</StatusMessage>
 
-                <Input
-                    placeholder="Poem title"
-                    value={form.title}
-                    onChange={(e) => {
-                        setValidationError("")
-                        setForm({ ...form, title: e.target.value })
-                    }}
-                />
+                <FormField label="Poem title" htmlFor="poem-title" required>
+                    <Input
+                        id="poem-title"
+                        value={form.title}
+                        maxLength={160}
+                        onChange={(e) => {
+                            setValidationError("")
+                            setForm({ ...form, title: e.target.value })
+                        }}
+                    />
+                </FormField>
 
-                <Select
-                    value={form.collection_id}
-                    onChange={(e) => {
-                        setValidationError("")
-                        setForm({ ...form, collection_id: e.target.value })
-                    }}
-                >
-                    {collections.map((collection) => (
-                        <option
-                            key={collection.id}
-                            value={collection.id}
-                        >
-                            {collection.title}
-                        </option>
-                    ))}
-                </Select>
+                <FormField label="Collection" htmlFor="poem-collection" required>
+                    <Select
+                        id="poem-collection"
+                        value={form.collection_id}
+                        onChange={(e) => {
+                            setValidationError("")
+                            setForm({ ...form, collection_id: e.target.value })
+                        }}
+                    >
+                        {collections.map((collection) => (
+                            <option key={collection.id} value={collection.id}>
+                                {collection.title}
+                            </option>
+                        ))}
+                    </Select>
+                </FormField>
 
             </div>
 
@@ -197,6 +232,15 @@ export default function PoemEditorPage() {
                 onChange={(value) =>
                     setForm({ ...form, content_md: value })
                 }
+            />
+
+            <ConfirmDialog
+                open={navigationGuard.blocked}
+                title="Discard unsaved poem?"
+                description="Your latest changes have not been saved."
+                confirmLabel="Discard changes"
+                onClose={navigationGuard.reset}
+                onConfirm={navigationGuard.proceed}
             />
 
         </div>

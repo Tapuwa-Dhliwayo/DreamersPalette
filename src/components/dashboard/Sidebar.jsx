@@ -9,6 +9,7 @@ export default function Sidebar({ isOpen, onClose }) {
     const navigate = useNavigate()
     const [profile, setProfile] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState("")
 
     useEffect(() => {
         async function loadProfile() {
@@ -16,7 +17,7 @@ export default function Sidebar({ isOpen, onClose }) {
                 const data = await getMyProfile()
                 setProfile(data)
             } catch (err) {
-                console.error("Failed to load profile:", err)
+                setError(err.message || "Profile unavailable")
             } finally {
                 setLoading(false)
             }
@@ -30,7 +31,7 @@ export default function Sidebar({ isOpen, onClose }) {
             await signOut()
             navigate(PUBLIC_ROUTES.LOGIN, { replace: true })
         } catch (err) {
-            console.error("Logout failed:", err)
+            setError(err.message || "Logout failed. Try again.")
         }
     }
 
@@ -40,10 +41,11 @@ export default function Sidebar({ isOpen, onClose }) {
         { label: "Poems", to: DASHBOARD_ROUTES.POEMS },
         { label: "Novels", to: DASHBOARD_ROUTES.BOOKS },
         { label: "Chapters", to: DASHBOARD_ROUTES.CHAPTERS },
+        { label: "Trash", to: DASHBOARD_ROUTES.TRASH },
     ]
 
     const sidebarContent = (
-        <aside className="w-64 h-full border-r border-neutral-200 bg-white/70 backdrop-blur-sm flex flex-col justify-between overflow-y-auto ">
+        <aside className="flex h-full w-64 flex-col justify-between overflow-y-auto border-r border-neutral-200 bg-white/95">
 
             {/* Top */}
             <div className="p-6 space-y-10">
@@ -121,10 +123,15 @@ export default function Sidebar({ isOpen, onClose }) {
                         >
                             Logout
                         </Button>
+                        {error && (
+                            <p role="alert" className="m-0 text-xs text-red-700">
+                                {error}
+                            </p>
+                        )}
                     </>
                 ) : (
-                    <div className="text-sm text-red-500">
-                        Profile not found
+                    <div role="alert" className="text-sm text-red-700">
+                        {error || "Profile not found"}
                     </div>
                 )}
 

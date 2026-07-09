@@ -14,3 +14,18 @@ alter table books
 
 alter table books
     add column theme_text_mode text default 'light';
+
+-- For UI/UX Hardening
+-- Soft delete columns added
+
+ALTER TABLE poetry_collections
+    ADD COLUMN IF NOT EXISTS deleted_at timestamp NULL;
+
+ALTER TABLE poems
+    ADD COLUMN IF NOT EXISTS deleted_at timestamp NULL;
+
+ALTER TABLE books
+    ADD COLUMN IF NOT EXISTS deleted_at timestamp NULL;
+
+ALTER TABLE chapters
+    ADD COLUMN IF NOT EXISTS deleted_at timestamp NULL;

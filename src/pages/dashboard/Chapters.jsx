@@ -1,65 +1,67 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-
 import { Card } from "@/components/ui/Card"
 import Button from "@/components/ui/Button"
 import Select from "@/components/ui/Select"
 import Pagination from "@/components/ui/Pagination"
-
+import ConfirmDialog from "@/components/ui/ConfirmDialog"
+import StatusMessage from "@/components/ui/StatusMessage"
+import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton"
+import { ContentList, ContentListRow, ContentListToolbar } from "@/components/dashboard/ContentList"
+import { useContentListControls } from "@/hooks/useContentListControls"
 import {
     getMyBooks,
     getMyChaptersByBook,
-    deleteChapter,
+    archiveChapter,
     toggleChapterPublish
 } from "@/services/bookService"
 import { DASHBOARD_ROUTES } from "@/app/routes"
 
-const DASHBOARD_PAGE_SIZE = 10
+const PAGE_SIZE = 10
 
 export default function Chapters() {
     const navigate = useNavigate()
-
     const [books, setBooks] = useState([])
     const [chapters, setChapters] = useState([])
     const [selectedBookId, setSelectedBookId] = useState("")
     const [loading, setLoading] = useState(true)
-    const [page, setPage] = useState(1)
+    const [pending, setPending] = useState(false)
+    const [error, setError] = useState("")
+    const [status, setStatus] = useState("")
+    const [archiveTargets, setArchiveTargets] = useState([])
+    const [publishTargets, setPublishTargets] = useState([])
+    const list = useContentListControls(chapters, PAGE_SIZE)
 
     useEffect(() => {
-        async function load() {
-            await initialize()
+        async function loadInitial() {
+            try {
+                setLoading(true)
+                setError("")
+                const bookData = await getMyBooks()
+                setBooks(bookData)
+                const bookId = bookData[0]?.id || ""
+                setSelectedBookId(bookId)
+                setChapters(bookId ? await getMyChaptersByBook(bookId) : [])
+            } catch (err) {
+                setError(err.message || "Chapters could not be loaded.")
+            } finally {
+                setLoading(false)
+            }
         }
-        load()
+        loadInitial()
     }, [])
-
-    const paginatedChapters = useMemo(() => {
-        const start = (page - 1) * DASHBOARD_PAGE_SIZE
-        return chapters.slice(start, start + DASHBOARD_PAGE_SIZE)
-    }, [chapters, page])
-
-    useEffect(() => {
-        const totalPages = Math.max(1, Math.ceil(chapters.length / DASHBOARD_PAGE_SIZE))
-        if (page > totalPages) {
-            setPage(totalPages)
-        }
-    }, [chapters.length, page])
 
     async function initialize() {
         try {
-            const booksData = await getMyBooks()
-            setBooks(booksData)
-
-            const defaultBookId = booksData[0]?.id || ""
-            setSelectedBookId(defaultBookId)
-
-            if (defaultBookId) {
-                const chaptersData = await getMyChaptersByBook(defaultBookId)
-                setChapters(chaptersData)
-            } else {
-                setChapters([])
-            }
+            setLoading(true)
+            setError("")
+            const bookData = await getMyBooks()
+            setBooks(bookData)
+            const bookId = selectedBookId || bookData[0]?.id || ""
+            setSelectedBookId(bookId)
+            setChapters(bookId ? await getMyChaptersByBook(bookId) : [])
         } catch (err) {
-            console.error("Failed to load chapters:", err)
+            setError(err.message || "Chapters could not be loaded.")
         } finally {
             setLoading(false)
         }
@@ -67,163 +69,141 @@ export default function Chapters() {
 
     async function handleBookChange(bookId) {
         setSelectedBookId(bookId)
-        setPage(1)
+        list.setSelectedIds([])
         setLoading(true)
-
         try {
-            if (!bookId) {
-                setChapters([])
-                return
-            }
-
-            const data = await getMyChaptersByBook(bookId)
-            setChapters(data)
+            setChapters(bookId ? await getMyChaptersByBook(bookId) : [])
         } catch (err) {
-            console.error("Filter failed:", err)
+            setError(err.message || "The selected novel could not be loaded.")
         } finally {
             setLoading(false)
         }
     }
 
-    async function handleDelete(id) {
+    async function handleArchive() {
         try {
-            await deleteChapter(id)
+            setPending(true)
+            await Promise.all(archiveTargets.map((item) => archiveChapter(item.id)))
+            setStatus(`${archiveTargets.length} ${archiveTargets.length === 1 ? "chapter was" : "chapters were"} moved to Trash.`)
+            setArchiveTargets([])
+            list.setSelectedIds([])
             await handleBookChange(selectedBookId)
         } catch (err) {
-            console.error("Delete failed:", err)
+            setError(err.message || "The selected chapters could not be archived.")
+        } finally {
+            setPending(false)
         }
     }
 
-    async function handleTogglePublish(chapter) {
+    async function handlePublish() {
         try {
-            await toggleChapterPublish(chapter.id, !chapter.is_published)
+            setPending(true)
+            await Promise.all(publishTargets.map((item) => toggleChapterPublish(item.id, !item.is_published)))
+            setStatus(`${publishTargets.length} ${publishTargets.length === 1 ? "chapter was" : "chapters were"} updated.`)
+            setPublishTargets([])
+            list.setSelectedIds([])
             await handleBookChange(selectedBookId)
         } catch (err) {
-            console.error("Toggle failed:", err)
+            setError(err.message || "Publication state could not be changed.")
+        } finally {
+            setPending(false)
         }
     }
+
+    const selectedItems = chapters.filter((item) => list.selectedIds.includes(item.id))
 
     return (
-        <div className="space-y-10">
-            <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-semibold tracking-tight">
-                    Chapters
-                </h2>
+        <div className="space-y-8">
+            <header className="flex items-center justify-between gap-4">
+                <div>
+                    <h2 className="text-2xl font-semibold tracking-tight">Chapters</h2>
+                    <p className="mt-1 text-sm text-neutral-600">Organize and publish chapters within each novel.</p>
+                </div>
                 <Button
-                    onClick={() => navigate(`${DASHBOARD_ROUTES.CHAPTER_NEW}${selectedBookId ? `?bookId=${selectedBookId}` : ""}`)}
                     disabled={!selectedBookId}
+                    onClick={() => navigate(`${DASHBOARD_ROUTES.CHAPTER_NEW}?bookId=${selectedBookId}`)}
                 >
                     New Chapter
                 </Button>
-            </div>
+            </header>
 
-            {books.length > 0 && (
-                <div className="max-w-xs">
-                    <Select
-                        value={selectedBookId}
-                        onChange={(e) => handleBookChange(e.target.value)}
-                    >
-                        {books.map((book) => (
-                            <option key={book.id} value={book.id}>
-                                {book.title}
-                            </option>
-                        ))}
+            <ContentListToolbar
+                search={list.search}
+                onSearchChange={list.setSearch}
+                sort={list.sort}
+                onSortChange={list.setSort}
+                selectedCount={list.selectedIds.length}
+                pending={pending}
+                onBulkPublish={() => setPublishTargets(selectedItems.filter((item) => !item.is_published))}
+                onBulkArchive={() => setArchiveTargets(selectedItems)}
+            >
+                <label className="w-full text-sm font-medium text-neutral-700 md:w-56">
+                    Novel
+                    <Select className="mt-2" value={selectedBookId} onChange={(event) => handleBookChange(event.target.value)}>
+                        {books.map((book) => <option key={book.id} value={book.id}>{book.title}</option>)}
                     </Select>
-                </div>
-            )}
+                </label>
+            </ContentListToolbar>
 
-            {loading && (
-                <div className="text-sm text-neutral-500">
-                    Loading chapters...
-                </div>
-            )}
+            <StatusMessage tone="error" action={error ? <Button size="sm" variant="ghost" onClick={initialize}>Try again</Button> : null}>{error}</StatusMessage>
+            <StatusMessage tone="success">{status}</StatusMessage>
+            {loading && <DashboardSkeleton />}
 
             {!loading && books.length === 0 && (
-                <Card className="p-10 text-center space-y-3">
-                    <div className="text-lg font-medium">
-                        No books found
-                    </div>
-                    <div className="text-sm text-neutral-500">
-                        Create a book before adding chapters.
-                    </div>
-                    <div>
-                        <Button onClick={() => navigate(DASHBOARD_ROUTES.BOOK_NEW)}>
-                            Create Book
-                        </Button>
-                    </div>
+                <Card className="p-8 text-center">
+                    <h3 className="text-lg font-medium">Create a novel first</h3>
+                    <p className="mt-2 text-sm text-neutral-600">Chapters need a novel to belong to.</p>
+                    <Button className="mt-5" onClick={() => navigate(DASHBOARD_ROUTES.BOOK_NEW)}>Create Novel</Button>
                 </Card>
             )}
 
-            {!loading && books.length > 0 && chapters.length === 0 && (
-                <Card className="p-10 text-center space-y-3">
-                    <div className="text-lg font-medium">
-                        No chapters yet
-                    </div>
-                    <div className="text-sm text-neutral-500">
-                        Add the first chapter to this book.
-                    </div>
-                    <div>
-                        <Button onClick={() => navigate(`${DASHBOARD_ROUTES.CHAPTER_NEW}?bookId=${selectedBookId}`)}>
-                            Create Chapter
-                        </Button>
-                    </div>
+            {!loading && books.length > 0 && list.filteredItems.length === 0 && (
+                <Card className="p-8 text-center">
+                    <h3 className="text-lg font-medium">No chapters found</h3>
+                    <p className="mt-2 text-sm text-neutral-600">Adjust the search or add the first chapter.</p>
+                    <Button className="mt-5" onClick={() => navigate(`${DASHBOARD_ROUTES.CHAPTER_NEW}?bookId=${selectedBookId}`)}>Create Chapter</Button>
                 </Card>
             )}
 
-            <div className="grid gap-6">
-                {paginatedChapters.map((chapter) => (
-                    <Card key={chapter.id} className="p-4 md:p-6 space-y-4">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                            <div>
-                                <h3 className="text-lg font-medium">
-                                    {chapter.chapter_number}. {chapter.title}
-                                </h3>
-                                <p className="text-xs text-neutral-400 mt-2">
-                                    {chapter.is_preview ? "Preview enabled" : "Full chapter"}
-                                </p>
-                            </div>
+            {!loading && list.filteredItems.length > 0 && (
+                <ContentList items={list.visibleItems} selectedIds={list.selectedIds} onToggleAll={list.toggleAll}>
+                    {list.visibleItems.map((chapter) => (
+                        <ContentListRow
+                            key={chapter.id}
+                            item={chapter}
+                            selected={list.selectedIds.includes(chapter.id)}
+                            onToggle={list.toggleItem}
+                            title={`${chapter.chapter_number}. ${chapter.title}`}
+                            metadata={`${chapter.is_preview ? "Reader preview" : "Full chapter"} · Updated ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(chapter.updated_at || chapter.created_at))}`}
+                            onEdit={() => navigate(DASHBOARD_ROUTES.CHAPTER_EDIT(chapter.id))}
+                            onArchive={() => setArchiveTargets([chapter])}
+                            onPublish={() => setPublishTargets([chapter])}
+                            pending={pending}
+                        />
+                    ))}
+                </ContentList>
+            )}
 
-                            <div className="flex gap-2">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => navigate(DASHBOARD_ROUTES.CHAPTER_EDIT(chapter.id))}
-                                >
-                                    Edit
-                                </Button>
+            <Pagination page={list.page} pageSize={PAGE_SIZE} totalCount={list.filteredItems.length} onPageChange={list.setPage} />
 
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDelete(chapter.id)}
-                                >
-                                    Delete
-                                </Button>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs text-neutral-500">
-                                {chapter.is_published ? "Published" : "Draft"}
-                            </span>
-
-                            <Button
-                                variant="subtle"
-                                size="sm"
-                                onClick={() => handleTogglePublish(chapter)}
-                            >
-                                {chapter.is_published ? "Unpublish" : "Publish"}
-                            </Button>
-                        </div>
-                    </Card>
-                ))}
-            </div>
-
-            <Pagination
-                page={page}
-                pageSize={DASHBOARD_PAGE_SIZE}
-                totalCount={chapters.length}
-                onPageChange={setPage}
+            <ConfirmDialog
+                open={archiveTargets.length > 0}
+                title={`Move ${archiveTargets.length === 1 ? "chapter" : `${archiveTargets.length} chapters`} to Trash?`}
+                description="Selected chapters will be unpublished and can be restored from Trash."
+                confirmLabel="Move to Trash"
+                busy={pending}
+                onClose={() => setArchiveTargets([])}
+                onConfirm={handleArchive}
+            />
+            <ConfirmDialog
+                open={publishTargets.length > 0}
+                title={publishTargets[0]?.is_published ? "Unpublish chapter?" : `Publish ${publishTargets.length === 1 ? "chapter" : `${publishTargets.length} chapters`}?`}
+                description="This changes what readers can see immediately."
+                confirmLabel={publishTargets[0]?.is_published ? "Unpublish" : "Publish"}
+                variant="primary"
+                busy={pending}
+                onClose={() => setPublishTargets([])}
+                onConfirm={handlePublish}
             />
         </div>
     )
