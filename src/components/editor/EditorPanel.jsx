@@ -108,26 +108,32 @@ export default function EditorPanel({
     const toolbarActions = [
         {
             label: "H1",
+            description: "Heading",
             onClick: () => prefixLines("# ", "Heading")
         },
         {
             label: "Bold",
+            description: "Bold text",
             onClick: () => wrapSelection("**", "**", "bold text")
         },
         {
             label: "Italic",
+            description: "Italic text",
             onClick: () => wrapSelection("*", "*", "italic text")
         },
         {
             label: "Quote",
+            description: "Block quote",
             onClick: () => prefixLines("> ", "Quoted text")
         },
         {
             label: "List",
+            description: "Bulleted list",
             onClick: () => prefixLines("- ")
         },
         {
             label: "1.",
+            description: "Numbered list",
             onClick: () => transformSelectedLines(
                 (selectedBlock) => selectedBlock
                     .split("\n")
@@ -141,14 +147,17 @@ export default function EditorPanel({
         },
         {
             label: "Link",
+            description: "Insert link",
             onClick: () => wrapSelection("[", "](https://example.com)", "link text")
         },
         {
             label: "Rule",
+            description: "Horizontal rule",
             onClick: () => insertAtCursor("\n\n---\n\n")
         },
         {
             label: "Break",
+            description: "Line break",
             onClick: () => insertAtCursor("  \n", 3)
         }
     ]
@@ -164,6 +173,8 @@ export default function EditorPanel({
                             variant="subtle"
                             size="sm"
                             className="shrink-0"
+                            aria-label={action.description}
+                            title={action.description}
                             onClick={action.onClick}
                         >
                             {action.label}
@@ -182,6 +193,7 @@ export default function EditorPanel({
                         value={value ?? ""}
                         onChange={(e) => onChange(e.target.value)}
                         placeholder={placeholder}
+                        aria-label="Markdown editor"
                         className="
                             w-full min-h-[260px] md:min-h-[420px] resize-none
                             bg-transparent
@@ -199,7 +211,7 @@ export default function EditorPanel({
                 <div className="block md:hidden h-px bg-neutral-200" />
 
                 {/* Preview */}
-                <div className="flex-1 p-4 md:p-6 bg-neutral-50 min-h-[220px]">
+                <div className="flex-1 p-4 md:p-6 bg-neutral-50 min-h-[220px]" aria-label="Rendered preview">
 
                     <div className="max-w-3xl mx-auto prose-reading">
 

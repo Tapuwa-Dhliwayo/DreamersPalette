@@ -58,6 +58,7 @@ export async function getMyCollections() {
     const { data, error } = await supabase
         .from("poetry_collections")
         .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode, is_published, created_at, updated_at")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false })
 
     if (error) throw error
@@ -73,6 +74,7 @@ export async function getPoemCountsByCollection() {
     const { data: collections, error: colErr } = await supabase
         .from("poetry_collections")
         .select("id")
+        .is("deleted_at", null)
 
     if (colErr) throw colErr
     if (!collections || collections.length === 0) return {}
@@ -85,11 +87,13 @@ export async function getPoemCountsByCollection() {
                 supabase
                     .from("poems")
                     .select("id", { count: "exact", head: true })
-                    .eq("collection_id", col.id),
+                    .eq("collection_id", col.id)
+                    .is("deleted_at", null),
                 supabase
                     .from("poems")
                     .select("id", { count: "exact", head: true })
                     .eq("collection_id", col.id)
+                    .is("deleted_at", null)
                     .eq("is_published", true),
             ])
 
@@ -138,16 +142,54 @@ export async function updateCollection(id, updates) {
     return data
 }
 
+export async function getMyCollectionById(id) {
+    const { data, error } = await supabase
+        .from("poetry_collections")
+        .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode, is_published, created_at, updated_at")
+        .eq("id", id)
+        .is("deleted_at", null)
+        .single()
+
+    if (error) throw error
+    return data
+}
+
 /**
  * Delete collection (author-owned only)
  */
-export async function deleteCollection(id) {
-    const { error } = await supabase
+export async function archiveCollection(id) {
+    const { data, error } = await supabase
         .from("poetry_collections")
-        .delete()
+        .update({ deleted_at: new Date().toISOString(), is_published: false })
         .eq("id", id)
+        .select()
+        .single()
 
     if (error) throw error
+    return data
+}
+
+export async function restoreCollection(id) {
+    const { data, error } = await supabase
+        .from("poetry_collections")
+        .update({ deleted_at: null })
+        .eq("id", id)
+        .select()
+        .single()
+
+    if (error) throw error
+    return data
+}
+
+export async function getArchivedCollections() {
+    const { data, error } = await supabase
+        .from("poetry_collections")
+        .select("id, title, slug, deleted_at")
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false })
+
+    if (error) throw error
+    return data
 }
 
 /**
@@ -178,6 +220,7 @@ export async function getPublishedCollections() {
         .from("poetry_collections")
         .select("id, title, slug, description, theme_background_url")
         .eq("is_published", true)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false })
 
     if (error) throw error
@@ -198,6 +241,7 @@ export async function getPublishedCollectionsPaginated(page = 1, pageSize = 12) 
         .from("poetry_collections")
         .select("id, title, slug, description, theme_background_url", { count: "exact" })
         .eq("is_published", true)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .range(from, to)
 
@@ -214,6 +258,7 @@ export async function getCollectionBySlug(slug) {
         .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode, author_id")
         .eq("slug", slug)
         .eq("is_published", true)
+        .is("deleted_at", null)
         .single()
 
     if (error) throw error
@@ -228,6 +273,7 @@ export async function getCollectionBySlugPreview(slug) {
         .from("poetry_collections")
         .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode, author_id")
         .eq("slug", slug)
+        .is("deleted_at", null)
         .single()
 
     if (error) throw error
@@ -244,6 +290,7 @@ export async function getCollectionById(id) {
         .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode")
         .eq("id", id)
         .eq("is_published", true)
+        .is("deleted_at", null)
         .single()
 
     if (error) throw error
@@ -261,6 +308,7 @@ export async function getMyPoems() {
     const { data, error } = await supabase
         .from("poems")
         .select("id, collection_id, title, slug, excerpt, is_published, created_at, updated_at")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false })
 
     if (error) throw error
@@ -275,6 +323,7 @@ export async function getMyPoemById(id) {
         .from("poems")
         .select("id, collection_id, title, slug, content_md, excerpt, is_published, created_at, updated_at")
         .eq("id", id)
+        .is("deleted_at", null)
         .single()
 
     if (error) throw error
@@ -289,6 +338,7 @@ export async function getPoemsByCollection(collectionId) {
         .from("poems")
         .select("id, collection_id, title, slug, excerpt, is_published, created_at")
         .eq("collection_id", collectionId)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false })
 
     if (error) throw error
@@ -333,13 +383,39 @@ export async function updatePoem(id, updates) {
 /**
  * Delete poem (author-owned only)
  */
-export async function deletePoem(id) {
-    const { error } = await supabase
+export async function archivePoem(id) {
+    const { data, error } = await supabase
         .from("poems")
-        .delete()
+        .update({ deleted_at: new Date().toISOString(), is_published: false })
         .eq("id", id)
+        .select()
+        .single()
 
     if (error) throw error
+    return data
+}
+
+export async function restorePoem(id) {
+    const { data, error } = await supabase
+        .from("poems")
+        .update({ deleted_at: null })
+        .eq("id", id)
+        .select()
+        .single()
+
+    if (error) throw error
+    return data
+}
+
+export async function getArchivedPoems() {
+    const { data, error } = await supabase
+        .from("poems")
+        .select("id, title, slug, deleted_at")
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false })
+
+    if (error) throw error
+    return data
 }
 
 /**
@@ -368,9 +444,21 @@ export async function togglePoemPublish(id, isPublished) {
 export async function getPublishedPoemBySlug(slug) {
     const { data, error } = await supabase
         .from("poems")
-        .select("id, collection_id, title, slug, content_md, excerpt, author_id")
+        .select(`
+            id,
+            collection_id,
+            title,
+            slug,
+            content_md,
+            excerpt,
+            author_id,
+            poetry_collections!inner(is_published, deleted_at)
+        `)
         .eq("slug", slug)
         .eq("is_published", true)
+        .is("deleted_at", null)
+        .eq("poetry_collections.is_published", true)
+        .is("poetry_collections.deleted_at", null)
         .single()
 
     if (error) throw error
@@ -399,6 +487,8 @@ export async function getRecentlyAddedPoems(limit = 4) {
         `)
         .eq("is_published", true)
         .eq("poetry_collections.is_published", true)
+        .is("deleted_at", null)
+        .is("poetry_collections.deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(limit)
 
@@ -421,6 +511,8 @@ export async function getPublishedPoemsByCollection(collectionSlug) {
         `)
         .eq("is_published", true)
         .eq("poetry_collections.slug", collectionSlug)
+        .is("deleted_at", null)
+        .is("poetry_collections.deleted_at", null)
         .order("created_at", { ascending: true })
 
     if (error) throw error
@@ -449,6 +541,8 @@ export async function getPublishedPoemsByCollectionPaginated(collectionSlug, pag
         `, { count: "exact" })
         .eq("is_published", true)
         .eq("poetry_collections.slug", collectionSlug)
+        .is("deleted_at", null)
+        .is("poetry_collections.deleted_at", null)
         .order("created_at", { ascending: true })
         .range(from, to)
 

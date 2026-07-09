@@ -1,166 +1,150 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-
 import { Card } from "@/components/ui/Card"
 import Button from "@/components/ui/Button"
 import Pagination from "@/components/ui/Pagination"
-
-import {
-    getMyBooks,
-    deleteBook,
-    toggleBookPublish
-} from "@/services/bookService"
+import ConfirmDialog from "@/components/ui/ConfirmDialog"
+import StatusMessage from "@/components/ui/StatusMessage"
+import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton"
+import { ContentList, ContentListRow, ContentListToolbar } from "@/components/dashboard/ContentList"
+import { useContentListControls } from "@/hooks/useContentListControls"
+import { getMyBooks, archiveBook, toggleBookPublish } from "@/services/bookService"
 import { DASHBOARD_ROUTES } from "@/app/routes"
 
-const DASHBOARD_PAGE_SIZE = 10
+const PAGE_SIZE = 10
 
 export default function Books() {
     const navigate = useNavigate()
-
     const [books, setBooks] = useState([])
     const [loading, setLoading] = useState(true)
-    const [page, setPage] = useState(1)
+    const [pending, setPending] = useState(false)
+    const [error, setError] = useState("")
+    const [status, setStatus] = useState("")
+    const [archiveTargets, setArchiveTargets] = useState([])
+    const [publishTargets, setPublishTargets] = useState([])
+    const list = useContentListControls(books, PAGE_SIZE)
 
     useEffect(() => {
-        async function load() {
-            await initialize()
-        }
-        load()
+        loadBooks()
     }, [])
 
-    const paginatedBooks = useMemo(() => {
-        const start = (page - 1) * DASHBOARD_PAGE_SIZE
-        return books.slice(start, start + DASHBOARD_PAGE_SIZE)
-    }, [books, page])
-
-    useEffect(() => {
-        const totalPages = Math.max(1, Math.ceil(books.length / DASHBOARD_PAGE_SIZE))
-        if (page > totalPages) {
-            setPage(totalPages)
-        }
-    }, [books.length, page])
-
-    async function initialize() {
+    async function loadBooks() {
         try {
-            const data = await getMyBooks()
-            setBooks(data)
+            setLoading(true)
+            setError("")
+            setBooks(await getMyBooks())
         } catch (err) {
-            console.error("Failed to load books:", err)
+            setError(err.message || "Novels could not be loaded.")
         } finally {
             setLoading(false)
         }
     }
 
-    async function handleDelete(id) {
+    async function handleArchive() {
         try {
-            await deleteBook(id)
-            await initialize()
+            setPending(true)
+            await Promise.all(archiveTargets.map((item) => archiveBook(item.id)))
+            setStatus(`${archiveTargets.length} ${archiveTargets.length === 1 ? "novel was" : "novels were"} moved to Trash.`)
+            setArchiveTargets([])
+            list.setSelectedIds([])
+            await loadBooks()
         } catch (err) {
-            console.error("Delete failed:", err)
+            setError(err.message || "The selected novels could not be archived.")
+        } finally {
+            setPending(false)
         }
     }
 
-    async function handleTogglePublish(book) {
+    async function handlePublish() {
         try {
-            await toggleBookPublish(book.id, !book.is_published)
-            await initialize()
+            setPending(true)
+            await Promise.all(publishTargets.map((item) => toggleBookPublish(item.id, !item.is_published)))
+            setStatus(`${publishTargets.length} ${publishTargets.length === 1 ? "novel was" : "novels were"} updated.`)
+            setPublishTargets([])
+            list.setSelectedIds([])
+            await loadBooks()
         } catch (err) {
-            console.error("Toggle failed:", err)
+            setError(err.message || "Publication state could not be changed.")
+        } finally {
+            setPending(false)
         }
     }
+
+    const selectedItems = books.filter((item) => list.selectedIds.includes(item.id))
 
     return (
-        <div className="space-y-10">
-            <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-semibold tracking-tight">
-                    Books
-                </h2>
-                <Button onClick={() => navigate(DASHBOARD_ROUTES.BOOK_NEW)}>
-                    New Book
-                </Button>
-            </div>
-
-            {loading && (
-                <div className="text-sm text-neutral-500">
-                    Loading books...
+        <div className="space-y-8">
+            <header className="flex items-center justify-between gap-4">
+                <div>
+                    <h2 className="text-2xl font-semibold tracking-tight">Novels</h2>
+                    <p className="mt-1 text-sm text-neutral-600">Manage long-form work and cover imagery.</p>
                 </div>
-            )}
+                <Button onClick={() => navigate(DASHBOARD_ROUTES.BOOK_NEW)}>New Novel</Button>
+            </header>
 
-            {!loading && books.length === 0 && (
-                <Card className="p-10 text-center space-y-3">
-                    <div className="text-lg font-medium">
-                        No books yet
-                    </div>
-                    <div className="text-sm text-neutral-500">
-                        Start your next long-form world.
-                    </div>
-                    <div>
-                        <Button onClick={() => navigate(DASHBOARD_ROUTES.BOOK_NEW)}>
-                            Create Book
-                        </Button>
-                    </div>
+            <ContentListToolbar
+                search={list.search}
+                onSearchChange={list.setSearch}
+                sort={list.sort}
+                onSortChange={list.setSort}
+                selectedCount={list.selectedIds.length}
+                pending={pending}
+                onBulkPublish={() => setPublishTargets(selectedItems.filter((item) => !item.is_published))}
+                onBulkArchive={() => setArchiveTargets(selectedItems)}
+            />
+
+            <StatusMessage tone="error" action={error ? <Button size="sm" variant="ghost" onClick={loadBooks}>Try again</Button> : null}>{error}</StatusMessage>
+            <StatusMessage tone="success">{status}</StatusMessage>
+            {loading && <DashboardSkeleton />}
+
+            {!loading && list.filteredItems.length === 0 && (
+                <Card className="p-8 text-center">
+                    <h3 className="text-lg font-medium">No novels found</h3>
+                    <p className="mt-2 text-sm text-neutral-600">Adjust the search or begin a new novel.</p>
+                    <Button className="mt-5" onClick={() => navigate(DASHBOARD_ROUTES.BOOK_NEW)}>Create Novel</Button>
                 </Card>
             )}
 
-            <div className="grid gap-6">
-                {paginatedBooks.map((book) => (
-                    <Card key={book.id} className="p-4 md:p-6 space-y-4">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                            <div>
-                                <h3 className="text-lg font-medium">
-                                    {book.title}
-                                </h3>
-                                {book.synopsis && (
-                                    <p className="text-sm text-neutral-500 mt-1">
-                                        {book.synopsis}
-                                    </p>
-                                )}
-                                <p className="text-xs text-neutral-400 mt-2">
-                                    /books/{book.slug}
-                                </p>
-                            </div>
+            {!loading && list.filteredItems.length > 0 && (
+                <ContentList items={list.visibleItems} selectedIds={list.selectedIds} onToggleAll={list.toggleAll}>
+                    {list.visibleItems.map((book) => (
+                        <ContentListRow
+                            key={book.id}
+                            item={book}
+                            selected={list.selectedIds.includes(book.id)}
+                            onToggle={list.toggleItem}
+                            title={book.title}
+                            description={book.synopsis}
+                            metadata={`Updated ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(book.updated_at || book.created_at))}`}
+                            onEdit={() => navigate(DASHBOARD_ROUTES.BOOK_EDIT(book.id))}
+                            onArchive={() => setArchiveTargets([book])}
+                            onPublish={() => setPublishTargets([book])}
+                            pending={pending}
+                        />
+                    ))}
+                </ContentList>
+            )}
 
-                            <div className="flex gap-2">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => navigate(DASHBOARD_ROUTES.BOOK_EDIT(book.id))}
-                                >
-                                    Edit
-                                </Button>
+            <Pagination page={list.page} pageSize={PAGE_SIZE} totalCount={list.filteredItems.length} onPageChange={list.setPage} />
 
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDelete(book.id)}
-                                >
-                                    Delete
-                                </Button>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs text-neutral-500">
-                                {book.is_published ? "Published" : "Draft"}
-                            </span>
-
-                            <Button
-                                variant="subtle"
-                                size="sm"
-                                onClick={() => handleTogglePublish(book)}
-                            >
-                                {book.is_published ? "Unpublish" : "Publish"}
-                            </Button>
-                        </div>
-                    </Card>
-                ))}
-            </div>
-
-            <Pagination
-                page={page}
-                pageSize={DASHBOARD_PAGE_SIZE}
-                totalCount={books.length}
-                onPageChange={setPage}
+            <ConfirmDialog
+                open={archiveTargets.length > 0}
+                title={`Move ${archiveTargets.length === 1 ? "novel" : `${archiveTargets.length} novels`} to Trash?`}
+                description="Selected novels will be unpublished and can be restored from Trash."
+                confirmLabel="Move to Trash"
+                busy={pending}
+                onClose={() => setArchiveTargets([])}
+                onConfirm={handleArchive}
+            />
+            <ConfirmDialog
+                open={publishTargets.length > 0}
+                title={publishTargets[0]?.is_published ? "Unpublish novel?" : `Publish ${publishTargets.length === 1 ? "novel" : `${publishTargets.length} novels`}?`}
+                description="This changes what readers can see immediately."
+                confirmLabel={publishTargets[0]?.is_published ? "Unpublish" : "Publish"}
+                variant="primary"
+                busy={pending}
+                onClose={() => setPublishTargets([])}
+                onConfirm={handlePublish}
             />
         </div>
     )

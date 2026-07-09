@@ -58,14 +58,14 @@ h3 {
   @apply font-serif text-xl;
 }
 
-/* Paragraph spacing rhythm */
-p {
+/* Paragraph spacing rhythm inside long-form reading only */
+.prose-reading p {
   @apply mt-4;
 }
 
 /* Links */
 a {
-  @apply underline-offset-4 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200;
+  @apply underline-offset-4 transition-colors duration-200;
 }
 
 /* Accent Button System */
@@ -160,4 +160,24 @@ a {
 /* Safe area bottom padding */
 .pb-safe {
   padding-bottom: max(2rem, env(safe-area-inset-bottom));
+}
+
+:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

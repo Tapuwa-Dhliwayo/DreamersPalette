@@ -59,6 +59,7 @@ export async function getMyBooks() {
     const { data, error } = await supabase
         .from("books")
         .select("id, title, slug, synopsis, cover_image_url, is_published, created_at, updated_at")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false })
 
     if (error) throw error
@@ -73,6 +74,7 @@ export async function getMyBookById(bookId) {
         .from("books")
         .select("id, title, slug, synopsis, cover_image_url, is_published, created_at, updated_at")
         .eq("id", bookId)
+        .is("deleted_at", null)
         .single()
 
     if (error) throw error
@@ -117,13 +119,39 @@ export async function updateBook(id, updates) {
 /**
  * Delete book (author-owned only)
  */
-export async function deleteBook(id) {
-    const { error } = await supabase
+export async function archiveBook(id) {
+    const { data, error } = await supabase
         .from("books")
-        .delete()
+        .update({ deleted_at: new Date().toISOString(), is_published: false })
         .eq("id", id)
+        .select()
+        .single()
 
     if (error) throw error
+    return data
+}
+
+export async function restoreBook(id) {
+    const { data, error } = await supabase
+        .from("books")
+        .update({ deleted_at: null })
+        .eq("id", id)
+        .select()
+        .single()
+
+    if (error) throw error
+    return data
+}
+
+export async function getArchivedBooks() {
+    const { data, error } = await supabase
+        .from("books")
+        .select("id, title, slug, deleted_at")
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false })
+
+    if (error) throw error
+    return data
 }
 
 /**
@@ -151,8 +179,9 @@ export async function toggleBookPublish(id, isPublished) {
 export async function getMyChaptersByBook(bookId) {
     const { data, error } = await supabase
         .from("chapters")
-        .select("id, book_id, title, chapter_number, is_preview, is_published, created_at")
+        .select("id, book_id, title, chapter_number, is_preview, is_published, created_at, updated_at")
         .eq("book_id", bookId)
+        .is("deleted_at", null)
         .order("chapter_number", { ascending: true })
 
     if (error) throw error
@@ -167,6 +196,7 @@ export async function getMyChapterById(chapterId) {
         .from("chapters")
         .select("id, book_id, title, chapter_number, content_md, is_preview, is_published, created_at")
         .eq("id", chapterId)
+        .is("deleted_at", null)
         .single()
 
     if (error) throw error
@@ -219,13 +249,39 @@ export async function updateChapter(id, updates) {
 /**
  * Delete chapter (author-owned only)
  */
-export async function deleteChapter(id) {
-    const { error } = await supabase
+export async function archiveChapter(id) {
+    const { data, error } = await supabase
         .from("chapters")
-        .delete()
+        .update({ deleted_at: new Date().toISOString(), is_published: false })
         .eq("id", id)
+        .select()
+        .single()
 
     if (error) throw error
+    return data
+}
+
+export async function restoreChapter(id) {
+    const { data, error } = await supabase
+        .from("chapters")
+        .update({ deleted_at: null })
+        .eq("id", id)
+        .select()
+        .single()
+
+    if (error) throw error
+    return data
+}
+
+export async function getArchivedChapters() {
+    const { data, error } = await supabase
+        .from("chapters")
+        .select("id, title, chapter_number, deleted_at")
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false })
+
+    if (error) throw error
+    return data
 }
 
 /**
@@ -255,6 +311,7 @@ export async function getPublishedBooks() {
         .from("books")
         .select("id, title, slug, synopsis, cover_image_url, theme_background_url")
         .eq("is_published", true)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false })
 
     if (error) throw error
@@ -275,6 +332,7 @@ export async function getPublishedBooksPaginated(page = 1, pageSize = 12) {
         .from("books")
         .select("id, title, slug, synopsis, cover_image_url, theme_background_url", { count: "exact" })
         .eq("is_published", true)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .range(from, to)
 
@@ -291,6 +349,7 @@ export async function getBookBySlug(slug) {
         .select("id, title, slug, synopsis, cover_image_url, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode, author_id")
         .eq("slug", slug)
         .eq("is_published", true)
+        .is("deleted_at", null)
         .single()
 
     if (error) throw error
@@ -305,6 +364,7 @@ export async function getBookBySlugPreview(slug) {
         .from("books")
         .select("id, title, slug, synopsis, cover_image_url, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode, author_id")
         .eq("slug", slug)
+        .is("deleted_at", null)
         .single()
 
     if (error) throw error
@@ -330,6 +390,8 @@ export async function getPublishedChaptersByBook(bookSlug) {
         `)
         .eq("is_published", true)
         .eq("books.slug", bookSlug)
+        .is("deleted_at", null)
+        .is("books.deleted_at", null)
         .order("chapter_number", { ascending: true })
 
     if (error) throw error
@@ -358,6 +420,8 @@ export async function getPublishedChaptersByBookPaginated(bookSlug, page = 1, pa
         `, { count: "exact" })
         .eq("is_published", true)
         .eq("books.slug", bookSlug)
+        .is("deleted_at", null)
+        .is("books.deleted_at", null)
         .order("chapter_number", { ascending: true })
         .range(from, to)
 
@@ -383,6 +447,8 @@ export async function getPublishedChapter(bookSlug, chapterNumber) {
         .eq("is_published", true)
         .eq("books.slug", bookSlug)
         .eq("chapter_number", chapterNumber)
+        .is("deleted_at", null)
+        .is("books.deleted_at", null)
         .single()
 
     if (error) throw error
