@@ -1,6 +1,8 @@
-import { useMemo, useRef } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import ReactMarkdown from "react-markdown"
 import Button from "@/components/ui/Button"
+import WritingAssistant from "@/components/editor/WritingAssistant"
+import { useTextSelection } from "@/hooks/useTextSelection"
 
 export default function EditorPanel({
                                          value,
@@ -9,6 +11,8 @@ export default function EditorPanel({
                                      }) {
     const previewContent = useMemo(() => value || "", [value])
     const textareaRef = useRef(null)
+    const [assistantOpen, setAssistantOpen] = useState(false)
+    const { selection, captureSelection, clearSelection, hasSelection } = useTextSelection(value)
 
     function updateValue(nextValue, selectionStart, selectionEnd = selectionStart) {
         onChange(nextValue)
@@ -105,6 +109,51 @@ export default function EditorPanel({
         updateValue(nextValue, selectionStart + cursorOffset)
     }
 
+    function replaceRange(selectionStart, selectionEnd, replacement) {
+        const textarea = textareaRef.current
+        const currentValue = value || ""
+        if (!textarea || selectionEnd < selectionStart) return
+
+        textarea.focus()
+        textarea.setSelectionRange(selectionStart, selectionEnd)
+
+        const replacedWithNativeUndo = document.execCommand?.("insertText", false, replacement)
+        const nextValue =
+            replacedWithNativeUndo
+                ? textarea.value
+                : currentValue.slice(0, selectionStart)
+                + replacement
+                + currentValue.slice(selectionEnd)
+
+        if (!replacedWithNativeUndo) {
+            updateValue(nextValue, selectionStart, selectionStart + replacement.length)
+        } else {
+            if (nextValue !== currentValue) onChange(nextValue)
+            requestAnimationFrame(() => {
+                textarea.focus()
+                textarea.setSelectionRange(selectionStart, selectionStart + replacement.length)
+            })
+        }
+
+        setAssistantOpen(false)
+        clearSelection()
+    }
+
+    function replaceSelection(replacement) {
+        replaceRange(selection.start, selection.end, replacement)
+    }
+
+    const closeAssistant = useCallback(() => {
+        setAssistantOpen(false)
+        requestAnimationFrame(() => textareaRef.current?.focus())
+    }, [])
+
+    function openAssistant() {
+        const nextSelection = captureSelection(textareaRef.current)
+        if (nextSelection.end <= nextSelection.start) return
+        setAssistantOpen(true)
+    }
+
     const toolbarActions = [
         {
             label: "H1",
@@ -180,8 +229,29 @@ export default function EditorPanel({
                             {action.label}
                         </Button>
                     ))}
+                    <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        className="ml-auto shrink-0"
+                        disabled={!hasSelection}
+                        aria-label="Assist with selected text"
+                        title={hasSelection ? "Assist with selected text" : "Select text to use writing assistance"}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={openAssistant}
+                    >
+                        Assist
+                    </Button>
                 </div>
             </div>
+
+            <WritingAssistant
+                open={assistantOpen}
+                selection={selection}
+                onClose={closeAssistant}
+                onReplace={replaceSelection}
+                onReplaceRange={replaceRange}
+            />
 
             <div className="flex flex-col md:flex-row min-h-[280px] md:min-h-[500px]">
 
@@ -191,7 +261,11 @@ export default function EditorPanel({
                     <textarea
                         ref={textareaRef}
                         value={value ?? ""}
-                        onChange={(e) => onChange(e.target.value)}
+                        onChange={(event) => {
+                            onChange(event.target.value)
+                            if (assistantOpen) setAssistantOpen(false)
+                        }}
+                        onSelect={(event) => captureSelection(event.currentTarget)}
                         placeholder={placeholder}
                         aria-label="Markdown editor"
                         className="

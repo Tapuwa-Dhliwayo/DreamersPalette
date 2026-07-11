@@ -23,6 +23,106 @@ import { useUnsavedChanges } from "@/hooks/useUnsavedChanges"
 import { useLocalDraft } from "@/hooks/useLocalDraft"
 import EditorSaveState from "@/components/dashboard/EditorSaveState"
 import { DASHBOARD_ROUTES } from "@/app/routes"
+import { compositeColors, contrastRatio, parseColorToHex } from "@/utils/color"
+
+const TEXT_COLOR_FIELDS = [
+    {
+        field: "theme_text_color",
+        id: "collection-poem-text",
+        label: "Poem text",
+        hint: "The main reading colour for poems and chapters."
+    },
+    {
+        field: "theme_heading_color",
+        id: "collection-heading-text",
+        label: "Titles & headings",
+        hint: "Collection titles, poem titles, and section headings."
+    },
+    {
+        field: "theme_muted_color",
+        id: "collection-muted-text",
+        label: "Captions & supporting text",
+        hint: "Descriptions, metadata, and quieter reader text."
+    }
+]
+
+function getThemeDefaults(textMode) {
+    return textMode === "light"
+        ? { text: "#f5f5f5", muted: "#a3a3a3" }
+        : { text: "#171717", muted: "#737373" }
+}
+
+function getEstimatedBackground(form) {
+    if (!form.theme_background_url) return "#262626"
+    const overlay = form.theme_text_mode === "light" ? "#000000" : "#ffffff"
+    return compositeColors(overlay, "#808080", form.theme_overlay_opacity)
+}
+
+function TextColorControl({ config, value, defaultColor, backgroundColor, error, onChange, onError }) {
+    const [inputValue, setInputValue] = useState(value || defaultColor)
+    const resolvedColor = value || defaultColor
+    const ratio = contrastRatio(resolvedColor, backgroundColor)
+    const hasLowContrast = ratio !== null && ratio < 4.5
+
+    function handleTextChange(nextValue) {
+        setInputValue(nextValue)
+        const normalized = parseColorToHex(nextValue)
+        if (!normalized) {
+            onError("Enter a HEX, RGB, or HSL colour.")
+            return
+        }
+        onError("")
+        onChange(normalized)
+    }
+
+    return (
+        <FormField label={config.label} htmlFor={config.id} hint={config.hint} error={error}>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <input
+                    id={`${config.id}-picker`}
+                    type="color"
+                    value={resolvedColor}
+                    aria-label={`${config.label} colour picker`}
+                    onChange={(event) => {
+                        setInputValue(event.target.value)
+                        onError("")
+                        onChange(event.target.value)
+                    }}
+                    className="h-11 w-14 shrink-0 cursor-pointer rounded-lg border border-neutral-300 bg-transparent"
+                />
+                <Input
+                    id={config.id}
+                    value={inputValue}
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={`${config.id}-description`}
+                    placeholder="#f5f5f5, rgb(245, 245, 245), or hsl(0, 0%, 96%)"
+                    onBlur={() => {
+                        if (!error) setInputValue(resolvedColor)
+                    }}
+                    onChange={(event) => handleTextChange(event.target.value)}
+                />
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={value == null}
+                    onClick={() => {
+                        setInputValue(defaultColor)
+                        onError("")
+                        onChange(null)
+                    }}
+                >
+                    Reset
+                </Button>
+            </div>
+            {hasLowContrast && !error && (
+                <p className="text-xs leading-relaxed text-amber-800" role="status">
+                    {ratio.toFixed(1)}:1 contrast. This colour may be hard to read against the background.
+                </p>
+            )}
+        </FormField>
+    )
+}
 
 const EMPTY_FORM = {
     title: "",
@@ -30,7 +130,10 @@ const EMPTY_FORM = {
     theme_background_url: "",
     theme_overlay_opacity: 0.6,
     accent_color: "#d4d4d8",
-    theme_text_mode: "light"
+    theme_text_mode: "light",
+    theme_text_color: null,
+    theme_heading_color: null,
+    theme_muted_color: null
 }
 
 export default function CollectionEditorPage() {
@@ -73,7 +176,10 @@ export default function CollectionEditorPage() {
                     theme_background_url: collection.theme_background_url || "",
                     theme_overlay_opacity: collection.theme_overlay_opacity ?? 0.6,
                     accent_color: collection.accent_color || "#d4d4d8",
-                    theme_text_mode: collection.theme_text_mode || "light"
+                    theme_text_mode: collection.theme_text_mode || "light",
+                    theme_text_color: collection.theme_text_color || null,
+                    theme_heading_color: collection.theme_heading_color || null,
+                    theme_muted_color: collection.theme_muted_color || null
                 }
                 setForm(nextForm)
                 setInitialForm(nextForm)
@@ -97,6 +203,9 @@ export default function CollectionEditorPage() {
         if (!form.title.trim()) nextErrors.title = "Enter a collection title."
         if (form.title.trim().length > 120) nextErrors.title = "Keep the title under 120 characters."
         if (form.description.length > 1000) nextErrors.description = "Keep the description under 1,000 characters."
+        TEXT_COLOR_FIELDS.forEach(({ field }) => {
+            if (fieldErrors[field]) nextErrors[field] = fieldErrors[field]
+        })
         setFieldErrors(nextErrors)
         return Object.keys(nextErrors).length === 0
     }
@@ -302,7 +411,7 @@ export default function CollectionEditorPage() {
 
                     <section className="space-y-5 border-t border-neutral-200 pt-8">
                         <div>
-                            <h3 className="text-lg font-medium">Reader contrast</h3>
+                            <h3 className="text-lg font-medium">Colours & contrast</h3>
                             <p className="mt-1 text-sm text-neutral-600">
                                 Tune the treatment against the preview. Readability takes priority over atmosphere.
                             </p>
@@ -320,7 +429,7 @@ export default function CollectionEditorPage() {
                             />
                         </FormField>
                         <fieldset className="space-y-2">
-                            <legend className="text-sm font-medium text-neutral-700">Text color</legend>
+                            <legend className="text-sm font-medium text-neutral-700">Overlay text mode</legend>
                             <div className="flex rounded-xl bg-neutral-100 p-1">
                                 {[
                                     { value: "light", label: "Light text" },
@@ -342,6 +451,30 @@ export default function CollectionEditorPage() {
                                 ))}
                             </div>
                         </fieldset>
+                        <div className="space-y-4 border-t border-neutral-200 pt-5">
+                            <div>
+                                <h4 className="text-sm font-medium text-neutral-900">Text colours</h4>
+                                <p className="mt-1 text-xs leading-relaxed text-neutral-600">
+                                    Use HEX, RGB, or HSL. Reset follows the selected overlay text mode.
+                                </p>
+                            </div>
+                            {TEXT_COLOR_FIELDS.map((config) => {
+                                const defaults = getThemeDefaults(form.theme_text_mode)
+                                const defaultColor = config.field === "theme_muted_color" ? defaults.muted : defaults.text
+                                return (
+                                    <TextColorControl
+                                        key={`${config.field}-${form[config.field] || defaultColor}`}
+                                        config={config}
+                                        value={form[config.field]}
+                                        defaultColor={defaultColor}
+                                        backgroundColor={getEstimatedBackground(form)}
+                                        error={fieldErrors[config.field]}
+                                        onChange={(value) => updateField(config.field, value)}
+                                        onError={(message) => setFieldErrors((current) => ({ ...current, [config.field]: message }))}
+                                    />
+                                )
+                            })}
+                        </div>
                         <FormField label="Accent color" htmlFor="collection-accent" hint="Used for small links and underlines in the reader.">
                             <div className="flex items-center gap-3">
                                 <input

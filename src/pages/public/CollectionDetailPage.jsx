@@ -56,7 +56,7 @@ export default function CollectionDetailPage() {
 
     if (loading) {
         return (
-            <div className="text-sm text-neutral-500">
+            <div className="reader-muted text-sm">
                 Loading collection...
             </div>
         )
@@ -65,10 +65,10 @@ export default function CollectionDetailPage() {
     if (notFound || !collection) {
         return (
             <div className="py-20 text-center space-y-4">
-                <h2 className="text-2xl font-semibold">
+                <h2 className="reader-heading text-2xl font-semibold">
                     Collection not found
                 </h2>
-                <p className="text-neutral-500">
+                <p className="reader-muted">
                     It may not be published yet.
                 </p>
             </div>
@@ -81,12 +81,12 @@ export default function CollectionDetailPage() {
             {/* Header */}
             <header className="space-y-4 md:space-y-6 text-center">
 
-                <h1 className="text-2xl sm:text-3xl md:text-5xl font-serif tracking-tight accent-underline">
+                <h1 className="reader-heading text-2xl sm:text-3xl md:text-5xl font-serif tracking-tight accent-underline">
                     {collection.title}
                 </h1>
 
                 {collection.description && (
-                    <p className="text-sm md:text-lg opacity-70 max-w-2xl mx-auto leading-relaxed">
+                    <p className="reader-muted text-sm md:text-lg max-w-2xl mx-auto leading-relaxed">
                         {collection.description}
                     </p>
                 )}
@@ -96,7 +96,7 @@ export default function CollectionDetailPage() {
             <section className="space-y-5 md:space-y-8 border-t border-white/10 pt-6 md:pt-12">
 
                 {poems.length === 0 && (
-                    <p className="opacity-60 text-center">
+                    <p className="reader-muted text-center">
                         No published poems yet.
                     </p>
                 )}
@@ -109,12 +109,12 @@ export default function CollectionDetailPage() {
                     >
                         <div className="space-y-3">
 
-                            <h2 className="text-xl md:text-2xl font-serif leading-relaxed group-hover:opacity-70 transition">
+                            <h2 className="reader-heading text-xl md:text-2xl font-serif leading-relaxed group-hover:opacity-70 transition">
                                 {poem.title}
                             </h2>
 
                             {poem.excerpt && (
-                                <p className="text-xs md:text-sm opacity-60 leading-relaxed max-w-xl">
+                                <p className="reader-muted text-xs md:text-sm leading-relaxed max-w-xl">
                                     {poem.excerpt}
                                 </p>
                             )}

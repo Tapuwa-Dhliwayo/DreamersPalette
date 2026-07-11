@@ -1,16 +1,52 @@
-# React + Vite
+# Dreamer's Palette
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A creator-first literary publishing studio paired with an immersive public
+reader. Authors write, organize, theme, and publish poetry collections, poems,
+novels, and chapters; readers experience each collection as its own
+atmospheric visual world.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Frontend:** React 19 + Vite, React Router, Tailwind CSS v4, React Markdown
+- **Backend:** Supabase (Auth, PostgreSQL with RLS, Storage, Edge Functions)
+- **AI assets:** HuggingFace FLUX.1-schnell via the `generate-asset` Edge Function
+- **Hosting:** Vercel (with Vercel Analytics)
 
-## React Compiler
+## Getting Started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+npm run dev
+```
 
-## Expanding the ESLint configuration
+Supabase is required at runtime. Create a `.env` with:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
+```
+
+## Scripts
+
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Start the Vite dev server |
+| `npm run build` | Production build into `dist` |
+| `npm run lint` | Run ESLint |
+| `npm run preview` | Preview a built app locally |
+
+## Project Structure
+
+- `src/pages/public` — public reading pages
+- `src/pages/dashboard` — authenticated author dashboard and editors
+- `src/components/ui` — shared UI primitives
+- `src/layouts` — reader and dashboard layouts
+- `src/services` — all Supabase data access
+- `src/hooks` — auth, active collection, theming, reader navigation
+- `supabase/functions` — Edge Functions
+
+## Documentation
+
+See [docs/README.md](docs/README.md) for the documentation index, including
+architecture, theming philosophy, database schema reference, and the current
+phase plan. Agent/contributor guidance lives in [AGENTS.md](AGENTS.md).

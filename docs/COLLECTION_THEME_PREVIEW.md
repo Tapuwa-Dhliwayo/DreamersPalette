@@ -8,15 +8,15 @@ This follows the same product pattern as Invito's designer preview: controls upd
 
 ## Files
 
-- `src/pages/dashboard/Collections.jsx`
-  - Owns collection form state.
+- `src/pages/dashboard/CollectionEditorPage.jsx`
+  - Owns collection form state (create/edit is a full page, no longer a modal).
   - Passes unsaved form values into the preview.
   - Persists theme fields on create/update.
+- `src/pages/dashboard/Collections.jsx`
+  - The collections list page; links into the editor page.
 - `src/components/dashboard/CollectionThemePreview.jsx`
   - Renders the inline reader-style preview artboard.
   - Mirrors reader theme behavior for background image, overlay, accent color, and text contrast.
-- `src/components/ui/Modal.jsx`
-  - Accepts an optional `className` so larger editing surfaces can use a wider modal.
 - `src/layouts/ReaderLayout.jsx`
   - Remains the production reader layout.
 - `src/hooks/useCollectionTheme.js`
@@ -24,8 +24,8 @@ This follows the same product pattern as Invito's designer preview: controls upd
 
 ## Data Flow
 
-1. The author opens the collection create/edit modal.
-2. `Collections.jsx` initializes local `form` state with collection fields:
+1. The author opens the collection editor page (`/dashboard/collections/new` or `/dashboard/collections/:id/edit`).
+2. `CollectionEditorPage.jsx` initializes local `form` state with collection fields:
    - `title`
    - `description`
    - `theme_background_url`
