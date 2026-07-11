@@ -14,6 +14,11 @@ function resolveTheme(collection) {
     const textMode = collection?.theme_text_mode || "light"
     const accentColor = collection?.accent_color || "#d4d4d8"
     const opacity = collection?.theme_overlay_opacity ?? 0.65
+    const defaultTextColor = textMode === "light" ? "#f5f5f5" : "#171717"
+    const defaultMutedColor = textMode === "light" ? "#a3a3a3" : "#737373"
+    const textColor = collection?.theme_text_color || defaultTextColor
+    const headingColor = collection?.theme_heading_color || defaultTextColor
+    const mutedColor = collection?.theme_muted_color || defaultMutedColor
 
     const overlayColor = backgroundUrl
         ? textMode === "light"
@@ -24,10 +29,11 @@ function resolveTheme(collection) {
     return {
         accentColor,
         backgroundUrl,
+        headingColor,
+        mutedColor,
         overlayColor,
+        textColor,
         textMode,
-        textTone: textMode === "light" ? "text-neutral-100" : "text-neutral-900",
-        mutedTone: textMode === "light" ? "text-neutral-300" : "text-neutral-600",
         shadowClass: backgroundUrl
             ? textMode === "light" ? "reader-text-shadow-light" : "reader-text-shadow-dark"
             : ""
@@ -61,7 +67,9 @@ export default function CollectionThemePreview({ collection }) {
                 className="relative aspect-[4/5] min-h-[420px] overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-950 shadow-inner"
                 style={{
                     "--accent-color": theme.accentColor,
-                    "--reader-muted": theme.textMode === "light" ? "#d4d4d8" : "#525252"
+                    "--reader-heading": theme.headingColor,
+                    "--reader-muted": theme.mutedColor,
+                    "--reader-text": theme.textColor
                 }}
             >
                 <div
@@ -85,17 +93,20 @@ export default function CollectionThemePreview({ collection }) {
                     />
                 )}
 
-                <div className={`relative z-10 flex h-full flex-col px-6 py-7 ${theme.textTone} ${theme.shadowClass}`}>
+                <div
+                    className={`relative z-10 flex h-full flex-col px-6 py-7 ${theme.shadowClass}`}
+                    style={{ color: "var(--reader-text)" }}
+                >
                     <div className="mb-8 flex items-center justify-between text-xs">
                         <span className="font-medium opacity-80">Dreamers Palette</span>
                         <span className="opacity-60">Collection</span>
                     </div>
 
                     <div className="flex flex-1 flex-col justify-center text-center">
-                        <h1 className="font-serif text-3xl tracking-tight accent-underline">
+                        <h1 className="font-serif text-3xl tracking-tight accent-underline" style={{ color: "var(--reader-heading)" }}>
                             {title}
                         </h1>
-                        <p className={`mx-auto mt-5 max-w-xs text-sm leading-relaxed opacity-75 ${theme.mutedTone}`}>
+                        <p className="mx-auto mt-5 max-w-xs text-sm leading-relaxed" style={{ color: "var(--reader-muted)" }}>
                             {description}
                         </p>
                     </div>
@@ -104,10 +115,10 @@ export default function CollectionThemePreview({ collection }) {
                         <div className="space-y-4">
                             {samplePoems.map((poem) => (
                                 <div key={poem.title} className="space-y-1">
-                                    <h2 className="font-serif text-lg leading-snug">
+                                    <h2 className="font-serif text-lg leading-snug" style={{ color: "var(--reader-heading)" }}>
                                         {poem.title}
                                     </h2>
-                                    <p className={`text-xs leading-relaxed opacity-70 ${theme.mutedTone}`}>
+                                    <p className="text-xs leading-relaxed" style={{ color: "var(--reader-muted)" }}>
                                         {poem.excerpt}
                                     </p>
                                 </div>

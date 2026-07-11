@@ -1,6 +1,25 @@
 import { supabase } from "./supabaseClient"
 import { slugify } from "../utils/slugify"
 
+const COLLECTION_WRITE_FIELDS = new Set([
+    "title",
+    "description",
+    "theme_background_url",
+    "theme_overlay_opacity",
+    "accent_color",
+    "theme_text_mode",
+    "theme_text_color",
+    "theme_heading_color",
+    "theme_muted_color",
+    "is_published"
+])
+
+function pickCollectionFields(payload) {
+    return Object.fromEntries(
+        Object.entries(payload).filter(([key]) => COLLECTION_WRITE_FIELDS.has(key))
+    )
+}
+
 
 /* ================================
    INTERNAL — UNIQUE SLUG INSERT
@@ -57,7 +76,7 @@ async function insertWithUniqueSlug({
 export async function getMyCollections() {
     const { data, error } = await supabase
         .from("poetry_collections")
-        .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode, is_published, created_at, updated_at")
+        .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode, theme_text_color, theme_heading_color, theme_muted_color, is_published, created_at, updated_at")
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
 
@@ -122,7 +141,7 @@ export async function createCollection(payload) {
 
     return await insertWithUniqueSlug({
         table: "poetry_collections",
-        payload,
+        payload: pickCollectionFields(payload),
         userId: user.id
     })
 }
@@ -133,7 +152,7 @@ export async function createCollection(payload) {
 export async function updateCollection(id, updates) {
     const { data, error } = await supabase
         .from("poetry_collections")
-        .update(updates)
+        .update(pickCollectionFields(updates))
         .eq("id", id)
         .select()
         .single()
@@ -145,7 +164,7 @@ export async function updateCollection(id, updates) {
 export async function getMyCollectionById(id) {
     const { data, error } = await supabase
         .from("poetry_collections")
-        .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode, is_published, created_at, updated_at")
+        .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode, theme_text_color, theme_heading_color, theme_muted_color, is_published, created_at, updated_at")
         .eq("id", id)
         .is("deleted_at", null)
         .single()
@@ -218,7 +237,7 @@ export async function togglePublish(id, isPublished) {
 export async function getPublishedCollections() {
     const { data, error } = await supabase
         .from("poetry_collections")
-        .select("id, title, slug, description, theme_background_url")
+        .select("id, title, slug, description, theme_background_url, theme_text_color, theme_heading_color, theme_muted_color")
         .eq("is_published", true)
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
@@ -239,7 +258,7 @@ export async function getPublishedCollectionsPaginated(page = 1, pageSize = 12) 
 
     const { data, error, count } = await supabase
         .from("poetry_collections")
-        .select("id, title, slug, description, theme_background_url", { count: "exact" })
+        .select("id, title, slug, description, theme_background_url, theme_text_color, theme_heading_color, theme_muted_color", { count: "exact" })
         .eq("is_published", true)
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
@@ -255,7 +274,7 @@ export async function getPublishedCollectionsPaginated(page = 1, pageSize = 12) 
 export async function getCollectionBySlug(slug) {
     const { data, error } = await supabase
         .from("poetry_collections")
-        .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode, author_id")
+        .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode, theme_text_color, theme_heading_color, theme_muted_color, author_id")
         .eq("slug", slug)
         .eq("is_published", true)
         .is("deleted_at", null)
@@ -271,7 +290,7 @@ export async function getCollectionBySlug(slug) {
 export async function getCollectionBySlugPreview(slug) {
     const { data, error } = await supabase
         .from("poetry_collections")
-        .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode, author_id")
+        .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode, theme_text_color, theme_heading_color, theme_muted_color, author_id")
         .eq("slug", slug)
         .is("deleted_at", null)
         .single()
@@ -287,7 +306,7 @@ export async function getCollectionBySlugPreview(slug) {
 export async function getCollectionById(id) {
     const { data, error } = await supabase
         .from("poetry_collections")
-        .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode")
+        .select("id, title, slug, description, theme_background_url, theme_overlay_opacity, accent_color, theme_text_mode, theme_text_color, theme_heading_color, theme_muted_color")
         .eq("id", id)
         .eq("is_published", true)
         .is("deleted_at", null)
@@ -482,7 +501,10 @@ export async function getRecentlyAddedPoems(limit = 4) {
                 slug,
                 theme_background_url,
                 theme_overlay_opacity,
-                theme_text_mode
+                theme_text_mode,
+                theme_text_color,
+                theme_heading_color,
+                theme_muted_color
             )
         `)
         .eq("is_published", true)

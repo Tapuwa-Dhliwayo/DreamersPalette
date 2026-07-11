@@ -29,3 +29,14 @@ ALTER TABLE books
 
 ALTER TABLE chapters
     ADD COLUMN IF NOT EXISTS deleted_at timestamp NULL;
+
+-- Phase 6: Collection Text Colour Controls
+-- Null values preserve the existing theme_text_mode-derived reader colours.
+ALTER TABLE poetry_collections
+    ADD COLUMN IF NOT EXISTS theme_text_color text;
+
+ALTER TABLE poetry_collections
+    ADD COLUMN IF NOT EXISTS theme_heading_color text;
+
+ALTER TABLE poetry_collections
+    ADD COLUMN IF NOT EXISTS theme_muted_color text;

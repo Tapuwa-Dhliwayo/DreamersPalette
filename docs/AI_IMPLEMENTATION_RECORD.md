@@ -34,7 +34,7 @@
 
 | Page | Feature |
 |------|---------|
-| Dashboard Collections editor (`src/pages/dashboard/Collections.jsx`) | Prompt input + "Generate with AI" button for collection backgrounds |
+| Dashboard collection editor (`src/pages/dashboard/CollectionEditorPage.jsx`) | Prompt input + "Generate with AI" button for collection backgrounds |
 | Dashboard Book editor (`src/pages/dashboard/BookEditorPage.jsx`) | Prompt input + "Generate Cover with AI" button for book covers |
 
 ### Endpoints / External APIs

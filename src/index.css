@@ -147,6 +147,14 @@ a {
 }
 
 /* Muted text using CSS custom property */
+.reader-surface {
+  color: var(--reader-text);
+}
+
+.reader-heading {
+  color: var(--reader-heading);
+}
+
 .reader-muted {
   color: var(--reader-muted);
 }
@@ -179,5 +187,21 @@ a {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  .reader-surface {
+    color: var(--reader-text) !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .reader-heading {
+    color: var(--reader-heading) !important;
+  }
+
+  .reader-muted {
+    color: var(--reader-muted) !important;
   }
 }

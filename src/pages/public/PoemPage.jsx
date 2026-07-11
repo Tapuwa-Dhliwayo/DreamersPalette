@@ -29,7 +29,7 @@ export default function PoemPage() {
 
     if (loading) {
         return (
-            <div className="text-sm text-neutral-500">
+            <div className="reader-muted text-sm">
                 Loading poem...
             </div>
         )
@@ -38,10 +38,10 @@ export default function PoemPage() {
     if (notFound || !poem) {
         return (
             <div className="py-20 text-center space-y-4">
-                <h2 className="text-2xl font-semibold">
+                <h2 className="reader-heading text-2xl font-semibold">
                     Poem not found
                 </h2>
-                <p className="text-neutral-500">
+                <p className="reader-muted">
                     It may not be published yet.
                 </p>
             </div>
@@ -52,7 +52,7 @@ export default function PoemPage() {
         <article className="reader-fade-in space-y-6 md:space-y-12 pt-2 md:pt-0">
 
             <header className="space-y-3 md:space-y-4">
-                <h1 className="text-3xl md:text-4xl tracking-tight accent-underline">
+                <h1 className="reader-heading text-3xl md:text-4xl tracking-tight accent-underline">
                     {poem.title}
                 </h1>
             </header>
@@ -76,7 +76,7 @@ export default function PoemPage() {
                         ),
                         h2: ({ ...props }) => (
                             <h2
-                                className="text-xl md:text-2xl font-medium mt-8 mb-4"
+                                className="reader-heading text-xl md:text-2xl font-medium mt-8 mb-4"
                                 {...props}
                             />
                         )
