@@ -86,7 +86,7 @@ export default function TrashPage() {
     }
 
     return (
-        <div className="space-y-8">
+        <div className="min-h-0 flex-1 space-y-8 overflow-y-auto">
             <header>
                 <h2 className="text-2xl font-semibold tracking-tight">Trash</h2>
                 <p className="mt-1 max-w-2xl text-sm text-neutral-600">

@@ -278,11 +278,15 @@ export default function CollectionEditorPage() {
     }
 
     if (loading) {
-        return <div className="h-72 animate-pulse rounded-2xl bg-neutral-200/70" aria-label="Loading collection editor" />
+        return (
+            <div className="min-h-0 flex-1 overflow-y-auto">
+                <div className="h-72 animate-pulse rounded-2xl bg-neutral-200/70" aria-label="Loading collection editor" />
+            </div>
+        )
     }
 
     return (
-        <div className="space-y-6">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto">
             <header className="flex flex-col gap-4 border-b border-neutral-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <p className="m-0 text-sm text-neutral-600">Collections</p>

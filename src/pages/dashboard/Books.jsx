@@ -7,6 +7,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog"
 import StatusMessage from "@/components/ui/StatusMessage"
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton"
 import { ContentList, ContentListRow, ContentListToolbar } from "@/components/dashboard/ContentList"
+import { ListPanel, ListPanelBody, ListPanelFooter, ListPanelHeader } from "@/components/dashboard/ListPanel"
 import { useContentListControls } from "@/hooks/useContentListControls"
 import { getMyBooks, archiveBook, toggleBookPublish } from "@/services/bookService"
 import { DASHBOARD_ROUTES } from "@/app/routes"
@@ -73,59 +74,66 @@ export default function Books() {
     const selectedItems = books.filter((item) => list.selectedIds.includes(item.id))
 
     return (
-        <div className="space-y-8">
-            <header className="flex items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-2xl font-semibold tracking-tight">Novels</h2>
-                    <p className="mt-1 text-sm text-neutral-600">Manage long-form work and cover imagery.</p>
-                </div>
-                <Button onClick={() => navigate(DASHBOARD_ROUTES.BOOK_NEW)}>New Novel</Button>
-            </header>
+        <ListPanel>
+            <ListPanelHeader>
+                <header className="flex items-center justify-between gap-4">
+                    <div>
+                        <h2 className="text-2xl font-semibold tracking-tight">Novels</h2>
+                        <p className="mt-1 text-sm text-neutral-600">Manage long-form work and cover imagery.</p>
+                    </div>
+                    <Button onClick={() => navigate(DASHBOARD_ROUTES.BOOK_NEW)}>New Novel</Button>
+                </header>
 
-            <ContentListToolbar
-                search={list.search}
-                onSearchChange={list.setSearch}
-                sort={list.sort}
-                onSortChange={list.setSort}
-                selectedCount={list.selectedIds.length}
-                pending={pending}
-                onBulkPublish={() => setPublishTargets(selectedItems.filter((item) => !item.is_published))}
-                onBulkArchive={() => setArchiveTargets(selectedItems)}
-            />
+                <ContentListToolbar
+                    search={list.search}
+                    onSearchChange={list.setSearch}
+                    sort={list.sort}
+                    onSortChange={list.setSort}
+                    selectedCount={list.selectedIds.length}
+                    pending={pending}
+                    onBulkPublish={() => setPublishTargets(selectedItems.filter((item) => !item.is_published))}
+                    onBulkArchive={() => setArchiveTargets(selectedItems)}
+                />
 
-            <StatusMessage tone="error" action={error ? <Button size="sm" variant="ghost" onClick={loadBooks}>Try again</Button> : null}>{error}</StatusMessage>
-            <StatusMessage tone="success">{status}</StatusMessage>
-            {loading && <DashboardSkeleton />}
+                <StatusMessage tone="error" action={error ? <Button size="sm" variant="ghost" onClick={loadBooks}>Try again</Button> : null}>{error}</StatusMessage>
+                <StatusMessage tone="success">{status}</StatusMessage>
+            </ListPanelHeader>
 
-            {!loading && list.filteredItems.length === 0 && (
-                <Card className="p-8 text-center">
-                    <h3 className="text-lg font-medium">No novels found</h3>
-                    <p className="mt-2 text-sm text-neutral-600">Adjust the search or begin a new novel.</p>
-                    <Button className="mt-5" onClick={() => navigate(DASHBOARD_ROUTES.BOOK_NEW)}>Create Novel</Button>
-                </Card>
-            )}
+            <ListPanelBody scrollKey={`${list.page}|${list.search}|${list.sort}`}>
+                {loading && <DashboardSkeleton />}
 
-            {!loading && list.filteredItems.length > 0 && (
-                <ContentList items={list.visibleItems} selectedIds={list.selectedIds} onToggleAll={list.toggleAll}>
-                    {list.visibleItems.map((book) => (
-                        <ContentListRow
-                            key={book.id}
-                            item={book}
-                            selected={list.selectedIds.includes(book.id)}
-                            onToggle={list.toggleItem}
-                            title={book.title}
-                            description={book.synopsis}
-                            metadata={`Updated ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(book.updated_at || book.created_at))}`}
-                            onEdit={() => navigate(DASHBOARD_ROUTES.BOOK_EDIT(book.id))}
-                            onArchive={() => setArchiveTargets([book])}
-                            onPublish={() => setPublishTargets([book])}
-                            pending={pending}
-                        />
-                    ))}
-                </ContentList>
-            )}
+                {!loading && list.filteredItems.length === 0 && (
+                    <Card className="p-8 text-center">
+                        <h3 className="text-lg font-medium">No novels found</h3>
+                        <p className="mt-2 text-sm text-neutral-600">Adjust the search or begin a new novel.</p>
+                        <Button className="mt-5" onClick={() => navigate(DASHBOARD_ROUTES.BOOK_NEW)}>Create Novel</Button>
+                    </Card>
+                )}
 
-            <Pagination page={list.page} pageSize={PAGE_SIZE} totalCount={list.filteredItems.length} onPageChange={list.setPage} />
+                {!loading && list.filteredItems.length > 0 && (
+                    <ContentList items={list.visibleItems} selectedIds={list.selectedIds} onToggleAll={list.toggleAll}>
+                        {list.visibleItems.map((book) => (
+                            <ContentListRow
+                                key={book.id}
+                                item={book}
+                                selected={list.selectedIds.includes(book.id)}
+                                onToggle={list.toggleItem}
+                                title={book.title}
+                                description={book.synopsis}
+                                metadata={`Updated ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(book.updated_at || book.created_at))}`}
+                                onEdit={() => navigate(DASHBOARD_ROUTES.BOOK_EDIT(book.id))}
+                                onArchive={() => setArchiveTargets([book])}
+                                onPublish={() => setPublishTargets([book])}
+                                pending={pending}
+                            />
+                        ))}
+                    </ContentList>
+                )}
+            </ListPanelBody>
+
+            <ListPanelFooter>
+                <Pagination page={list.page} pageSize={PAGE_SIZE} totalCount={list.filteredItems.length} onPageChange={list.setPage} alwaysShow showRange />
+            </ListPanelFooter>
 
             <ConfirmDialog
                 open={archiveTargets.length > 0}
@@ -146,6 +154,6 @@ export default function Books() {
                 onClose={() => setPublishTargets([])}
                 onConfirm={handlePublish}
             />
-        </div>
+        </ListPanel>
     )
 }

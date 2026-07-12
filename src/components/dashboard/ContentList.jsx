@@ -63,7 +63,7 @@ export function ContentList({
     const allSelected = items.length > 0 && items.every((item) => selectedIds.includes(item.id))
 
     return (
-        <div className="border-y border-neutral-200">
+        <div>
             {items.length > 0 && (
                 <div className="flex items-center gap-3 border-b border-neutral-200 py-3 text-sm text-neutral-600">
                     <input

@@ -139,14 +139,14 @@ export default function PoemEditorPage() {
 
     if (loading) {
         return (
-            <div className="text-sm text-neutral-500">
+            <div className="min-h-0 flex-1 overflow-y-auto text-sm text-neutral-500">
                 Loading editor...
             </div>
         )
     }
 
     return (
-        <div className="space-y-8">
+        <div className="min-h-0 flex-1 space-y-8 overflow-y-auto">
 
             {/* Header */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

@@ -87,10 +87,16 @@ export default function DashboardHome() {
         { label: "Chapters", value: chapters.length, to: DASHBOARD_ROUTES.CHAPTERS }
     ]
 
-    if (loading) return <DashboardSkeleton rows={5} />
+    if (loading) {
+        return (
+            <div className="min-h-0 flex-1 overflow-y-auto">
+                <DashboardSkeleton rows={5} />
+            </div>
+        )
+    }
 
     return (
-        <div className="space-y-10">
+        <div className="min-h-0 flex-1 space-y-10 overflow-y-auto">
             <header className="flex flex-col gap-5 border-b border-neutral-200 pb-7 md:flex-row md:items-end md:justify-between">
                 <div>
                     <h2 className="text-2xl font-semibold tracking-tight">

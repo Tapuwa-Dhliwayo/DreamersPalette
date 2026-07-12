@@ -20,17 +20,17 @@ export default function DashboardLayout() {
             </div>
 
             {/* Main Content */}
-            <main className="relative z-10 flex-1 overflow-y-auto px-4 py-6 md:px-10 md:py-12 xl:px-16">
+            <main className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-6 md:px-10 md:py-12 xl:px-16">
                 {/* Hamburger — mobile only */}
                 <button
-                    className="mb-4 min-h-11 min-w-11 rounded-xl bg-white text-xl leading-none shadow-sm md:hidden"
+                    className="mb-4 min-h-11 min-w-11 shrink-0 rounded-xl bg-white text-xl leading-none shadow-sm md:hidden"
                     onClick={() => setSidebarOpen(true)}
                     aria-label="Open sidebar"
                 >
                     ☰
                 </button>
 
-                <div className="mx-auto min-h-[calc(100dvh-6rem)] max-w-5xl rounded-2xl border border-white/80 bg-neutral-50 p-4 shadow-[0_4px_8px_rgba(0,0,0,0.12)] md:p-8">
+                <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col overflow-hidden rounded-2xl border border-white/80 bg-neutral-50 p-4 shadow-[0_4px_8px_rgba(0,0,0,0.12)] md:p-8">
                     <Outlet />
                 </div>
             </main>
