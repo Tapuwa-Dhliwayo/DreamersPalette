@@ -2,13 +2,16 @@ export default function Logo({
                                  size = "md",
                                  variant = "default", // default | subtle | accent
                                  stacked = false,
+                                 // eslint-disable-next-line no-unused-vars -- WordmarkTag is used as a JSX tag name below; not tracked as a reference by no-unused-vars without eslint-plugin-react
+                                 as: WordmarkTag = "span",
                                  className = ""
                              }) {
     const sizes = {
         sm: "text-lg",
         md: "text-2xl",
         lg: "text-4xl",
-        xl: "text-6xl"
+        xl: "text-6xl",
+        home: "text-2xl md:text-3xl"
     }
 
     const colorVariants = {
@@ -44,11 +47,11 @@ export default function Logo({
             </svg>
 
             {/* Wordmark */}
-            <span
+            <WordmarkTag
                 className={`font-serif tracking-tight font-medium opacity-100 ${sizes[size]} ${colorVariants[variant]}`}
             >
                 Dreamer’s Palette
-            </span>
+            </WordmarkTag>
         </div>
     )
 }

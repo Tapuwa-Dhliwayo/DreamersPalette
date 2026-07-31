@@ -14,6 +14,17 @@ colors:
   strong-ink: "#171717"
   reader-light: "#f5f5f5"
   default-accent: "#cbd5e1"
+  gallery-ink: "#080d16"
+  gallery-raised: "#101827"
+  gallery-skeleton: "#162238"
+  gallery-white: "#f4f4f2"
+  gallery-body: "#c1c8d2"
+  gallery-muted: "#8e9aaa"
+  gallery-accent: "#aabed8"
+  reader-shadow-strong: "#00000080"
+  reader-shadow-soft: "#00000040"
+  reader-highlight-strong: "#ffffff4d"
+  reader-highlight-soft: "#ffffff26"
   success: "#15803d"
   danger: "#dc2626"
 typography:
@@ -124,6 +135,7 @@ The palette is built from Atmospheric Charcoal, Quiet White, and Ink Neutrals; a
 
 - **Atmospheric Charcoal:** The primary action, browser-chrome, and deep framing color. It supplies authority without using a saturated brand hue.
 - **Default Accent:** A quiet cool-gray fallback used when a collection has not supplied its own accent.
+- **Gallery Ink:** The homepage's subtle ink-blue night shell. Collection imagery supplies its changing color; permanent gallery chrome stays within this restrained tonal family.
 
 ### Secondary
 

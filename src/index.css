@@ -48,14 +48,17 @@ body {
 
 h1 {
   @apply font-serif text-3xl md:text-4xl tracking-tight;
+  text-wrap: balance;
 }
 
 h2 {
   @apply font-serif text-xl md:text-2xl tracking-tight;
+  text-wrap: balance;
 }
 
 h3 {
   @apply font-serif text-xl;
+  text-wrap: balance;
 }
 
 /* Paragraph spacing rhythm inside long-form reading only */
@@ -78,6 +81,40 @@ a {
 
 .accent-button:hover {
   background-color: color-mix(in srgb, var(--accent-color) 15%, transparent);
+}
+
+/* Primary Reader CTA — same visual language as accent-button, sized for a primary action */
+.accent-button-primary {
+  @apply px-5 py-3 rounded-full transition-all duration-200 text-sm sm:text-base font-medium no-underline! inline-flex items-center justify-center;
+  min-height: 44px;
+  border: 1.5px solid var(--accent-color);
+  color: var(--accent-color);
+}
+
+.accent-button-primary:hover {
+  background-color: color-mix(in srgb, var(--accent-color) 15%, transparent);
+}
+
+/* Quiet secondary link — demoted, no button chrome */
+.reader-quiet-link {
+  @apply text-xs sm:text-sm font-medium transition-colors duration-200;
+  color: var(--reader-muted);
+}
+
+.reader-quiet-link:hover {
+  color: var(--reader-text);
+}
+
+/* Expands the invisible tap area to the 44px touch-target minimum
+   without changing a link's visible size or quiet treatment. */
+.tap-target-44 {
+  position: relative;
+}
+
+.tap-target-44::before {
+  content: "";
+  position: absolute;
+  inset: -14px;
 }
 
 /* Accent Underline (optional editorial treatment) */
@@ -123,27 +160,17 @@ a {
   @apply bg-neutral-900 text-white;
 }
 
-/* Subtle scrollbar (modern minimal aesthetic) */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(120, 120, 120, 0.4);
-  border-radius: 9999px;
-}
-
 /* ---------------------------
    Reader Text Contrast
 ---------------------------- */
 
 /* Text shadow for readability on themed backgrounds */
 .reader-text-shadow-light {
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 0 12px rgba(0, 0, 0, 0.25);
+  text-shadow: 0 1px 3px #00000080, 0 0 12px #00000040;
 }
 
 .reader-text-shadow-dark {
-  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.3), 0 0 12px rgba(255, 255, 255, 0.15);
+  text-shadow: 0 1px 3px #ffffff4d, 0 0 12px #ffffff26;
 }
 
 /* Muted text using CSS custom property */
@@ -157,6 +184,202 @@ a {
 
 .reader-muted {
   color: var(--reader-muted);
+}
+
+.reader-divider {
+  border-color: color-mix(in srgb, var(--reader-text) 20%, transparent);
+}
+
+.reader-subtle-surface {
+  background-color: color-mix(in srgb, var(--reader-text) 8%, transparent);
+}
+
+/* ---------------------------
+   Home Gallery
+---------------------------- */
+
+.home-gallery {
+  --gallery-ink: #080d16;
+  --gallery-raised: #101827;
+  --gallery-white: #f4f4f2;
+  --gallery-body: #c1c8d2;
+  --gallery-muted: #8e9aaa;
+  --gallery-accent: #aabed8;
+  color: var(--gallery-body);
+}
+
+.home-gallery > header,
+.gallery-introduction {
+  text-shadow: 0 1px 3px #000000b3, 0 0 16px #00000080;
+}
+
+.gallery-heading,
+.gallery-section-title,
+.gallery-feature-title,
+.gallery-poem-title {
+  color: var(--gallery-white);
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.gallery-introduction {
+  max-width: 42rem;
+  padding-block: clamp(2.5rem, 6vw, 5rem);
+  color: var(--gallery-white);
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  font-size: clamp(1.25rem, 2.6vw, 2rem);
+  line-height: 1.35;
+  text-wrap: balance;
+}
+
+.gallery-feature,
+.gallery-poem-exhibit {
+  background-color: var(--gallery-raised);
+  border: 1px solid color-mix(in srgb, var(--gallery-accent) 25%, transparent);
+  border-radius: 0.75rem;
+}
+
+.gallery-feature-title {
+  max-width: 15ch;
+  font-size: clamp(2.6rem, 7vw, 5.75rem);
+  font-weight: 400;
+  line-height: 0.98;
+}
+
+.gallery-poem-title {
+  max-width: 18ch;
+  font-size: clamp(2rem, 4.5vw, 3.5rem);
+  font-weight: 400;
+  line-height: 1.02;
+}
+
+.gallery-exhibit-action,
+.gallery-text-link {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--gallery-accent);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 75%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.5rem;
+  transition: color 200ms ease-out, text-decoration-color 200ms ease-out;
+}
+
+.gallery-exhibit-action {
+  color: inherit;
+  text-decoration-color: var(--exhibit-accent, currentColor);
+}
+
+.gallery-exhibit-action:hover,
+.gallery-text-link:hover {
+  color: var(--gallery-white);
+  text-decoration-color: currentColor;
+}
+
+.gallery-nav-link {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  color: var(--gallery-white);
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+
+.gallery-nav-link:hover {
+  color: var(--gallery-white);
+}
+
+.gallery-section {
+  padding-top: clamp(4rem, 9vw, 7rem);
+}
+
+.gallery-section-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--gallery-accent) 24%, transparent);
+}
+
+.gallery-section-title {
+  font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.gallery-section-description,
+.gallery-muted {
+  color: var(--gallery-muted);
+}
+
+.gallery-section-description {
+  max-width: 38rem;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.gallery-body {
+  color: var(--gallery-body);
+}
+
+.gallery-rule {
+  border-color: color-mix(in srgb, var(--gallery-accent) 22%, transparent);
+}
+
+.gallery-directory-image,
+.gallery-book-cover {
+  background-color: var(--gallery-raised);
+  border: 1px solid color-mix(in srgb, var(--gallery-accent) 24%, transparent);
+  border-radius: 0.75rem;
+}
+
+.gallery-exhibit-fallback {
+  background-color: var(--gallery-raised);
+}
+
+.gallery-skeleton {
+  background-color: #162238;
+  animation: galleryPulse 1.8s ease-in-out infinite;
+}
+
+.gallery-skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 50;
+  transform: translateY(-200%);
+  border-radius: 0.75rem;
+  background: var(--gallery-white);
+  padding: 0.75rem 1rem;
+  color: var(--gallery-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.gallery-skip-link:focus {
+  transform: translateY(0);
+}
+
+@keyframes galleryPulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.8; }
+}
+
+@media (min-width: 640px) {
+  .gallery-section-heading {
+    flex-direction: row;
+    align-items: end;
+    justify-content: space-between;
+    gap: 2rem;
+  }
 }
 
 /* Sticky header backdrop for reader */
