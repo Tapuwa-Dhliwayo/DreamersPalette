@@ -501,6 +501,7 @@ export async function getRecentlyAddedPoems(limit = 4) {
                 slug,
                 theme_background_url,
                 theme_overlay_opacity,
+                accent_color,
                 theme_text_mode,
                 theme_text_color,
                 theme_heading_color,
