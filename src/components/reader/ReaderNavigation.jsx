@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom"
 import { useReaderNavigation } from "@/hooks/useReaderNavigation"
-import { PUBLIC_ROUTES, DASHBOARD_ROUTES } from "@/app/routes"
+import { PUBLIC_ROUTES, DASHBOARD_ROUTES } from "@/app/routes";
+import { SITES } from "@/app/sites";
 import Logo from "@/components/ui/Logo.jsx"
 import { supabase } from "@/services/supabaseClient"
 import { useEffect, useState } from "react"
@@ -61,6 +62,24 @@ export default function ReaderNavigation() {
                         >
                             Novels
                         </Link>
+
+                        <a
+                            href={SITES.blog}
+                            className="accent-button"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            Journal
+                        </a>
+
+                        <a
+                            href={SITES.concepts}
+                            className="accent-button"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            Concepts
+                        </a>
                     </nav>
 
                     <div>
@@ -97,7 +116,30 @@ export default function ReaderNavigation() {
                     >
                         Novels
                     </Link>
+
+                    <a
+                        href={SITES.blog}
+                        className="accent-button"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Journal
+                    </a>
+
+                    <a
+                        href={SITES.concepts}
+                        className="accent-button"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Concepts
+                    </a>
                 </nav>
+
+                {/* Row 3: Company branding — always */}
+                <p className="text-[0.65rem] tracking-[0.18em] uppercase opacity-50 text-center">
+                    Powered by Alate Digital Systems
+                </p>
 
             </div>
 

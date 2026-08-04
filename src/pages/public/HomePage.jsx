@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PUBLIC_ROUTES } from "@/app/routes";
+import { SITES } from "@/app/sites";
 import Logo from "@/components/ui/Logo.jsx";
 import OptimizedCollectionImage from "@/components/ui/OptimizedCollectionImage";
 import { getPublishedBooksPaginated } from "@/services/bookService";
@@ -329,6 +330,8 @@ export default function HomePage() {
                 <nav aria-label="Primary" className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
                     <Link to={PUBLIC_ROUTES.COLLECTIONS} className="gallery-nav-link">Collections</Link>
                     <Link to={PUBLIC_ROUTES.BOOKS} className="gallery-nav-link">Novels</Link>
+                    <a href={SITES.blog} className="gallery-nav-link" target="_blank" rel="noopener noreferrer">Journal</a>
+                    <a href={SITES.concepts} className="gallery-nav-link" target="_blank" rel="noopener noreferrer">Concepts</a>
                     <Link to={PUBLIC_ROUTES.LOGIN} className="gallery-nav-link">Author login</Link>
                 </nav>
             </header>
@@ -454,16 +457,27 @@ export default function HomePage() {
                 {!booksLoading && !booksError && books.length > 0 && <NovelShelf books={books} />}
             </section>
 
-            <footer className="gallery-rule mt-14 border-t pt-10 md:mt-20 md:grid md:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)] md:gap-16 md:pt-14">
-                <h2 className="gallery-section-title">From Dreamer’s Palette</h2>
-                <div className="mt-5 max-w-2xl md:mt-0">
-                    <p className="gallery-body leading-relaxed text-pretty">
-                        I write to understand the worlds I cannot stay in. These poems are doors, and sometimes
-                        mirrors. Thank you for entering quietly. You are always welcome here.
-                    </p>
-                    <Link to={PUBLIC_ROUTES.COLLECTIONS} className="gallery-text-link mt-6">
-                        Browse the library <span aria-hidden="true">→</span>
-                    </Link>
+            <footer className="gallery-rule mt-14 border-t pt-10 md:mt-20 md:pt-14">
+                <div className="md:grid md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:gap-16">
+                    <h2 className="gallery-section-title">From Dreamer’s Palette</h2>
+                    <div className="mt-5 max-w-2xl md:mt-0">
+                        <p className="gallery-body leading-relaxed text-pretty">
+                            I write to understand the worlds I cannot stay in. These poems are doors, and sometimes
+                            mirrors. Thank you for entering quietly. You are always welcome here.
+                        </p>
+                        <Link to={PUBLIC_ROUTES.COLLECTIONS} className="gallery-text-link mt-6">
+                            Browse the library <span aria-hidden="true">→</span>
+                        </Link>
+                    </div>
+                </div>
+
+                <div className="gallery-rule mt-10 flex flex-col gap-4 border-t pt-8 pb-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                    <nav aria-label="Dreamer’s Palette sites" className="flex flex-wrap gap-x-7 gap-y-2">
+                        <span className="gallery-muted font-serif">All of Dreamer’s Palette</span>
+                        <a href={SITES.blog} className="gallery-nav-link" target="_blank" rel="noopener noreferrer">Journal</a>
+                        <a href={SITES.concepts} className="gallery-nav-link" target="_blank" rel="noopener noreferrer">Concepts</a>
+                    </nav>
+                    <p className="gallery-muted">Powered by Alate Digital Systems</p>
                 </div>
             </footer>
         </div>
