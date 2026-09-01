@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { InferenceClient } from "https://esm.sh/@huggingface/inference@4"
 import { corsHeaders } from "../_shared/cors.ts"
 
 // ---------------------------------------------------------------------------
@@ -6,6 +7,7 @@ import { corsHeaders } from "../_shared/cors.ts"
 // ---------------------------------------------------------------------------
 const PROMPT_MAX_LENGTH = 500
 const DEFAULT_BUCKET    = "backgrounds"
+const IMAGE_MODEL       = "black-forest-labs/FLUX.1-schnell"
 
 const EXTENSION_BY_MIME: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -54,25 +56,21 @@ function sanitizeForVisual(raw: string): string {
       .trim()
 }
 
+// FLUX.1-schnell is guidance-distilled, so a negative prompt has no effect.
+// Everything that keeps text and clutter out of the image has to be stated here.
 function buildVisualPrompt(prompt: string, type: string): string {
   const visual = sanitizeForVisual(prompt)
 
   // Fallback if sanitization strips everything
   const base = visual || "abstract atmospheric landscape"
 
+  const textless = "completely textless, no text, no words, no letters, no typography, no watermark, no signature, no logo"
+
   if (type === "background") {
-    return `beautiful painting of ${base}, abstract art, atmospheric scene, cinematic lighting, soft color gradients, painterly brushstrokes, dreamy, ethereal, textless artwork, purely visual`
+    return `beautiful painting of ${base}, abstract art, atmospheric scene, cinematic lighting, soft color gradients, painterly brushstrokes, dreamy, ethereal, uncluttered, no people, purely visual, ${textless}`
   }
 
-  return `painting of ${base}, epic fantasy book cover art, cinematic lighting, painterly, elegant composition, textless artwork, purely visual`
-}
-
-function buildNegativePrompt(type: string): string {
-  const base = "text, words, letters, numbers, writing, typography, font, watermark, signature, logo, label, caption, title, subtitle, handwriting, calligraphy, symbols, glyphs, alphabet"
-  if (type === "background") {
-    return `${base}, busy, cluttered, people, faces, characters`
-  }
-  return `${base}, blurry, low quality, deformed`
+  return `painting of ${base}, epic fantasy book cover art, cinematic lighting, painterly, elegant composition, sharp and detailed, purely visual, ${textless}`
 }
 
 // ---------------------------------------------------------------------------
@@ -93,9 +91,9 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     const supabaseAnon       = Deno.env.get("SUPABASE_ANON_KEY")!
     const bucket             = Deno.env.get("GENERATED_ASSETS_BUCKET") || DEFAULT_BUCKET
-    const HF_API_KEY         = Deno.env.get("HUGGINGFACE_API_KEY")
+    const hfApiKey           = Deno.env.get("HUGGINGFACE_API_KEY")
 
-    if (!HF_API_KEY) throw new Error("Missing HuggingFace API key.")
+    if (!hfApiKey) throw new Error("Missing HuggingFace API key.")
 
     // Verify user
     const supabaseUser = createClient(supabaseUrl, supabaseAnon, {
@@ -113,58 +111,45 @@ Deno.serve(async (req: Request) => {
     const prompt = validatePrompt(body.prompt)
     const type   = validateType(body.type)
 
-    const visualPrompt   = buildVisualPrompt(prompt, type)
-    const negativePrompt = buildNegativePrompt(type)
+    const visualPrompt = buildVisualPrompt(prompt, type)
 
-    console.log("HF Prompt:", visualPrompt)
-    console.log("HF Negative:", negativePrompt)
+    console.log("HF prompt:", visualPrompt)
 
     // -----------------------------------------------------------------------
-    // Hugging Face Image Generation
+    // Hugging Face image generation
+    //
+    // FLUX is not served by the `hf-inference` backend. It is routed to partner
+    // providers (nscale, fal-ai, wavespeed), each with its own request and
+    // response shape, so the client resolves the provider and normalises the
+    // result to a Blob for us.
     // -----------------------------------------------------------------------
-    const imageRes = await fetch(
-        "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${HF_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            inputs: visualPrompt,
-            parameters: {
-              negative_prompt: negativePrompt,
-            },
-          }),
-        }
-    )
+    const hf = new InferenceClient(hfApiKey)
 
-    console.log("HF status:", imageRes.status)
-
-    if (!imageRes.ok) {
-      const text = await imageRes.text()
-      console.error("HF error:", text)
-      throw new Error(`HuggingFace error: ${text}`)
+    let image: Blob
+    try {
+      image = await hf.textToImage({
+        provider: "auto",
+        model: IMAGE_MODEL,
+        inputs: visualPrompt,
+      }) as Blob
+    } catch (hfError: any) {
+      console.error("HuggingFace generation failed:", hfError)
+      throw new Error(`HuggingFace error: ${hfError?.message || "image generation failed."}`)
     }
 
-    const contentType = imageRes.headers.get("content-type") || "image/png"
+    if (!image || image.size === 0) throw new Error("Provider did not return an image.")
 
-    if (!contentType.startsWith("image/")) {
-      const text = await imageRes.text()
-      console.error("Invalid HF response:", text)
-      throw new Error("Provider did not return an image.")
-    }
+    const contentType = image.type && image.type.startsWith("image/") ? image.type : "image/png"
+    const extension   = EXTENSION_BY_MIME[contentType] || "png"
+    const fileName    = `${Date.now()}-${type}.${extension}`
+    const filePath    = `${user.id}/${fileName}`
 
-    const extension = EXTENSION_BY_MIME[contentType] || "png"
-    const fileName  = `${Date.now()}-${type}.${extension}`
-    const filePath  = `${user.id}/${fileName}`
+    console.log("Generated image:", contentType, image.size, "bytes")
 
-    // -----------------------------------------------------------------------
-    // STREAM upload (NO WORKER LIMIT ISSUE)
-    // -----------------------------------------------------------------------
+    // ---- Upload ----
     const { error: uploadError } = await supabaseAdmin.storage
         .from(bucket)
-        .upload(filePath, imageRes.body, {
+        .upload(filePath, image, {
           contentType,
           upsert: false,
         })
