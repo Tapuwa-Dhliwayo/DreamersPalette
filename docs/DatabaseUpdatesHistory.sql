@@ -40,3 +40,33 @@ ALTER TABLE poetry_collections
 
 ALTER TABLE poetry_collections
     ADD COLUMN IF NOT EXISTS theme_muted_color text;
+
+-- Shareable poem cards: preserve the date a poem first became public.
+ALTER TABLE poems
+    ADD COLUMN IF NOT EXISTS published_at timestamp with time zone;
+
+UPDATE poems
+SET published_at = created_at
+WHERE is_published = true
+  AND published_at IS NULL;
+
+CREATE OR REPLACE FUNCTION public.preserve_poem_published_at()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+    IF NEW.is_published = true AND NEW.published_at IS NULL THEN
+        NEW.published_at = now();
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS preserve_poem_published_at ON public.poems;
+
+CREATE TRIGGER preserve_poem_published_at
+    BEFORE INSERT OR UPDATE OF is_published ON public.poems
+    FOR EACH ROW
+    EXECUTE FUNCTION public.preserve_poem_published_at();

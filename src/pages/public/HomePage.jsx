@@ -4,6 +4,7 @@ import { PUBLIC_ROUTES } from "@/app/routes";
 import { SITES } from "@/app/sites";
 import Logo from "@/components/ui/Logo.jsx";
 import OptimizedCollectionImage from "@/components/ui/OptimizedCollectionImage";
+import { formatDate } from "@/utils/formatDate";
 import { getPublishedBooksPaginated } from "@/services/bookService";
 import {
     getPublishedCollectionsPaginated,
@@ -13,19 +14,6 @@ import {
 const HOME_TEXT = "#f4f4f2";
 const HOME_MUTED = "#c1c8d2";
 const HOME_ACCENT = "#aabed8";
-
-function formatDate(value) {
-    if (!value) return null;
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return null;
-
-    return new Intl.DateTimeFormat(undefined, {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-    }).format(date);
-}
 
 function getCollection(poem) {
     return Array.isArray(poem.poetry_collections)

@@ -8,10 +8,7 @@ import { getMyProfile } from "@/services/profileService"
 import { getMyCollections, getMyPoems } from "@/services/contentService"
 import { getMyBooks, getMyChaptersByBook } from "@/services/bookService"
 import { DASHBOARD_ROUTES } from "@/app/routes"
-
-function formatDate(value) {
-    return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(value))
-}
+import { formatDate } from "@/utils/formatDate"
 
 export default function DashboardHome() {
     const [profile, setProfile] = useState(null)

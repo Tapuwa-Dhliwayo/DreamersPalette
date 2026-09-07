@@ -471,7 +471,21 @@ export async function getPublishedPoemBySlug(slug) {
             content_md,
             excerpt,
             author_id,
-            poetry_collections!inner(is_published, deleted_at)
+            created_at,
+            published_at,
+            poetry_collections!inner(
+                title,
+                slug,
+                theme_background_url,
+                theme_overlay_opacity,
+                accent_color,
+                theme_text_mode,
+                theme_text_color,
+                theme_heading_color,
+                theme_muted_color,
+                is_published,
+                deleted_at
+            )
         `)
         .eq("slug", slug)
         .eq("is_published", true)
