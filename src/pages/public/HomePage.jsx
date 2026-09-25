@@ -79,7 +79,6 @@ function ExhibitBackdrop({ theme, alt = "", priority = false }) {
             <OptimizedCollectionImage
                 src={theme.backgroundUrl}
                 alt={alt}
-                usePreviewVariant
                 priority={priority}
                 className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.015]"
             />
@@ -173,7 +172,6 @@ function CollectionDirectory({ collections }) {
                                 <OptimizedCollectionImage
                                     src={collection.theme_background_url}
                                     alt=""
-                                    usePreviewVariant
                                     className="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
                                 />
                             ) : (

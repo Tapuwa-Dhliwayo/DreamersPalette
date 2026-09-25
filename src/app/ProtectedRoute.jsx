@@ -1,23 +1,12 @@
-import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { getSession } from "@/services/authService";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function ProtectedRoute({ children }) {
-    const [loading, setLoading] = useState(true);
-    const [authenticated, setAuthenticated] = useState(false);
-
-    useEffect(() => {
-        async function checkAuth() {
-            const session = await getSession();
-            setAuthenticated(!!session);
-            setLoading(false);
-        }
-        checkAuth();
-    }, []);
+    const { user, loading } = useAuth();
 
     if (loading) return null;
 
-    if (!authenticated) {
+    if (!user) {
         return <Navigate to="/login" replace />;
     }
 

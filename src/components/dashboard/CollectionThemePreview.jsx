@@ -1,3 +1,5 @@
+import OptimizedCollectionImage from "@/components/ui/OptimizedCollectionImage"
+
 const samplePoems = [
     {
         title: "After the Rain",
@@ -80,9 +82,10 @@ export default function CollectionThemePreview({ collection }) {
                 <div className="absolute inset-0 bg-linear-to-b from-neutral-950/70 to-neutral-900/60" />
 
                 {theme.backgroundUrl && (
-                    <div
-                        className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-300"
-                        style={{ backgroundImage: `url(${theme.backgroundUrl})` }}
+                    <OptimizedCollectionImage
+                        src={theme.backgroundUrl}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover transition-opacity duration-300"
                     />
                 )}
 

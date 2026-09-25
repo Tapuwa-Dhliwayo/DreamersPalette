@@ -1,26 +1,19 @@
-import { useMemo, useState } from "react"
-import { getCollectionPreviewImageUrl } from "@/services/storageService"
+import { useState } from "react"
+
+const FALLBACK_IMAGE = "/assets/global_atmosphere.png"
 
 export default function OptimizedCollectionImage({
     src,
     alt,
     className,
-    usePreviewVariant = true,
     priority = false,
     ...props
 }) {
-    const previewSrc = useMemo(
-        () => usePreviewVariant ? getCollectionPreviewImageUrl(src) : src,
-        [src, usePreviewVariant]
-    )
-    const [failedPreviewSrc, setFailedPreviewSrc] = useState(null)
+    const [failedSrc, setFailedSrc] = useState(null)
 
     if (!src) return null
 
-    const hasPreviewFallback = failedPreviewSrc === src
-    const resolvedSrc = hasPreviewFallback
-        ? src
-        : (previewSrc || src)
+    const resolvedSrc = failedSrc === src ? FALLBACK_IMAGE : src
 
     return (
         <img
@@ -29,7 +22,7 @@ export default function OptimizedCollectionImage({
             loading={priority ? "eager" : "lazy"}
             decoding="async"
             fetchPriority={priority ? "high" : "auto"}
-            onError={resolvedSrc !== src ? () => setFailedPreviewSrc(src) : undefined}
+            onError={resolvedSrc !== FALLBACK_IMAGE ? () => setFailedSrc(src) : undefined}
             className={className}
             {...props}
         />

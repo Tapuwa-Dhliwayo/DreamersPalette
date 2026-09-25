@@ -7,16 +7,11 @@ export function useAuth() {
 
     useEffect(() => {
         const { data: listener } = supabase.auth.onAuthStateChange(
-            async (_event, session) => {
+            (_event, session) => {
                 setUser(session?.user ?? null);
                 setLoading(false);
             }
         );
-
-        supabase.auth.getSession().then(({ data }) => {
-            setUser(data.session?.user ?? null);
-            setLoading(false);
-        });
 
         return () => listener.subscription.unsubscribe();
     }, []);

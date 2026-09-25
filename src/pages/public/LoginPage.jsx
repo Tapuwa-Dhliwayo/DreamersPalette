@@ -1,23 +1,21 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/services/supabaseClient";
+import { useAuth } from "@/hooks/useAuth";
 import Logo from "@/components/ui/Logo.jsx";
 import { PUBLIC_ROUTES, DASHBOARD_ROUTES } from "@/app/routes"
 
 export default function LoginPage() {
     const navigate = useNavigate();
+    const { user, loading: sessionLoading } = useAuth();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data }) => {
-            if (data.session) {
-                navigate(DASHBOARD_ROUTES.ROOT);
-            }
-        });
-    }, [navigate]);
+        if (!sessionLoading && user) navigate(DASHBOARD_ROUTES.ROOT);
+    }, [navigate, sessionLoading, user]);
 
     async function handleLogin(e) {
         e.preventDefault();

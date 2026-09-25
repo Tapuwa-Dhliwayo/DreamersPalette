@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from "react-router-dom"
 import { useCollectionTheme } from "@/hooks/useCollectionTheme"
 import ReaderNavigation from "@/components/reader/ReaderNavigation"
+import OptimizedCollectionImage from "@/components/ui/OptimizedCollectionImage"
 
 export default function ReaderLayout() {
     const { pathname } = useLocation()
@@ -45,9 +46,10 @@ export default function ReaderLayout() {
 
                 {/* Collection Background (if exists) */}
                 {backgroundUrl && (
-                    <div
-                        className="absolute inset-0 md:rounded-3xl bg-cover bg-center bg-no-repeat transition-opacity duration-500"
-                        style={{ backgroundImage: `url(${backgroundUrl})` }}
+                    <OptimizedCollectionImage
+                        src={backgroundUrl}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover md:rounded-3xl transition-opacity duration-500"
                     />
                 )}
 

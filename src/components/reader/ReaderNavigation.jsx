@@ -3,23 +3,16 @@ import { useReaderNavigation } from "@/hooks/useReaderNavigation"
 import { PUBLIC_ROUTES, DASHBOARD_ROUTES } from "@/app/routes";
 import { SITES } from "@/app/sites";
 import Logo from "@/components/ui/Logo.jsx"
-import { supabase } from "@/services/supabaseClient"
-import { useEffect, useState } from "react"
+import { useAuth } from "@/hooks/useAuth"
 
 export default function ReaderNavigation() {
     const { level, collection, previous, next } =
         useReaderNavigation()
 
-    const [isAuthenticated, setIsAuthenticated] = useState(false)
+    const { user } = useAuth()
     const location = useLocation()
     const isHome = location.pathname === PUBLIC_ROUTES.HOME
     const isLogin = location.pathname === PUBLIC_ROUTES.LOGIN
-
-    useEffect(() => {
-        supabase.auth.getSession().then(({ data }) => {
-            setIsAuthenticated(!!data.session)
-        })
-    }, [])
 
     // 🔹 Hide entire header on Home
     if (isHome || isLogin) {
@@ -83,7 +76,7 @@ export default function ReaderNavigation() {
                     </nav>
 
                     <div>
-                        {isAuthenticated ? (
+                        {user ? (
                             <Link
                                 to={DASHBOARD_ROUTES.ROOT}
                                 className="accent-button"
