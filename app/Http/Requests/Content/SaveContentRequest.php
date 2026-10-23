@@ -45,10 +45,10 @@ class SaveContentRequest extends FormRequest
             $rules['content_md'] = [$this->isMethod('post') ? 'present' : 'sometimes', 'nullable', 'string', 'max:1000000'];
         }
         if ($resource === 'poems') {
-            $rules += ['collection_id' => [$required, 'uuid'], 'excerpt' => ['nullable', 'string', 'max:65535']];
+            $rules += ['collection_id' => [$required, 'integer', 'min:1'], 'excerpt' => ['nullable', 'string', 'max:65535']];
         }
         if ($resource === 'chapters') {
-            $rules += ['book_id' => [$required, 'uuid'], 'chapter_number' => [$required, 'integer', 'min:1', 'max:2147483647'], 'is_preview' => ['sometimes', 'boolean']];
+            $rules += ['book_id' => [$required, 'integer', 'min:1'], 'chapter_number' => [$required, 'integer', 'min:1', 'max:2147483647'], 'is_preview' => ['sometimes', 'boolean']];
         }
 
         return $rules;

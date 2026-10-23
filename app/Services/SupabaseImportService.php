@@ -13,53 +13,68 @@ use RuntimeException;
 
 class SupabaseImportService
 {
+    private function targetTable(string $source): string
+    {
+        return $source === 'profiles' ? 'publishing_profiles' : $source;
+    }
+
     public function preview(SupabaseSnapshot $snapshot): array
     {
         $this->checkTarget($snapshot);
         $this->checkDestinations($snapshot);
-        $this->checkUniqueTargets($snapshot);
+        $maps = $this->existingIds($snapshot);
+        $this->checkUniqueTargets($snapshot, $maps);
         $tables = [];
         foreach ($snapshot->records as $table => $records) {
-            $existing = DB::table($table)->whereIn('id', array_column($records, 'id'))->count();
+            $existing = count($maps[$table]);
             $tables[$table] = ['source' => count($records), 'existing' => $existing, 'new' => count($records) - $existing];
         }
 
-        return [
-            'tables' => $tables,
-            'files' => count($snapshot->files),
-            'bytes' => array_sum(array_column($snapshot->files, 'bytes')),
-        ];
+        return ['tables' => $tables, 'files' => count($snapshot->files), 'bytes' => array_sum(array_column($snapshot->files, 'bytes'))];
     }
 
     public function import(SupabaseSnapshot $snapshot): array
     {
         $preview = $this->preview($snapshot);
-        // Files are verified first. If SQL fails, only unreferenced copies can remain; reruns reuse them.
         foreach ($snapshot->files as $file) {
             $this->copyFile($file);
         }
 
         DB::transaction(function () use ($snapshot): void {
-            foreach ($snapshot->records as $table => $records) {
-                foreach ($records as $record) {
-                    $id = $record['id'];
-                    $existing = DB::table($table)->where('id', $id)->lockForUpdate()->exists();
-                    if (! $existing) {
-                        DB::table($table)->insert($record);
+            $maps = $this->existingIds($snapshot);
+            $this->checkUniqueTargets($snapshot, $maps);
+            foreach ($snapshot->records['users'] as $source) {
+                // A family account is matched by email, never replaced by its Supabase identity.
+                $user = DB::table('users')->where('email', $source['email'])->lockForUpdate()->first();
+                if ($user) {
+                    $maps['users'][$source['id']] = $user->id;
 
-                        continue;
+                    continue;
+                }
+                $profile = collect($snapshot->records['profiles'])->firstWhere('id', $source['id']);
+                unset($source['id']);
+                $source['name'] = $profile['display_name'];
+                $id = DB::table('users')->insertGetId($source);
+                $maps['users'][$profile['id']] = $id;
+            }
+            foreach ($snapshot->records as $table => $records) {
+                if ($table === 'users') {
+                    continue;
+                }
+                foreach ($records as $source) {
+                    $mapped = $this->mapRecord($table, $source, $maps);
+                    $query = DB::table($this->targetTable($table));
+                    $id = $maps[$table][$source['id']] ?? null;
+                    if ($id !== null) {
+                        $query->where('id', $id)->update($mapped);
+                    } else {
+                        $id = $query->insertGetId($mapped);
                     }
-                    unset($record['id']);
-                    // An import must never undo a password change made after the first import.
-                    if ($table === 'users') {
-                        unset($record['password']);
-                    }
-                    DB::table($table)->where('id', $id)->update($record);
+                    $maps[$table][$source['id']] = $id;
                 }
             }
-            $verification = $this->verify($snapshot);
-            if (! $verification['valid']) {
-                throw new RuntimeException('Imported records did not match the source; all database changes were rolled back.');
+            if (! $this->verify($snapshot)['valid']) {
+                throw new RuntimeException('Imported publishing records did not match the snapshot; database changes were rolled back.');
             }
         });
 
@@ -69,30 +84,42 @@ class SupabaseImportService
     public function verify(SupabaseSnapshot $snapshot): array
     {
         $this->checkTarget($snapshot);
+        $maps = $this->existingIds($snapshot);
         $mismatches = [];
         $tables = [];
         foreach ($snapshot->records as $table => $records) {
-            $ids = array_column($records, 'id');
-            $stored = DB::table($table)->whereIn('id', $ids)->get()->keyBy('id');
-            $tables[$table] = ['source' => count($records), 'matched' => 0, 'extra' => DB::table($table)->whereNotIn('id', $ids)->count()];
-            foreach ($records as $expected) {
-                $actual = $stored->get($expected['id']);
+            $ids = array_values($maps[$table]);
+            $stored = DB::table($this->targetTable($table))->whereIn('id', $ids)->get()->keyBy('id');
+            $tables[$table] = ['source' => count($records), 'matched' => 0, 'extra' => DB::table($this->targetTable($table))->whereNotIn('id', $ids)->count()];
+            foreach ($records as $source) {
+                $actual = $stored->get($maps[$table][$source['id']] ?? null);
                 if ($actual === null) {
-                    $mismatches[] = "{$table}: a source UUID is missing.";
+                    $mismatches[] = "{$table}: a source record has no Laravel mapping.";
+
+                    continue;
+                }
+                if ($table === 'users') {
+                    // Shared names, password, verification and timestamps are owned by the family account.
+                    if (strcasecmp($actual->email, $source['email']) !== 0 || password_get_info($actual->password)['algoName'] === 'unknown') {
+                        $mismatches[] = 'users: shared account identity or password format is invalid.';
+
+                        continue;
+                    }
+                    $tables[$table]['matched']++;
+
+                    continue;
+                }
+                try {
+                    $expected = $this->mapRecord($table, $source, $maps);
+                } catch (InvalidArgumentException) {
+                    $mismatches[] = "{$table}: a parent or author mapping is missing.";
 
                     continue;
                 }
                 $matches = true;
-                if ($table === 'users' && password_get_info($actual->password)['algoName'] === 'unknown') {
-                    $mismatches[] = 'users: the target password hash is unsupported.';
-                    $matches = false;
-                }
                 foreach ($expected as $column => $value) {
-                    if ($table === 'users' && $column === 'password') {
-                        continue;
-                    }
                     if ($this->normalize($column, $actual->{$column}) !== $this->normalize($column, $value)) {
-                        $mismatches[] = "{$table}: {$column} differs from the source mapping.";
+                        $mismatches[] = "{$table}: {$column} differs from the snapshot mapping.";
                         $matches = false;
                     }
                 }
@@ -114,20 +141,97 @@ class SupabaseImportService
         return ['valid' => $mismatches === [], 'tables' => $tables, 'files' => $matchedFiles, 'mismatches' => array_count_values($mismatches)];
     }
 
+    private function existingIds(SupabaseSnapshot $snapshot): array
+    {
+        $maps = [];
+        foreach ($snapshot->records as $table => $records) {
+            if ($table === 'users') {
+                $maps[$table] = [];
+                foreach ($records as $source) {
+                    $user = DB::table('users')->where('email', $source['email'])->first();
+                    if ($user) {
+                        $maps[$table][$source['id']] = $user->id;
+                    }
+                }
+
+                continue;
+            }
+            $maps[$table] = DB::table($this->targetTable($table))->whereIn('source_uuid', array_column($records, 'id'))->pluck('id', 'source_uuid')->all();
+            if ($table !== 'profiles') {
+                continue;
+            }
+            foreach ($records as $source) {
+                $userId = $maps['users'][$source['id']] ?? null;
+                $profile = $userId ? DB::table('publishing_profiles')->where('user_id', $userId)->first() : null;
+                if ($profile && $profile->source_uuid !== null && $profile->source_uuid !== $source['id']) {
+                    throw new InvalidArgumentException('A shared user is already linked to another publishing source identity.');
+                }
+                if (isset($maps[$table][$source['id']])) {
+                    $linked = DB::table('publishing_profiles')->find($maps[$table][$source['id']]);
+                    if (! $userId || (int) $linked->user_id !== (int) $userId) {
+                        throw new InvalidArgumentException('A source author mapping conflicts with the shared user email.');
+                    }
+                }
+                if ($profile) {
+                    $maps[$table][$source['id']] = $profile->id;
+                }
+            }
+        }
+
+        return $maps;
+    }
+
+    private function mapRecord(string $table, array $source, array $maps): array
+    {
+        $uuid = $source['id'];
+        unset($source['id']);
+        $source['source_uuid'] = $uuid;
+        if ($table === 'profiles') {
+            $source['user_id'] = $maps['users'][$uuid] ?? throw new InvalidArgumentException('The source author has no Laravel user mapping.');
+        }
+        if (isset($source['author_id'])) {
+            $source['author_id'] = $maps['users'][$source['author_id']] ?? throw new InvalidArgumentException('The source author has no Laravel user mapping.');
+        }
+        foreach (['collection_id' => 'poetry_collections', 'book_id' => 'books'] as $column => $parent) {
+            if (isset($source[$column])) {
+                $source[$column] = $maps[$parent][$source[$column]] ?? throw new InvalidArgumentException('The source parent has no Laravel mapping.');
+            }
+        }
+
+        return $source;
+    }
+
     private function checkTarget(SupabaseSnapshot $snapshot): void
     {
-        foreach ($snapshot->records as $table => $records) {
-            if (! Schema::hasTable($table)) {
-                throw new InvalidArgumentException('The target is missing the Laravel content schema. Run its migrations first.');
+        foreach ($snapshot->records as $source => $records) {
+            $table = $this->targetTable($source);
+            if (! Schema::hasTable($table) || Schema::getColumnType($table, 'id') !== 'bigint') {
+                throw new InvalidArgumentException('The target is missing the numeric Laravel publishing schema. Review the selected database and migrations.');
             }
-            if (Schema::getColumnType($table, 'id', true) !== 'char(36)') {
-                throw new InvalidArgumentException('The target UUID schema does not match this application. Check the selected database.');
+            $expected = $source === 'users'
+                ? ['id', 'name', 'email', 'password', 'email_verified_at', 'created_at', 'updated_at']
+                : array_merge(array_diff(SupabaseSnapshot::COLUMNS[$source], ['id']), ['source_uuid']);
+            if ($source === 'profiles') {
+                $expected[] = 'user_id';
             }
-            $expected = $table === 'users'
-                ? ['id', 'email', 'password', 'email_verified_at', 'created_at', 'updated_at']
-                : SupabaseSnapshot::COLUMNS[$table];
             if (array_diff($expected, Schema::getColumnListing($table))) {
-                throw new InvalidArgumentException("{$table} is missing source columns. Review the target migrations.");
+                throw new InvalidArgumentException("{$table} is missing publishing columns. Review the target migrations.");
+            }
+        }
+    }
+
+    private function checkUniqueTargets(SupabaseSnapshot $snapshot, array $maps): void
+    {
+        foreach ($snapshot->records as $table => $records) {
+            foreach ($records as $record) {
+                $unique = match ($table) {
+                    'poetry_collections', 'poems', 'books' => ['slug' => $record['slug']],
+                    'chapters' => isset($maps['books'][$record['book_id']]) ? ['book_id' => $maps['books'][$record['book_id']], 'chapter_number' => $record['chapter_number']] : null,
+                    default => null,
+                };
+                if ($unique && DB::table($this->targetTable($table))->where($unique)->when(isset($maps[$table][$record['id']]), fn ($query) => $query->where('id', '!=', $maps[$table][$record['id']]))->exists()) {
+                    throw new InvalidArgumentException("{$table} has a unique value owned by another publishing record. No records were imported.");
+                }
             }
         }
     }
@@ -155,23 +259,6 @@ class SupabaseImportService
             fclose($stream);
             if ($disk->exists($temporary)) {
                 $disk->delete($temporary);
-            }
-        }
-    }
-
-    private function checkUniqueTargets(SupabaseSnapshot $snapshot): void
-    {
-        foreach ($snapshot->records as $table => $records) {
-            foreach ($records as $record) {
-                $unique = match ($table) {
-                    'users' => ['email' => $record['email']],
-                    'poetry_collections', 'poems', 'books' => ['slug' => $record['slug']],
-                    'chapters' => ['book_id' => $record['book_id'], 'chapter_number' => $record['chapter_number']],
-                    default => null,
-                };
-                if ($unique && DB::table($table)->where($unique)->where('id', '!=', $record['id'])->exists()) {
-                    throw new InvalidArgumentException("{$table} has a unique value already owned by another target UUID. No records were imported.");
-                }
             }
         }
     }
@@ -227,7 +314,7 @@ class SupabaseImportService
         if (in_array($column, ['is_published', 'is_preview'], true)) {
             return (bool) $value;
         }
-        if ($column === 'chapter_number') {
+        if ($column === 'chapter_number' || str_ends_with($column, '_id')) {
             return (int) $value;
         }
         if ($column === 'theme_overlay_opacity') {

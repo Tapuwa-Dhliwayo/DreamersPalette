@@ -66,12 +66,12 @@ class ImportSupabase extends Command
                 return $verification['valid'] ? self::SUCCESS : self::FAILURE;
             }
             $summary = $this->option('dry-run') ? $importer->preview($snapshot) : $importer->import($snapshot);
-            $this->table(['Table', 'Source', 'Existing UUIDs', 'New UUIDs'], array_map(
+            $this->table(['Table', 'Source', 'Mapped records', 'New records'], array_map(
                 fn ($table, $counts) => [$table, $counts['source'], $counts['existing'], $counts['new']],
                 array_keys($summary['tables']), $summary['tables'],
             ));
             $this->line('Files: '.$summary['files'].'; bytes: '.$summary['bytes']);
-            $this->info($this->option('dry-run') ? 'Validation complete. No records or asset files changed.' : 'Import verified. Existing passwords and unrelated target rows were preserved.');
+            $this->info($this->option('dry-run') ? 'Validation complete. No records or asset files changed.' : 'Import verified. Shared user accounts and unrelated blog records were preserved.');
 
             return self::SUCCESS;
         } catch (QueryException $exception) {

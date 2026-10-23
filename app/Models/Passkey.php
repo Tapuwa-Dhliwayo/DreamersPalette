@@ -8,5 +8,7 @@ class Passkey extends \Laravel\Passkeys\Passkey
 {
     use HasPreciseTimestamps;
 
+    protected $table = 'publishing_passkeys';
+
     protected $hidden = ['credential', 'credential_id'];
 }

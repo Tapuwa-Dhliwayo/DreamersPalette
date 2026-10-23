@@ -21,26 +21,32 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-Preserve an existing `.env`. Configure the dedicated MySQL database and private
-administrator/provider settings. The local target is `dreamerspalette_laravel`;
-`dreamerspalette` belongs to the separate blog and must remain untouched.
+Publishing is intended to use Anubis's existing `dreamerspalette` database alongside
+the blog. It uses shared numeric users, its own migration ledger and publishing-owned
+profile/security/permission tables. Supabase is an import snapshot, not a runtime
+or schema requirement. See [migration operations](docs/LARAVEL_MIGRATION.md).
 
-All ten migrations have been applied locally and the administrator synchronized.
-For a new target, after verifying its name:
+For a reviewed new target, configure the database, app key, host-only session
+cookie, administrator email/numeric ID and private provider settings. Then:
 
 ```bash
 php artisan migrate
 php artisan storage:link
+php artisan dreamers:import-supabase --dry-run
+php artisan dreamers:import-supabase
+php artisan dreamers:import-supabase --verify
 php artisan dreamers:sync-admin
 ```
 
-Administrator synchronization explicitly applies the configured identity and
-password. It preserves an unchanged password, revokes remembered credentials
-when changed, and does not silently verify email. Two-factor authentication and
-passkeys are optional. Never commit actual credentials.
+The importer preserves existing family account fields and blog records. Normal
+administrator sync preserves an existing password; `--rotate-password` explicitly
+changes the family password. Public registration/resets are disabled and optional
+two-factor/passkeys remain available. Never commit credentials or private snapshots.
+Do not run database refresh/reset commands; they are prohibited for the shared database.
 
-See [migration operations](docs/LARAVEL_MIGRATION.md) before importing data or
-preparing Forge. Do not refresh the existing database.
+The old local UUID database is preserved and does not match the rebuilt code.
+Private rehearsal instructions are in `storage/app/private/native-rebuild/README.md`;
+that environment runs with `--env=rebuild`. Anubis remains unchanged.
 
 Run in separate terminals, then open the Laravel URL:
 
@@ -81,6 +87,6 @@ The production build passes; existing full-lint findings are documented there.
 - `database/migrations` — MySQL schema and authentication tables.
 - `supabase/functions` — historical source, no longer used at runtime.
 
-Reader paths, UUIDs and slugs remain stable. Public queries exclude unpublished
+Reader paths, public slugs remain stable; imported UUIDs are retained as provenance. Public queries exclude unpublished
 or archived content and children of unpublished/archived parents. Archive/restore
 returns restored records as drafts. Media uses relative `/storage/` URLs.

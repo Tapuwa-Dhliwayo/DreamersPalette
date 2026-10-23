@@ -9,8 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('generated_assets', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
-            $table->uuid('author_id');
+            $table->id();
+            $table->uuid('source_uuid')->nullable()->unique();
+            $table->unsignedBigInteger('author_id');
             $table->string('type');
             $table->text('prompt');
             $table->text('image_url');

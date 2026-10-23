@@ -1,136 +1,135 @@
-# Laravel system review handoff
+# Publishing rebuild review handoff
 
-Updated: 2026/10/23. Local implementation; not deployed to Forge.
+Updated: 2026/10/24. Implemented and verified locally; Anubis has not been changed.
 
-## What is ready to audit
+## Outcome
 
-Laravel 13 now owns session authentication, authorization, content persistence,
-image uploads, image-generation orchestration and grammar requests. React remains
-the interface. No Inertia, Livewire conversion, repository layer or action classes
-were introduced. Supabase is retained only as the historical source/import and
-rollback reference; the browser no longer needs its SDK or credentials.
-
-All ten migrations are applied to `dreamerspalette_laravel`. The configured
-administrator was synchronized; a second synchronization preserved its password.
-The separate blog database `dreamerspalette` was not changed.
+Publishing is rebuilt for the family's existing Laravel/MySQL database on Anubis.
+The blog keeps its tables and deployed migration ledger. Supabase PostgreSQL is
+used as a snapshot of writing, slugs, publishing history, themes and media; its UUID
+schema no longer dictates Laravel identities. React remains the established UI.
 
 ## Read in this order
 
-1. `routes/web.php`, `routes/api.php`, `routes/auth.php`, `bootstrap/app.php`:
-   delivery boundaries, stateful sessions, CSRF, verification and throttling.
-2. `config/authorization.php`, `app/Policies`, `app/Console/Commands/SyncAdministrator.php`:
-   capabilities, ownership and explicit environment-driven administrator setup.
-3. `app/Http/Requests/Content`, `app/Http/Controllers/Content/ContentController.php`:
-   validated fields, server-assigned ownership, same-author parent selection,
-   stable slugs, duplicate chapter numbers and lifecycle authorization.
-4. `app/Models/Concerns/PublishesContent.php`, `Poem.php`, `Chapter.php`,
-   `app/Http/Controllers/Content/ReaderController.php`: archive/restore semantics,
-   publication history, unpublished/archived parent exclusion and protected previews.
-5. `AssetController.php`, `ImageGenerationService.php`, `scripts/generate-image.mjs`,
-   `WritingAssistantController.php`, `config/services.php`: local media, provider
-   credentials, timeouts and provider failures.
-6. `resources/js/services`, the editor upload handlers and collection reader:
-   same-origin requests, CSRF recovery, existing service contracts and reader URLs.
-7. `docs/LARAVEL_MIGRATION.md`, `docs/manual-testing/laravel-content-models.md`:
-   source integrity, cutover and manual follow-through.
+1. `config/database.php`, `AppServiceProvider`, `database/migrations`: separate
+   publishing_migrations ledger, native numeric keys and the shared-user bootstrap.
+   Existing users are inspected, never dropped or altered by publishing migration.
+   Destructive fresh/reset/rollback/wipe commands are prohibited in every environment.
+2. `User`, `Profile`, `Passkey`, `FortifyServiceProvider`, auth routes: shared family
+   identity with publishing-owned profiles/factors/passkeys; session-only Sanctum.
+3. `config/authorization.php`, `config/permission.php`, policies and
+   `SyncAdministrator`: prefixed publishing permissions and explicit account setup.
+4. `SupabaseSnapshot`, `SupabaseImportService`, `ImportSupabase`: strict source
+   validation, email-based family account mapping, native ID translation, uniqueness,
+   checksums, atomic media copying and transactional data import.
+5. Content Form Requests, `ContentController`, `ReaderController` and content models:
+   numeric input/route IDs, direct user ownership, publication/archive/restore,
+   draft preview and public parent visibility. Reader responses hide source_uuid.
+6. React services, image provider helper and storage configuration: existing
+   frontend contracts, same-origin CSRF requests, public URLs and Node runtime.
 
-## Design decisions and costs
+## Decisions and trade-offs
 
-The four content types share one small resource controller and request, with an
-explicit four-case model map. Their CRUD, ownership and lifecycle flows are the
-same. Type-specific fields and parent rules remain visible as explicit cases;
-there is no extensible resource registry or generic persistence layer. Split a
-resource out when its workflow actually diverges.
+Shared `users` remains the family account record, with the existing blog's numeric
+ID and credential ownership. Importing links by email; it never replaces an
+existing name, hash, role, verification timestamp or other account column. A missing
+user is created from the supported source credentials with a native ID.
 
-Models retain publication/archive/restore behavior. Request validation owns input
-rules; policies own capabilities and record access. Administrators can manage
-other authors' records, but children must retain the same author as their parent.
-The caller must also be allowed to update the selected parent; this is deliberately
-stricter than merely being able to see a published parent. Slugs do not change when titles change. Archived records reserve their slugs and
-chapter numbers. Concurrent uniqueness collisions return a validation response
-rather than overwriting another record; a caller can retry.
+Publishing-owned records use auto-incrementing bigint IDs. `source_uuid` remains a
+nullable unique provenance key on imported publishing rows, including profiles.
+It enables repeat imports without making source IDs application identities.
+`author_id` directly references a family user; profiles use a unique user_id.
+Original slugs and public reader links stay unchanged. Old UUID-based dashboard
+edit links are no longer valid. No foreign-key cascades were introduced.
 
-Uploaded media is stored on Laravel's local public disk with relative `/storage/` URLs.
-The existing ability to enter an external HTTPS image URL is preserved.
-The server validates image contents, size and dimensions. Imported media stays
-where it was copied. Forge deployments must preserve `storage` across releases
-and back it up with the database. Public media URLs remain publicly accessible;
-authentication does not turn previously public images into private objects.
+The migration ledger and Spatie tables are prefixed for publishing, avoiding
+ownership of the blog's migration history or its legacy users.role. Optional TOTP
+secrets live in publishing_profiles and passkeys in publishing_passkeys. No columns
+are added to shared users, so the blog cannot accidentally serialize publishing
+factor material. A small Eloquent attribute/save adapter in User gives native
+Fortify actions their expected properties and writes private factor changes in
+one transaction. This adapter is the explicit cost of sharing identity while
+keeping independently encrypted security state out of the blog's model.
 
-The Hugging Face official JavaScript SDK still resolves partner-provider formats,
-now called by Laravel through a fixed Node script. This avoids hand-maintaining
-provider-specific HTTP adapters, at the cost of requiring Node and production npm
-dependencies on the server. Tokens are passed through process input, never shell
-arguments or browser code. See the official provider client documentation:
-https://huggingface.co/docs/inference-providers/en/index
+A normal administrator sync preserves existing shared passwords. Rotation requires
+--rotate-password; verification requires --verify-email or normal verification.
+These family-wide changes need deliberate operation. Laravel logout normally
+rotates the shared remember token; remembered sessions in other family apps may
+be revoked. Sharing a database does not imply automatic SSO or shared MFA/session
+state. Keep each site's APP_KEY, cookie and host-only session domain deliberate.
+Optional factors and environment-driven provisioning preserve Tapuwa's earlier
+instructions, overriding the secure-provisioning skill's mandatory MFA defaults.
 
-Optional two-factor/passkeys, environment-driven administrator passwords and
-explicit password synchronization preserve Tapuwa's decisions from the preceding
-package. They deliberately differ from the secure provisioning skill's defaults
-for mandatory MFA and one-time passwords. Public account registration and browser
-password reset/change remain disabled. Email verification is not bypassed.
+The four content resources retain one explicit four-case CRUD controller/request,
+without repositories, DTOs, resource registries or per-verb actions. Models own
+publication and archival; request validation/policies protect writes. Native integer
+casts and input validation preserve ownership checks when selects submit strings.
 
-Datamuse and public dictionary lookups remain direct browser requests, as before;
-they use public unauthenticated APIs. Grammar requests and secret-bearing image
-requests go through Laravel. No Supabase Edge Function remains on the runtime path.
+Media uses local public storage and relative URLs. Original source file paths and
+bytes are retained; external HTTPS image URLs are supported. Keep storage persistent
+across deployments. The official Hugging Face SDK still runs through a fixed Node
+helper; its diagnostic stream is separated from image bytes. This provider bridge
+was verified live on 2026/10/23 and not changed by the native-ID rebuild. Public
+Datamuse/dictionary calls remain direct; grammar and image calls go through Laravel.
 
 ## Verification completed
 
-Real local HTTP requests verified:
+No automated tests were added. Verification used actual application requests,
+scratch scripts outside the repository, and real isolated MySQL databases.
 
-- Anonymous studio denial, missing-CSRF rejection, password login/logout,
-  verified administrator sessions, account security and password confirmation.
-- Reader-role denial and author ownership restrictions, including cross-author
-  parent selection; source content was not edited.
-- Creation of collections, poems, books and empty chapter drafts; publication,
-  parent visibility, archive/restore-to-draft, missing parents and duplicate chapter
-  numbers. Scratch records were removed after the checks.
-- TOTP enrollment/confirmation, rejection of a replayed TOTP, recovery-code login,
-  removal, recent-password protection and password-change session expiry, using
-  disposable accounts removed afterward. The real administrator's factors were
-  not changed.
-- Protected draft preview, public exclusion, stable slugs after title edits, zero
-  overlay opacity and HTTPS image URL validation.
-- Multipart image upload, exact public image bytes, fake-image rejection and a
-  safe unavailable response when image credentials are missing. Scratch upload removed.
-- Browser rendering of the imported homepage, featured poem, novel and chapter.
+- Copied Anubis's schema only, read-only. Loaded it into a socket-only local MySQL
+  instance with a synthetic existing family user ID 37 and blog migration marker.
+  No production account rows, password hashes or blog content were copied.
+- Applied all nine publishing migrations alongside that schema. The shared users
+  schema and blog ledger stayed unchanged. Publishing created its own ledger.
+- Imported and verified 140 publishing records plus the linked family account,
+  with all 45 media SHA-256 checksums matching. Repeated import created zero records.
+- Repeated import and administrator sync preserved every existing user column.
+  Authentication rehearsal preserved name, password, legacy role, verification,
+  and timestamps. Normal logout rotated only the remember token as expected.
+- Repeated the entire migration/import/verification on an empty scratch database:
+  the missing source user became a native Laravel user and all mappings verified.
+- Real HTTP verified numeric IDs, independent profile/user identity, hidden source
+  IDs, login/logout, reader restrictions, author ownership, foreign parent denial,
+  collection/poem/book/chapter CRUD, empty chapter drafts, duplicate chapter numbers,
+  publication, draft previews, parent visibility and archive/restore-to-draft.
+- Real HTTP verified recent-password confirmation, TOTP enrollment/confirmation,
+  recovery-code login and removal with factor data isolated from shared users.
+  Unsupported bearer tokens returned 401 without introducing an unused token table.
+- Scratch accounts and content were removed. Original local UUID data, the private
+  Supabase snapshot and live Anubis were not changed.
+- Frontend production build, PHP syntax, Pint, Composer validation, focused service
+  lint and Git whitespace checks passed. Existing unrelated full-lint findings in
+  the editor/reader remain; no frontend redesign was part of this rebuild.
 
-Production assets build successfully; focused service/editor/collection lint,
-PHP formatting and Composer validation pass. No automated tests were added.
-Full lint still reports pre-existing editor/ref and effect-state findings; see
-remaining work. Scratch verification scripts are outside the repository.
+Automatic approval rejected resetting the old local publishing database because
+project instructions protected it. The safe alternative was the isolated rehearsal
+above; no reset was attempted. Its private state and resumption instructions are
+saved under storage/app/private/native-rebuild. Original .env is unchanged;
+.env.rebuild is private and must never be committed.
 
-Import verification still matches all 140 non-user records and all 45 media
-checksums. The user's `updated_at` differs because authorized administrator
-synchronization changed the account. This is expected operational drift, not a
-content mismatch. Do not rerun an import simply to erase it.
+## Remaining deployment and review work
 
-## Remaining environment and release verification
+The current GitHub master still contains the preceding UUID implementation until
+the rebuilt commit is explicitly pushed. Do not deploy that old version and assume
+it supports the shared database. This pass saved code locally; it did not deploy,
+change DNS, update remote site configuration or modify Anubis records.
 
-- Hugging Face is configured locally and live generation was verified on
-  2026/10/23. The SDK's provider-selection logs were contaminating the binary
-  image output; `scripts/generate-image.mjs` now routes SDK diagnostics to stderr.
-  A real background request returned a valid 1024×1024 PNG. An authenticated cover
-  request returned HTTP 201, persisted a generated-asset record and served its
-  1,197,626-byte image correctly. The disposable asset/file were removed.
-  Keep provider secrets server-side; no keys enter `VITE_*` variables.
-- LanguageTool credentials are optional in this integration. Its configured
-  endpoint accepted a synthetic unauthenticated request on 2026/10/22; this does
-  not establish guaranteed free application usage. Live grammar behavior through
-  the Laravel editor remains unverified.
-- Passkey ceremony on a real browser/device remains unverified. Confirm canonical
-  HTTPS hostname, relying-party ID and allowed origins on staging. TOTP and
-  recovery-code flows have been exercised; do not infer passkey correctness from them.
-- Real email delivery is unverified; configure Forge mail before testing verification.
-- Existing full-lint findings remain in `EditorPanel.jsx`, `CollectionEditorPage.jsx`,
-  `BookDetailPage.jsx`, `HomePage.jsx` and the obsolete suppression in `Logo.jsx`.
-  They predate the API switch; focused changed-service checks pass.
-- Complete a browser editor/reader pass and mobile check, including share cards,
-  unsaved drafts, parent changes and previews. HTTP checks do not establish every
-  visual/interaction behavior.
-- Forge staging rehearsal, final frozen source export, production backup/import,
-  DNS/traffic switch and rollback rehearsal are not yet performed. The current
-  snapshot is from 2026/10/17, not a fresh production cutover snapshot.
+Deploy the reviewed rebuilt version using docs/LARAVEL_MIGRATION.md. Take a full
+shared-database/media backup, freeze editing, capture a fresh source snapshot and
+reconcile any real local edits. The current snapshot is from 2026/10/17. Never
+restore the whole family database as a casual publishing-only rollback.
 
-No production deployment, live Supabase writes, database refresh, automatic email
-or final code audit was performed in this implementation pass.
+Anubis already has compatible runtimes and capacity, but still needs a publishing
+site/env, persistent storage, production key, SMTP, correct upload/proxy limits and
+final-domain HTTPS/passkey configuration. Browser/device passkeys, actual mail,
+full browser editor/mobile checks and Forge cutover remain unverified. Local HTTP
+and copied-schema rehearsal do not replace those production checks.
+
+LanguageTool's configured endpoint accepted a synthetic unauthenticated request on
+2026/10/22. That is evidence of a response, not guaranteed free application usage.
+The Laravel editor's live grammar path and supported production usage need review.
+
+Read-only identity confirmation on 2026/10/24 found that the snapshot author
+email matches existing Anubis family user 1. No email address or credential was
+printed or copied from the server; deployment can link that existing account.

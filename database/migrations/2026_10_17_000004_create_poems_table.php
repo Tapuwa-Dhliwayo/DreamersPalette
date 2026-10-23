@@ -9,9 +9,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('poems', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
-            $table->uuid('author_id');
-            $table->uuid('collection_id');
+            $table->id();
+            $table->uuid('source_uuid')->nullable()->unique();
+            $table->unsignedBigInteger('author_id');
+            $table->unsignedBigInteger('collection_id');
             $table->string('title');
             $table->string('slug')->collation('utf8mb4_bin')->unique();
             $table->longText('content_md');

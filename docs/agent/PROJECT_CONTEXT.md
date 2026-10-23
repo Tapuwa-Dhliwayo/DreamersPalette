@@ -1,58 +1,70 @@
 # Project Context
 
+Updated: 2026/10/24.
+
 **Project:** DreamersPalette. **Owner:** TAPUWA_OR_ALATE.
-**System:** LARAVEL. **First real v1 production deployment:** DEPLOYED (existing Supabase application).
-**Refactoring risk:** SURGICAL. **Testing:** NO_AUTOMATED_TESTS.
-**Can deployed migrations be rewritten?** NO.
+**System:** Laravel 13 REST APIs and React 19. **Testing:** NO_AUTOMATED_TESTS.
+**Publishing Laravel deployment:** NOT YET DEPLOYED. Existing Supabase publishing
+and Laravel blog are live. Blog migration history is deployed and immutable.
 
 ## Current architecture
 
-Laravel 13 REST APIs and MySQL, React 19/React Router 7, Vite with Laravel
-integration and Tailwind CSS 4. No Inertia or Livewire conversion.
+Publishing has been rebuilt to join the existing `dreamerspalette` MySQL database
+on Anubis, alongside the blog. This supersedes the separate-database/UUID design.
+The user explicitly authorized rebuilding publishing; the blog must be preserved.
+Supabase PostgreSQL is the content/behavior snapshot, not an architecture contract.
 
-React source lives in `resources/js`; Laravel renders `resources/views/app.blade.php`.
-Session authentication uses Sanctum/Fortify with optional TOTP and passkeys.
-Spatie permissions and resource policies enforce server access. Frontend capability
-checks are presentation only. Service modules own React's backend interactions.
+Use native numeric Eloquent IDs. `users` is the existing shared Laravel table.
+Publishing content has nullable unique `source_uuid` columns solely for import
+provenance/idempotency. Authors reference users directly. Profiles live in
+`publishing_profiles` with user_id. Reader URLs/slugs and source writing remain.
 
-Content, uploads, image generation and grammar requests now use Laravel. Supabase
-is historical import/rollback material, not an application runtime dependency.
-Public dictionary/Datamuse lookups remain direct browser requests.
+Publishing owns the `publishing_migrations` ledger, prefixed Spatie permission
+tables, `publishing_profiles` and `publishing_passkeys`. It never takes over blog
+migration history or users.role. Optional encrypted factors remain in publishing
+profiles, accessed through Eloquent attributes for native Fortify actions. No
+publishing columns are added to shared users. Session cookies and encryption keys
+stay site-specific; shared users are not automatic SSO. Session-only Sanctum
+explicitly ignores bearer tokens; no unused personal-access-token table is created.
 
-## Local database and authorization
+Standard Laravel logout rotates the shared remember token. Password rotation is
+family-wide and requires `dreamers:sync-admin --rotate-password`; a normal sync
+preserves existing credentials. Administrator ID, when configured, is numeric.
 
-Use only `dreamerspalette_laravel`. `dreamerspalette` is the separate blog database.
-All ten migrations are applied, including the three authentication migrations.
-The environment-configured administrator has been synchronized. Do not refresh
-or replace the database. The original imported content and 45 storage files remain.
+Models own lifecycle behavior, Form Requests validate inputs, policies authorize
+resources, and the existing React services use same-origin Laravel APIs. No Inertia,
+Livewire conversion, repository layer or per-verb action classes were introduced.
 
-Historical `profiles.role` does not authorize anything. The designated account's
-roles come from Spatie. Optional factors and explicit environment-controlled
-password synchronization are deliberate user decisions.
+## Local and remote state
 
-Read `docs/LARAVEL_SYSTEM_REVIEW.md` for verification, trade-offs, audit order and
-remaining environment/release work. This supersedes the previous code-review-only
-authentication restriction: Tapuwa authorized runtime verification on 2026/10/20.
+Anubis was inspected read-only. It already runs the blog in `dreamerspalette`,
+with numeric users, eight posts and a separate blog migration ledger. No server
+writes or publishing deployment were performed. Naming a server authorizes
+read-only investigation in this chat; do not infer permission for remote mutation.
 
-## Protected areas
+The original local `dreamerspalette_laravel` UUID database and `.env` are preserved;
+they do not match the rebuilt code. Verification used `.env.rebuild` and isolated
+socket-only MySQL with the copied blog schema plus synthetic account/ledger data.
+A second scratch database verified a standalone install. No production user rows
+were copied. Private resumption instructions are in
+`storage/app/private/native-rebuild/README.md`.
 
-- Reader theme classes, contrast, backgrounds, safe-area spacing and mobile viewport.
-- Existing slugs and reader URLs; editing a title must not regenerate its slug.
-- Original UUIDs, writing, source timestamps and media in the private snapshot.
-- The blog database and production Supabase data.
+Read `docs/LARAVEL_MIGRATION.md` and `docs/LARAVEL_SYSTEM_REVIEW.md` for current
+operations, shared-user boundaries, evidence and remaining release checks.
 
-## Development and checks
+## Commands and safety
 
-Run `php artisan serve` and `npm run dev`; open the Laravel URL. Built assets use
-`npm run build` and live under `public/build`. Forge's document root is `public`.
-Run `npm run lint`, `vendor/bin/pint --test`, and `composer validate` for static checks.
-Existing React lint findings are documented in the system review handoff.
+Use `php artisan serve --env=rebuild` for the private rehearsal environment after
+starting its local MySQL instance. Use `npm run dev` for development assets or
+`npm run build` for production assets. Open the Laravel URL; web root is `public`.
 
-Verify workflows through actual requests/scratch probes and focused manual
-charters; never add automated tests. Preserve existing test files.
+Run PHP syntax checks, `vendor/bin/pint --test`, `composer validate`, focused lint
+and the frontend build. Existing unrelated full-lint findings remain documented.
+Verify by actual requests/scratch scripts and manual charters. Add no automated tests.
 
-## Release boundary
-
-Implementation is local, not deployed to Forge. Server provider credentials,
-real mail, browser/device passkeys and Forge staging/cutover remain unverified.
-Use `docs/LARAVEL_MIGRATION.md` for operations and the source-integrity boundary.
+Destructive Artisan fresh/reset/rollback/wipe commands are prohibited in all
+environments because a shared database contains blog data too. Do not rewrite
+deployed blog migrations. Publishing originals were rewritten only because this
+Laravel publishing schema has never been deployed. Use forward migrations after
+its deployment. Preserve the private snapshot, source Supabase, writing, slugs,
+media, blog data and reader theme/accessibility conventions.

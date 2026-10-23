@@ -1,3 +1,8 @@
+> Current schema update — 2026/10/24: publishing now uses native numeric IDs,
+> shared family users, publishing_profiles and a publishing_migrations ledger.
+> Earlier UUID-specific notes below are historical. See LARAVEL_SYSTEM_REVIEW.md
+> and the updated supabase-import charter for current mappings and rehearsal setup.
+
 # Author publishes, archives, and restores literary content
 
 Date: 2026/10/17. Timebox: 40 minutes.

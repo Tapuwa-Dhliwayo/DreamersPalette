@@ -1,43 +1,95 @@
-# Laravel migration operations
+# Publishing on the shared Laravel database
 
-Updated: 2026/10/20.
+Updated: 2026/10/24. This supersedes the earlier separate-database migration plan.
 
-## Current local state
+## Target and ownership
 
-The dedicated MySQL target is `dreamerspalette_laravel`. The database named
-`dreamerspalette` contains the separate blog application; never refresh, migrate,
-or import this application's records into it.
+The publishing app is rebuilt to coexist with the blog in Anubis's existing
+`dreamerspalette` database. The blog's deployed migrations and data remain its
+own. Inspection of Anubis was read-only; no publishing changes have been deployed.
 
-The current verified import contains 141 records: one user, one profile, 16
-collections, 77 poems, one book, one chapter, and 44 generated assets. All 45
-source storage objects are copied (9,760,772 bytes), including the object not
-currently referenced by a record. Checksums are recorded for every file.
+Both apps use the existing numeric `users.id`. Publishing matches the snapshot's
+author by email, preserving an existing family user's name, password, verification,
+role, remember token and timestamps. A missing account is created with Laravel's
+numeric identity and the source's supported bcrypt password. It receives no
+publishing permissions until explicit administrator synchronization.
 
-React now uses Laravel for authentication, content and uploads. All ten migrations
-are applied locally, and the administrator was synchronized separately from the
-import. See `docs/LARAVEL_SYSTEM_REVIEW.md` for current verification and review.
-Importing alone does not assign Laravel administrator permissions.
+Publishing's numeric tables are `publishing_profiles`, `poetry_collections`,
+`poems`, `books`, `chapters` and `generated_assets`. Each imported record retains
+its original UUID in nullable, unique `source_uuid`; Laravel owns primary keys.
+`author_id` refers directly to `users.id`; `publishing_profiles.user_id` is unique.
+Source parent UUIDs are translated into native collection/book IDs. Source UUIDs
+are not exposed in reader responses or accepted as editor IDs.
 
-## Connection and schema
+The snapshot supplies writing, slugs, publication history, theme values and media,
+not the application's architecture. Public reader URLs/slugs remain unchanged.
+Old UUID dashboard edit links are replaced by numeric-ID edit links.
 
-Configure `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` in
-local `.env`. The database user needs rights on this application's database only.
-Confirm the target name before running migrations. On a new empty target:
+## Migration and account isolation
 
-```bash
-php artisan migrate
-php artisan storage:link
-```
+Publishing has nine migrations in its own `publishing_migrations` ledger. It does
+not alter or take ownership of the blog's `migrations` ledger. Its bootstrap checks
+that an existing `users` table has Laravel's expected numeric key and columns; on
+an empty standalone database it creates the standard table. It never drops users.
+The UUID-based publishing schema was never deployed and has been replaced in its
+original migration files. Never run these against the old UUID rehearsal database.
 
-Do not run `migrate:fresh`. Existing business content must remain intact.
-The content migrations introduce no database foreign keys or cascade deletions.
+Publishing's Spatie tables use `publishing_` prefixes. The blog's legacy `users.role`
+is untouched and does not authorize publishing actions. TOTP fields live in
+`publishing_profiles`; passkeys live in `publishing_passkeys`. A small Eloquent
+attribute adapter lets native Fortify actions use that private state without
+adding encrypted fields to the blog's user schema. Publishing retains its own
+APP_KEY and host-only session cookie; sharing accounts does not provide automatic SSO.
 
-## Import and verify
+Normal Laravel logout rotates the shared remember token, so it can revoke remembered
+sign-ins across the family. Explicit password changes also affect both applications.
+Administrator synchronization preserves existing passwords by default. Use
+`--rotate-password` only for a deliberate family-account password change.
+`--verify-email` remains an explicit attestation, not an import shortcut.
 
-The default private snapshot directory is `storage/app/private/migration-source`.
-Override it with `--source=/absolute/path` or `SUPABASE_MIGRATION_SOURCE_PATH`.
-`SUPABASE_MIGRATION_SOURCE_URL` identifies the original Supabase project URL;
-during the transition it falls back to `VITE_SUPABASE_URL`.
+Destructive Artisan reset/fresh/rollback/wipe commands are prohibited by
+`AppServiceProvider` in every environment. They are inappropriate for a database
+that also contains the blog. Take a database backup and preserve media before
+any deployment; use reviewed forward migrations after the first publishing deployment.
+
+## Deployment order
+
+1. Create the publishing Forge site with web root `public`, PHP 8.3+ and compatible
+   Node. The existing server has PHP 8.5, Node 22 and MySQL 8.4. Keep the blog site
+   and DNS unchanged while preparing publishing.
+2. Configure the shared database name `dreamerspalette`, site-specific session
+   cookie, production APP_KEY, HTTPS APP_URL, SMTP, providers and passkey origin.
+   `ADMIN_USER_ID`, if set, is the existing numeric family user ID, not a source UUID.
+   It can be left blank to select by ADMIN_EMAIL. ADMIN_PASSWORD is needed only
+   for a new account or explicit password rotation.
+3. Install Composer and npm dependencies, build frontend assets, then run
+   `php artisan migrate --force` and `php artisan storage:link` on the publishing
+   checkout. Review `migrate:status`; publishing must use its own ledger.
+4. Freeze source editing and take a fresh Supabase records-and-files snapshot.
+   The current private reference snapshot is from 2026/10/17, not a final cutover
+   export. Reconcile any real local editorial work before importing; source-owned
+   publishing records are overwritten on repeat import. Blog records are not.
+5. Copy the snapshot privately to the publishing server and run the commands below.
+   Production import requires deliberate confirmation or `--force` in the approved
+   deployment. Verify before assigning publishing administrator permissions.
+6. Run `php artisan dreamers:sync-admin`, then cache production configuration and
+   verify login, public reading, editing, publication, media, mail and optional
+   factors. Keep Node and `@huggingface/inference` available to PHP. Set NODE_BINARY
+   to the server path if needed (Anubis has `/usr/bin/node`).
+7. Preserve `storage/app` across releases and back up it and the shared database.
+   Increase this site's PHP upload limit from Anubis's current 2 MB to at least
+   the application's 5 MB allowance, with suitable POST/Nginx limits. Account for
+   the generation service's 120-second timeout in the site proxy/PHP limits.
+8. Move the production website DNS and HTTPS only after verification. Retain Vercel
+   and Supabase as rollback references until the new deployment is stable. Shared
+   database restoration must account for blog writes, not just publishing writes.
+
+## Snapshot operations
+
+The source defaults to `storage/app/private/migration-source`. Override with
+`--source=/absolute/path` or SUPABASE_MIGRATION_SOURCE_PATH. Set the original
+HTTPS source hostname in SUPABASE_MIGRATION_SOURCE_URL. Legacy VITE_SUPABASE_URL
+is accepted only as an import fallback; React no longer needs Supabase credentials.
 
 ```bash
 php artisan dreamers:import-supabase --dry-run
@@ -45,127 +97,53 @@ php artisan dreamers:import-supabase
 php artisan dreamers:import-supabase --verify
 ```
 
-Dry-run validates source structure, ownership, timestamps, source checksums,
-filesystem destinations, target schema, and uniqueness conflicts. It reports
-existing/new UUIDs without changing records or copying media. A lock file is used
-to serialize snapshot operations.
+The private format is `snapshot.json`, `schema.json`, `files-manifest.json` and
+`files/<bucket>/<original path>`. The snapshot contains all source columns of
+profiles, poetry_collections, poems, books, chapters and generated_assets; the
+original auth user; a capture timestamp; and storage metadata. The schema includes
+bucket visibility. The manifest records each object's successful byte count and
+SHA-256. A PostgreSQL SQL dump alone is not this importer format.
 
-Import updates source-owned rows by UUID, preserving exact source timestamps and
-publication history. It does not regenerate slugs or invoke normal model events.
-Source-owned rows are synchronized: local editorial changes to the same UUIDs
-will be replaced by source values. Extra local rows are retained and reported;
-review these deliberately before a production cutover. No missing source row is
-automatically deleted from the target.
+Source UUIDs, parents, author ownership, uniqueness, timestamps, booleans, precision,
+paths and checksums are validated before database writes. Native IDs are assigned
+only by MySQL. Slug/chapter conflicts with unrelated publishing rows fail rather
+than overwrite those rows. Extra native records are retained and reported. Source
+identity conflicts with an existing family-user mapping require review.
 
-An existing user's password is never replaced on rerun. A first import translates
-the PostgreSQL bcrypt prefix into PHP's equivalent `2y` prefix so Laravel can
-verify the same existing password. No plaintext password, hash, or account email
-is included in command output. No email verification is granted beyond the source
-confirmation timestamp, and no administrator role is granted by the importer.
+Verified media is copied atomically before one database transaction. A SQL failure
+may leave reusable unreferenced files, never partially committed record changes.
+Existing destination files with different bytes are not overwritten. Reruns do
+not delete missing source records or replace existing family account credentials.
+A lock serializes snapshot operations; imports never contact Supabase themselves.
 
-Record changes run inside one database transaction. Files are validated and copied
-before that transaction, using temporary files and atomic moves. A database
-failure can leave verified, unreferenced media copies, which a rerun reuses.
-Existing destination files with different checksums cause a refusal rather than
-an overwrite. Importing never contacts Supabase or an external provider.
+Public URLs become relative `/storage/imports/supabase/...` URLs, including known
+embedded references. Private-bucket media remains private. Original Supabase
+storage URLs cannot be transferred to the new server; keep the source available
+for rollback. Keep all snapshot, account and rehearsal material out of Git.
 
-Verification compares every imported source column after timestamp/decimal/URL
-mapping, counts extra rows, and hashes every destination file. Password equality
-is intentionally excluded for existing accounts; the target must have a supported
-password hash. Verification is read-only except for the operational lock file.
+## Local rehearsal and evidence
 
-Production writes require the command's production confirmation or `--force`.
-Use `--force` only within an explicitly approved cutover. Final live export and
-production deployment tooling are still pending; the current snapshot is a local
-migration snapshot, not the final production cutover backup.
+The original `dreamerspalette_laravel` database and local `.env` are preserved.
+The rebuilt code must not use that old UUID schema. Automatic approval rejected
+resetting it, so verification instead used an isolated, socket-only MySQL instance
+and ignored `.env.rebuild`. Its `dreamerspalette_rebuild` database has Anubis's
+blog schema plus a synthetic existing family user with ID 37 and blog ledger marker.
+No production user data was copied. A second `dreamerspalette_standalone` database
+verified an empty install and creation of a new native user from the snapshot.
 
-## Source snapshot format
+Both imports verified 140 publishing records plus the linked/native user and all
+45 media files. Reruns created zero records and preserved every existing user
+column. Actual HTTP verified numeric editor IDs/parent validation, source-ID hiding,
+login/logout, permissions/ownership, publication, draft previews, archive/restore,
+chapter uniqueness and optional TOTP/recovery authentication. Existing user names,
+password, verification, legacy role and timestamps stayed unchanged. Normal logout
+rotated the remember token as expected; the blog ledger stayed unchanged.
 
-The importer accepts this private directory shape:
+Private local rehearsal startup/continuation instructions are saved under
+`storage/app/private/native-rebuild/README.md`. They are local artifacts, not
+production deployment steps. No automated tests were added. Read
+`docs/LARAVEL_SYSTEM_REVIEW.md` for review order and remaining release checks.
 
-```text
-snapshot.json
-schema.json
-files-manifest.json
-files/<bucket>/<original object path>
-```
-
-`snapshot.json` contains:
-
-- `captured_at`: an ISO-8601 capture timestamp;
-- `tables`: all columns of profiles, poetry_collections, poems, books, chapters,
-  and generated_assets; timestamps remain strings with source precision;
-- `administrators`: the single existing auth user's id, email, encrypted_password,
-  email_confirmed_at, created_at, and updated_at; source metadata may also remain;
-- `storage_objects`: object bucket_id, name, metadata (including size), and source
-  identifiers/timestamps.
-
-`schema.json` contains the captured schema plus `buckets` with each bucket's id
-and boolean public visibility. `files-manifest.json` is a list of bucket, name,
-status (`ok`), integer bytes, and lowercase hexadecimal SHA-256 for every object.
-Capture database records in one read-only repeatable-read transaction. A final
-export must take place after content editing stops, and include actual storage
-files. A PostgreSQL SQL dump alone is not this JSON format and cannot be passed
-directly to the importer.
-
-Snapshot files contain private writing and authentication material. Keep the
-source directory private and outside Git. The captured directory is ignored;
-never add it to an archive intended for public distribution.
-
-## Asset mapping and visibility
-
-Public files map to `storage/app/public/imports/supabase/<bucket>/<object path>`.
-Their database references become relative `/storage/imports/supabase/...` URLs,
-which continue working when the site's hostname changes. Known embedded media
-URLs in Markdown and descriptive text are mapped too. Private-bucket objects
-copy to the private filesystem disk. An unsupported original storage URL causes
-a refusal; it is not silently exposed or left pointing to Supabase.
-
-The source URLs on Supabase's hostname cannot be transferred to our server. The
-application's own `/collections`, `/poems`, `/books`, and chapter routes retain
-their existing slugs and paths. Source storage files remain available in Supabase
-for rollback.
-
-## Verification recorded
-
-Applied migrations and imported to the dedicated local database; rerunning added
-zero UUIDs. Every mapped record and all 45 media checksums match. Runtime probes
-on disposable MySQL verified changed-password preservation, original-password
-compatibility with Laravel, retention/reporting of extra local rows, rejection of
-corrupt files/unknown owners/UUID conflicts, and fresh atomic media copies with
-no temporary files remaining. An imported image returned HTTP 200 with matching
-bytes; the private source snapshot was not disclosed by the public storage link.
-
-No automated tests were added. Use the focused manual charter in
-`docs/manual-testing/supabase-import.md`. Laravel HTTP authorization and reader
-workflows against MySQL remain for the application switch.
-
-## Application activation and release
-
-Authentication migrations and administrator synchronization were applied locally on
-2026/10/20. Laravel APIs now serve content, uploads, image generation and grammar;
-React no longer needs Supabase credentials or the Supabase SDK.
-
-The latest integrity check matches all 140 non-user records and all 45 source
-file checksums. The account's `updated_at` differs because administrator
-synchronization updated it; its password is intentionally operational state.
-Do not reimport to make the account timestamp match an old snapshot.
-
-For a new Forge target: install Composer and npm dependencies, set private server
-environment variables and the dedicated database, run `php artisan migrate --force`,
-run `php artisan storage:link`, import the reviewed frozen snapshot, and explicitly
-synchronize the configured administrator. Build assets with `npm run build` and
-build the Laravel configuration cache from the intended environment. The Node
-runtime and `@huggingface/inference` dependency must remain available to PHP;
-`NODE_BINARY` may specify the absolute executable path. Preserve and back up
-`storage/app` across deployments. Configure SMTP and provider keys server-side.
-
-Rehearse on Forge staging before production. Verify existing reader paths, local
-media, login, permissions, editor writes, mail and browser/device passkeys with the
-canonical HTTPS hostname. A new origin may require new passkey enrollment.
-
-Final production cutover requires stopping editing in the old application,
-capturing a fresh records-and-media snapshot, backing up the destination,
-importing/verifying, and only then switching traffic. Preserve Supabase as rollback
-material; do not delete its data or media. This work has not deployed or switched
-production traffic. See the system review handoff for remaining checks.
+Read-only identity confirmation on 2026/10/24 found that the snapshot author
+email matches existing Anubis family user 1. No email address or credential was
+printed or copied from the server; deployment can link that existing account.

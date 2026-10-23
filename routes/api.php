@@ -31,10 +31,10 @@ Route::prefix('studio')->middleware([PreventAuthenticationCaching::class, 'auth:
     Route::group(['where' => ['resource' => 'collections|poems|books|chapters']], function (): void {
         Route::get('/{resource}', [ContentController::class, 'index']);
         Route::post('/{resource}', [ContentController::class, 'store']);
-        Route::get('/{resource}/{id}', [ContentController::class, 'show'])->whereUuid('id');
-        Route::patch('/{resource}/{id}', [ContentController::class, 'update'])->whereUuid('id');
-        Route::delete('/{resource}/{id}', [ContentController::class, 'archive'])->whereUuid('id');
-        Route::patch('/{resource}/{id}/publish', [ContentController::class, 'publish'])->whereUuid('id');
-        Route::post('/{resource}/{id}/restore', [ContentController::class, 'restore'])->whereUuid('id');
+        Route::get('/{resource}/{id}', [ContentController::class, 'show'])->whereNumber('id');
+        Route::patch('/{resource}/{id}', [ContentController::class, 'update'])->whereNumber('id');
+        Route::delete('/{resource}/{id}', [ContentController::class, 'archive'])->whereNumber('id');
+        Route::patch('/{resource}/{id}/publish', [ContentController::class, 'publish'])->whereNumber('id');
+        Route::post('/{resource}/{id}/restore', [ContentController::class, 'restore'])->whereNumber('id');
     });
 });

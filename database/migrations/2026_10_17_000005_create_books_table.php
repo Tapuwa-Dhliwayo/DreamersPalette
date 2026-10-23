@@ -9,8 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('books', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
-            $table->uuid('author_id');
+            $table->id();
+            $table->uuid('source_uuid')->nullable()->unique();
+            $table->unsignedBigInteger('author_id');
             $table->string('title');
             $table->string('slug')->collation('utf8mb4_bin')->unique();
             $table->text('synopsis')->nullable();

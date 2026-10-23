@@ -10,7 +10,7 @@ Route::middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.sessio
     foreach (['collections', 'poems', 'books', 'chapters'] as $resource) {
         Route::view('/dashboard/'.$resource, 'app')->middleware('can:'.$resource.'.view');
         Route::view('/dashboard/'.$resource.'/new', 'app')->middleware('can:'.$resource.'.create');
-        Route::view('/dashboard/'.$resource.'/{id}/edit', 'app')->whereUuid('id')->middleware('can:'.$resource.'.update');
+        Route::view('/dashboard/'.$resource.'/{id}/edit', 'app')->whereNumber('id')->middleware('can:'.$resource.'.update');
     }
     Route::view('/dashboard/trash', 'app')->middleware('can:trash.view');
 });

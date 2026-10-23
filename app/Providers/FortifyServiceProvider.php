@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\VerifyEmailResponse;
 use Laravel\Fortify\Fortify;
 use Laravel\Passkeys\Passkeys;
+use Laravel\Sanctum\Sanctum;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -29,6 +30,8 @@ class FortifyServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Publishing is a first-party session app; it does not issue or accept bearer tokens.
+        Sanctum::getAccessTokenFromRequestUsing(fn (): ?string => null);
         Passkeys::usePasskeyModel(Passkey::class);
         Gate::policy(Passkey::class, PasskeyPolicy::class);
         Fortify::authenticateUsing(function (Request $request): ?User {

@@ -5,20 +5,23 @@ namespace App\Models;
 use App\Models\Concerns\HasPreciseTimestamps;
 use App\Models\Concerns\PublishesContent;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Chapter extends Model
 {
-    use HasPreciseTimestamps, HasUuids, PublishesContent, SoftDeletes;
+    use HasPreciseTimestamps, PublishesContent, SoftDeletes;
+
+    protected $hidden = ['source_uuid'];
 
     protected $fillable = ['title', 'chapter_number', 'content_md', 'is_preview'];
 
     protected function casts(): array
     {
         return [
+            'author_id' => 'integer',
+            'book_id' => 'integer',
             'chapter_number' => 'integer',
             'is_preview' => 'boolean',
             'is_published' => 'boolean',
@@ -30,7 +33,7 @@ class Chapter extends Model
 
     public function author(): BelongsTo
     {
-        return $this->belongsTo(Profile::class, 'author_id');
+        return $this->belongsTo(User::class, 'author_id');
     }
 
     public function book(): BelongsTo

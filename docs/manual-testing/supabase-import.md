@@ -1,75 +1,94 @@
-# Operator imports Supabase content into local Laravel
+# Publisher imports the source snapshot without changing the blog
 
-Date: 2026/10/17. Timebox: 40 minutes.
+Updated: 2026/10/24. Timebox: 40 minutes. This replaces the UUID-target charter.
 
 ## Risk level
 
-High: wrong database selection, credential replacement, missing writing, and incorrectly exposed files can undermine the migration.
+High: publishing shares users/database with the blog. An incorrect import could
+replace family credentials, reassign authors or disturb blog content.
 
 ## Goal and stop condition
 
-Import a complete private snapshot twice, preserving content and credentials while mapping media to Laravel. Finish with matching record/file verification and recorded rejection cases. Stop on wrong-target selection, data loss, a changed existing password, or checksum failure.
+Import the private source snapshot into a native publishing schema alongside the
+blog; preserve blog users/content/ledger and verify every mapped publishing record
+and media checksum. Stop on any unexpected blog/account change, source conflict,
+missing writing or media mismatch.
 
-## Accounts and roles
+## Accounts and test data
 
-Use the local database user configured in `.env`, scoped to `dreamerspalette_laravel`. Import creates no administrator permissions. The copied existing auth account is not yet a working HTTP login because Sanctum/API work is pending.
+Use an isolated local MySQL database loaded with the actual Anubis schema, without
+production rows. The agent used an existing synthetic numeric family user 37,
+matching the source email, and a marker in the blog migrations ledger. Preserve
+its name, password hash, legacy role, verification, remember token and timestamps.
+The private snapshot contains one author/profile, 16 collections, 77 poems, one
+book, one chapter, 44 generated assets and 45 storage objects.
 
-## Test data
+## Fixture reset and starting state
 
-The captured private snapshot has 141 records: one user, one profile, 16 collections, 77 poems (76 published and one draft), one book, one chapter, and 44 generated assets. It includes 45 storage objects totaling 9,760,772 bytes. Every referenced source object exists; one additional unreferenced object is retained.
-
-## Fixture reset
-
-Do not refresh any database. The agent's unsafe-input/password-change/conflict probes ran on disposable MySQL and rolled back their record mutations. The actual local import is retained for later development. Rerunning import synchronizes source-owned UUIDs, so local edits to those rows are replaced; run rerun probes on a disposable target once editorial development begins. Extra local UUIDs and existing passwords are retained.
-
-## Starting state
-
-Work from the repository directory on `feature/laravel-migration`. Confirm `.env` names `dreamerspalette_laravel`. The database named `dreamerspalette` belongs to the blog; leave it untouched. Keep the source directory private. Confirm migrations are applied and `public/storage` links only to `storage/app/public`.
+No database reset. For repeated import checks, rerun the importer; it is idempotent.
+Use new isolated databases for empty-install/corruption scenarios. Never refresh
+Anubis or the original local database. Private rehearsal continuation instructions
+are in storage/app/private/native-rebuild/README.md. Use --env=rebuild with its
+socket-only MySQL instance; normal .env still points to the old preserved UUID DB.
 
 ## Data shape review
 
-Read `docs/LARAVEL_MIGRATION.md`, `config/supabase-migration.php`, and the private source directory names without sharing their contents. Confirm snapshot capture time, source table names/columns, owner UUIDs, manifest counts, bucket visibility, and original media paths. Auth records include password hashes; no source JSON belongs in Git or ordinary logs.
+Read the shared-user bootstrap migration, config/database.php, prefixed permission
+migrations, SupabaseSnapshot and SupabaseImportService. Native IDs must be assigned
+by MySQL; source_uuid exists only on publishing records. Family users are matched
+by email, and source author/parent UUIDs become native IDs. Publishing must use its
+own migration ledger and must not add factor columns to shared users.
 
 ## Intended workflow
 
-1. Run `php artisan dreamers:import-supabase --dry-run`. Expect the dedicated target name, capture timestamp, snapshot fingerprint, counts per table, and 45 files. Confirm the new/existing UUID counts reflect the target. No records or asset files should change.
-2. Run `php artisan dreamers:import-supabase`. Expect a verified import, with no credentials or content text in output. The first import adds the source UUIDs; existing UUIDs are updated on subsequent runs.
-3. Run `php artisan dreamers:import-supabase --verify`. Expect all 141 source rows to match, zero extra rows on the initial target, and 45/45 file checksums.
-4. Rerun import, then verification. Expect zero new UUIDs and the same total counts and file checksums.
-5. Read an imported poem's Markdown and publication timestamp from MySQL and compare them with its source copy. Expect exact writing and six-digit UTC timestamp precision. Confirm the draft remains a draft.
-6. Read an imported collection or generated asset URL. Expect `/storage/imports/supabase/backgrounds/...`. Request the corresponding URL through Laravel and observe HTTP 200, an image MIME type, and matching bytes.
-7. Run `git status --short --untracked-files=all`. Expect no source snapshots, database passwords, copied media, SQL setup secrets, or checksums from private storage to appear as tracked candidates.
+1. Record shared user fields, blog table counts/content checksums and the existing
+   blog migration ledger. Do not print hashes or private content into the report.
+2. Apply publishing migrations on the isolated copy. Expect publishing_migrations
+   and native publishing tables, with the original users schema/ledger intact.
+3. Run dreamers:import-supabase --dry-run. Expect source counts and prospective
+   mappings, with no data/media writes.
+4. Import, then --verify. Expect all source writing, themes, timestamps, publication
+   state and 45 files to match through native-ID mappings. Source user email must
+   map to the existing family user, without replacing its account fields.
+5. Repeat import. Expect zero new records and unchanged native IDs, author/parent
+   relationships and every shared account field. Extra unrelated native rows remain.
+6. Run dreamers:sync-admin normally. Expect publishing permissions only and unchanged
+   shared account fields. Do not use --rotate-password or --verify-email in this pass.
+7. Compare blog records/ledger with step 1. Expect no changes. Repeat on a new empty
+   standalone database to verify creation of a native user when no family account exists.
 
 ## Risk map for probing
 
-- Critical: target database selection. An unrelated schema must be rejected; never bypass a table conflict by refreshing the database.
-- High: source-owned local edits are intentionally overwritten by import. Do not rerun against later editorial changes without reviewing that synchronization.
-- High: password changes after initial import must survive reruns. Use disposable records and check Laravel authentication against both the original and subsequently changed password, without printing either.
-- High: corrupt file checksum, missing file, unknown owner, mismatched parent ownership, duplicate source UUID, unsafe file path, and private-bucket URLs must be rejected before database writes.
-- High: the same slug/email/chapter number owned by a different target UUID must fail; the other record must survive intact.
-- Medium: interrupted copying or SQL uniqueness failure. Completed verified media may remain unreferenced; a rerun reuses it. Partial temporary files must not become the destination object.
-- Medium: extra local UUIDs are retained and reported rather than deleted. Review extra rows before cutover, particularly if a source record was hard-deleted since an earlier import.
-- Medium: simultaneous command execution must refuse the second operation. Production mutation requires confirmation or an explicit `--force` invocation in the approved cutover.
+- Critical: wrong database or reset command. Destructive Artisan commands are prohibited.
+- High: existing family account has a different password/name/verification from the
+  snapshot. All existing values must survive import and normal admin sync.
+- High: source UUID already links to a different user/email, source owner mismatch,
+  duplicate UUID/slug/chapter number, missing parent or checksum failure. Refuse
+  before destructive writes; retain conflicting unrelated records.
+- High: same source slug owned by an unrelated native record, including archived
+  content. Refuse instead of merging identities.
+- Medium: empty import destination or interrupted copy/SQL transaction. Only
+  verified complete media may remain unreferenced; no partial data transaction.
+- Medium: source-owned local edits get replaced on repeat import. Reconcile them
+  deliberately before final cutover; do not treat the importer as bidirectional sync.
 
-## Permission checks
+## Permission and state verification
 
-The MySQL user should have privileges on the dedicated target only. Public imported images are served through the public disk; copied source writing/authentication JSON remains in private storage. A public storage request must not return the private snapshot. No administrator role or HTTP API access is granted by this command. Later policies/session authentication still require their own verification.
-
-## State verification
-
-Compare all mapped columns, not just row counts. Confirm 77/77 poem texts, 1/1 chapter text, 44/44 generation prompts, and 77/77 poem publication timestamp values (including null) match the source. The import should retain 76 published poems and one draft. There should be 61 mapped asset references, no remaining original Supabase asset URLs in those fields, and 45 matching local file checksums. Imported account credentials must verify through Laravel without revealing them.
+Source snapshot remains private; copied public images are publicly served. Import
+never grants publishing roles by itself. Users.role is the blog's legacy field,
+not a publishing permission check. Public reader requests must still exclude draft
+or archived parents/children after import. Actual login/logout is a separate state
+change: Laravel logout rotates the shared remember token, unlike importing.
 
 ## Findings
 
 | ID | Phase | Location | Expected result | Actual result | Severity | Status |
 | -- | ----- | -------- | --------------- | ------------- | -------- | ------ |
-| I1 | Setup | Local database selection | Dedicated empty target | Existing `dreamerspalette` was the blog; migration stopped before any table change. Separate `dreamerspalette_laravel` was created and used. | High | Fixed |
-| I2 | Runtime | Import and verify commands | Matching source records and files across reruns | 141/141 rows and 45/45 files match; second local import created zero UUIDs | High | Ready for retest |
-| I3 | Runtime | Account import | Original password works and subsequent changes survive reruns | Laravel verification passes; changed-password preservation passes on disposable data | High | Ready for retest |
-| I4 | Runtime | Source and target preflight | Reject corruption, unknown owners, and UUID collisions | All three rejection probes pass with conflicting target record retained | High | Ready for retest |
-| I5 | Runtime | Media copy and HTTP delivery | Atomic copies and correct public media | Fresh copy verified 45 files with no temporary files left; HTTP image bytes match; private snapshot not disclosed | High | Ready for retest |
-| I6 | Boundary | React application | Use local Laravel content and authentication | React service switch, authorization, provider integration, and final live export remain pending | High | Documented |
+| R1 | State | Copied blog schema + native migrations | Coexist without changing blog users/ledger | Nine publishing migrations applied; users schema and blog ledger preserved | High | Ready for retest |
+| R2 | State | Native importer | Translate UUID provenance to native IDs | 140 publishing rows, linked family user and all 45 media files verify | High | Ready for retest |
+| R3 | State | Repeat import/admin sync | Preserve shared account fields | Every shared user column unchanged; no duplicate publishing rows | High | Ready for retest |
+| R4 | Runtime | Empty standalone database | Native account bootstrap | Entire empty-install import and verification pass | High | Ready for retest |
+| R5 | Runtime | Authentication | Isolate factor state | TOTP/recovery flows pass; standard logout rotates shared remember token | Medium | Documented |
 
-## Session evidence
-
-Verified by running the actual importer, read-only verification, direct MySQL comparisons, disposable transactional probes, and local HTTP requests. No automated tests were added. All source access was read-only; the blog database's tables and production data remain unchanged. The full editor/reader workflow against Laravel is a later approval package.
+No automated tests were added. No live Anubis writes or original-local resets
+occurred. Fresh production capture and deployment remain separate work.
