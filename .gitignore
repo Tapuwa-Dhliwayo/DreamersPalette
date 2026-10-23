@@ -28,3 +28,14 @@ dist-ssr
 .agents/
 .codex/
 .impeccable/
+
+# Laravel runtime and dependencies
+/vendor/
+/public/build/
+/public/hot
+/public/storage
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+/storage/*.key
+/auth.json
+!.env.example

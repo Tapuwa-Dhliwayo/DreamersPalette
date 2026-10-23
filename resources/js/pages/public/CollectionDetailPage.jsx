@@ -1,0 +1,144 @@
+import { useEffect, useState } from "react"
+import { useParams, useLocation, Link } from "react-router-dom"
+
+import {
+    getCollectionBySlug,
+    getCollectionBySlugPreview,
+    getPreviewPoemsByCollection,
+    getPublishedPoemsByCollectionPaginated
+} from "@/services/contentService"
+
+import Pagination, { DEFAULT_PAGE_SIZE } from "@/components/ui/Pagination"
+import { PUBLIC_ROUTES } from "@/app/routes"
+
+export default function CollectionDetailPage() {
+    const { slug } = useParams()
+    const isPreview = useLocation().pathname.startsWith("/preview/")
+
+    const [collection, setCollection] = useState(null)
+    const [poems, setPoems] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [notFound, setNotFound] = useState(false)
+    const [page, setPage] = useState(1)
+    const [totalCount, setTotalCount] = useState(0)
+
+    useEffect(() => {
+        async function loadCollection() {
+            try {
+                const collectionData = await (isPreview ? getCollectionBySlugPreview(slug) : getCollectionBySlug(slug))
+                setPage(1)
+                setNotFound(false)
+                setCollection(collectionData)
+            } catch (err) {
+                console.error("Collection not found:", err)
+                setNotFound(true)
+                setLoading(false)
+            }
+        }
+
+        loadCollection()
+    }, [slug, isPreview])
+
+    useEffect(() => {
+        if (!collection) return
+
+        async function loadPoems() {
+            try {
+                setLoading(true)
+                const { data: poemsData, count } = await (isPreview
+                    ? getPreviewPoemsByCollection(slug, page, DEFAULT_PAGE_SIZE)
+                    : getPublishedPoemsByCollectionPaginated(slug, page, DEFAULT_PAGE_SIZE))
+                setPoems(poemsData)
+                setTotalCount(count)
+            } catch (err) {
+                console.error("Failed to load poems:", err)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        loadPoems()
+    }, [slug, page, collection, isPreview])
+
+    if (loading) {
+        return (
+            <div className="reader-muted text-sm">
+                Loading collection...
+            </div>
+        )
+    }
+
+    if (notFound || !collection) {
+        return (
+            <div className="py-20 text-center space-y-4">
+                <h2 className="reader-heading text-2xl font-semibold">
+                    Collection not found
+                </h2>
+                <p className="reader-muted">
+                    It may not be published yet.
+                </p>
+            </div>
+        )
+    }
+
+    return (
+        <article className="reader-fade-in space-y-8 md:space-y-20 pt-4 md:pt-12">
+
+            {/* Header */}
+            <header className="space-y-4 md:space-y-6 text-center">
+
+                <h1 className="reader-heading text-2xl sm:text-3xl md:text-5xl font-serif tracking-tight accent-underline">
+                    {collection.title}
+                </h1>
+
+                {collection.description && (
+                    <p className="reader-muted text-sm md:text-lg max-w-2xl mx-auto leading-relaxed">
+                        {collection.description}
+                    </p>
+                )}
+            </header>
+
+            {/* Poems */}
+            <section className="space-y-5 md:space-y-8 border-t border-white/10 pt-6 md:pt-12">
+
+                {poems.length === 0 && (
+                    <p className="reader-muted text-center">
+                        No published poems yet.
+                    </p>
+                )}
+
+                {poems.map((poem) => (
+                    <Link
+                        key={poem.id}
+                        to={PUBLIC_ROUTES.POEM(poem.slug)}
+                        className="block group transition-all duration-200"
+                    >
+                        <div className="space-y-3">
+
+                            <h2 className="reader-heading text-xl md:text-2xl font-serif leading-relaxed group-hover:opacity-70 transition">
+                                {poem.title}
+                            </h2>
+
+                            {poem.excerpt && (
+                                <p className="reader-muted text-xs md:text-sm leading-relaxed max-w-xl">
+                                    {poem.excerpt}
+                                </p>
+                            )}
+
+                        </div>
+                    </Link>
+                ))}
+
+            </section>
+
+            {/* Pagination */}
+            <Pagination
+                page={page}
+                pageSize={DEFAULT_PAGE_SIZE}
+                totalCount={totalCount}
+                onPageChange={setPage}
+            />
+
+        </article>
+    )
+}

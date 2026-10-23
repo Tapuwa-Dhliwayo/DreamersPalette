@@ -1,52 +1,86 @@
 # Dreamer's Palette
 
-A creator-first literary publishing studio paired with an immersive public
-reader. Authors write, organize, theme, and publish poetry collections, poems,
-novels, and chapters; readers experience each collection as its own
-atmospheric visual world.
+A literary publishing studio with an immersive public reader for poetry
+collections, poems, novels and chapters.
 
-## Tech Stack
+## Laravel application
 
-- **Frontend:** React 19 + Vite, React Router, Tailwind CSS v4, React Markdown
-- **Backend:** Supabase (Auth, PostgreSQL with RLS, Storage, Edge Functions)
-- **AI assets:** HuggingFace FLUX.1-schnell via the `generate-asset` Edge Function
-- **Hosting:** Vercel (with Vercel Analytics)
+Laravel 13 owns session authentication, permissions, MySQL content, local media
+uploads and provider integrations. React remains the frontend in `resources/js`.
+Supabase is retained as historical migration/rollback material only.
 
-## Getting Started
+Requires PHP 8.3+, Composer and a Node version supported by the installed Vite
+release. Node is also used server-side by the official Hugging Face SDK.
+
+For a new checkout:
 
 ```bash
-npm install
+composer install
+npm ci
+cp .env.example .env
+php artisan key:generate
+```
+
+Preserve an existing `.env`. Configure the dedicated MySQL database and private
+administrator/provider settings. The local target is `dreamerspalette_laravel`;
+`dreamerspalette` belongs to the separate blog and must remain untouched.
+
+All ten migrations have been applied locally and the administrator synchronized.
+For a new target, after verifying its name:
+
+```bash
+php artisan migrate
+php artisan storage:link
+php artisan dreamers:sync-admin
+```
+
+Administrator synchronization explicitly applies the configured identity and
+password. It preserves an unchanged password, revokes remembered credentials
+when changed, and does not silently verify email. Two-factor authentication and
+passkeys are optional. Never commit actual credentials.
+
+See [migration operations](docs/LARAVEL_MIGRATION.md) before importing data or
+preparing Forge. Do not refresh the existing database.
+
+Run in separate terminals, then open the Laravel URL:
+
+```bash
+php artisan serve --host=127.0.0.1 --port=8000
 npm run dev
 ```
 
-Supabase is required at runtime. Create a `.env` with:
+For built assets, stop Vite and run `npm run build`. Forge's document root is
+`public`; preserve `storage` across deployments and keep Node/npm production
+dependencies available for image generation. Configure server-only provider keys
+and SMTP. No browser Supabase credentials are required.
 
+## Verification and final review
+
+```bash
+npm run lint
+npm run build
+vendor/bin/pint --test
+composer validate
+php artisan route:list
 ```
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_ANON_KEY=...
-```
 
-## Scripts
+No automated tests are introduced. Real request probes and manual charters are
+the verification method. Current evidence, remaining environment checks and the
+final code audit order are in [the system review handoff](docs/LARAVEL_SYSTEM_REVIEW.md).
+The production build passes; existing full-lint findings are documented there.
 
-| Command | Purpose |
-|---------|---------|
-| `npm run dev` | Start the Vite dev server |
-| `npm run build` | Production build into `dist` |
-| `npm run lint` | Run ESLint |
-| `npm run preview` | Preview a built app locally |
+## Application structure
 
-## Project Structure
+- `app/Models` — relationships, publication and archive/restore behavior.
+- `app/Policies`, `config/authorization.php` — capabilities and record ownership.
+- `app/Http/Requests` — validated API inputs.
+- `app/Http/Controllers` — authentication, studio and public reader endpoints.
+- `app/Services` — source importing and image-provider orchestration.
+- `resources/js` — React pages, components, layouts, hooks and backend services.
+- `scripts/generate-image.mjs` — server-only Hugging Face provider client.
+- `database/migrations` — MySQL schema and authentication tables.
+- `supabase/functions` — historical source, no longer used at runtime.
 
-- `src/pages/public` — public reading pages
-- `src/pages/dashboard` — authenticated author dashboard and editors
-- `src/components/ui` — shared UI primitives
-- `src/layouts` — reader and dashboard layouts
-- `src/services` — all Supabase data access
-- `src/hooks` — auth, active collection, theming, reader navigation
-- `supabase/functions` — Edge Functions
-
-## Documentation
-
-See [docs/README.md](docs/README.md) for the documentation index, including
-architecture, theming philosophy, database schema reference, and the current
-phase plan. Agent/contributor guidance lives in [AGENTS.md](AGENTS.md).
+Reader paths, UUIDs and slugs remain stable. Public queries exclude unpublished
+or archived content and children of unpublished/archived parents. Archive/restore
+returns restored records as drafts. Media uses relative `/storage/` URLs.
