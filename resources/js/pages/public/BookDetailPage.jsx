@@ -30,6 +30,7 @@ export default function BookDetailPage() {
                 setTotalCount(0)
 
                 const bookData = await getBookBySlug(slug)
+                setPage(1)
                 setBook(bookData)
             } catch (err) {
                 console.error("Book not found:", err)
@@ -39,7 +40,6 @@ export default function BookDetailPage() {
             }
         }
 
-        setPage(1)
         loadBook()
     }, [slug])
 
@@ -137,7 +137,7 @@ export default function BookDetailPage() {
 
                             <h2 className="text-xl md:text-2xl font-serif leading-relaxed group-hover:opacity-70 transition">
                                 <span className="opacity-50 mr-3">
-                                    {chapter.chapter_number}.
+                                    {chapter.reading_position ?? chapter.chapter_number}.
                                 </span>
                                 {chapter.title}
                             </h2>

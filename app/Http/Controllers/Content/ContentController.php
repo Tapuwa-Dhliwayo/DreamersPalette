@@ -41,10 +41,38 @@ class ContentController extends Controller
         return $query;
     }
 
+    private function studioLinks(Model $content, Request $request): Model
+    {
+        $book = $content instanceof Book ? $content : ($content instanceof Chapter ? $content->book : null);
+        if (! $book) {
+            return $content;
+        }
+        $manuscript = $book->manuscript;
+        $owned = $manuscript && $manuscript->author_id === $request->user()->id && $request->user()->can('manuscripts.view');
+        $content->setAttribute('is_studio_managed', $manuscript !== null);
+        $content->setAttribute('studio_manuscript_id', $owned ? $manuscript->id : null);
+        $content->setAttribute('studio_manuscript_archived', $owned && $manuscript->trashed());
+        if ($content instanceof Book) {
+            $content->unsetRelation('manuscript');
+        }
+        if ($content instanceof Chapter) {
+            $content->unsetRelation('book');
+        }
+
+        return $content;
+    }
+
     public function index(Request $request, string $resource)
     {
         Gate::authorize('viewAny', self::modelClass($resource));
         $query = $this->owned($request, $resource);
+        if ($resource === 'books') {
+            $query->with('manuscript:id,book_id,author_id,deleted_at');
+        }
+        if ($resource === 'chapters') {
+            $query->with(['book' => fn ($books) => $books->withTrashed()->with('manuscript:id,book_id,author_id,deleted_at')]);
+        }
+
         if ($request->boolean('archived')) {
             $query->onlyTrashed();
         }
@@ -57,7 +85,7 @@ class ContentController extends Controller
             $query->withCount(['poems', 'poems as published_poems_count' => fn ($poems) => $poems->published()]);
         }
 
-        return response()->json($query->orderBy($resource === 'chapters' ? 'chapter_number' : 'created_at', $resource === 'chapters' ? 'asc' : 'desc')->get());
+        return response()->json($query->orderBy($resource === 'chapters' ? 'chapter_number' : 'created_at', $resource === 'chapters' ? 'asc' : 'desc')->get()->map(fn ($content) => $this->studioLinks($content, $request)));
     }
 
     public function show(Request $request, string $resource, string $id)
@@ -65,7 +93,7 @@ class ContentController extends Controller
         $content = $this->owned($request, $resource)->findOrFail($id);
         Gate::authorize('view', $content);
 
-        return response()->json($content);
+        return response()->json($this->studioLinks($content, $request));
     }
 
     public function store(SaveContentRequest $request, string $resource)
@@ -94,6 +122,24 @@ class ContentController extends Controller
         }
         try {
             DB::transaction(function () use ($request, $resource, $content, $fields, $creating, $publishing): void {
+                if ($resource === 'chapters') {
+                    $parents = Book::withTrashed()->whereIn('id', array_filter([$content->book_id, $fields['book_id'] ?? $content->book_id]))->orderBy('id')->lockForUpdate()->get();
+                    if ($parents->contains(fn ($book) => $book->isStudioManaged())) {
+                        throw ValidationException::withMessages(['content_md' => 'This novel is managed in the writing studio. Edit its manuscript and publish a finished draft.']);
+                    }
+                }
+                if ($resource === 'books' && $content->exists) {
+                    Book::whereKey($content->id)->lockForUpdate()->firstOrFail();
+                    $content->refresh();
+                }
+                if ($resource === 'books' && $content->exists && $content->isStudioManaged()) {
+                    $changesTitle = array_key_exists('title', $fields) && $fields['title'] !== $content->title;
+                    $changesSynopsis = array_key_exists('synopsis', $fields) && ($fields['synopsis'] ?? '') !== ($content->synopsis ?? '');
+                    $publishesBook = $publishing !== null && (bool) $publishing && ! $content->is_published;
+                    if ($changesTitle || $changesSynopsis || $publishesBook) {
+                        throw ValidationException::withMessages(['title' => 'This novel is managed in the writing studio. Publish a finished draft to change its public writing. Theme changes are still available here.']);
+                    }
+                }
                 $content->fill($fields);
                 if ($creating) {
                     $content->author_id = $request->user()->id;
@@ -134,12 +180,27 @@ class ContentController extends Controller
         return response()->json($content->refresh(), $creating ? 201 : 200);
     }
 
+    private function requireUnmanagedChapter(Model $content): void
+    {
+        if ($content instanceof Chapter && Book::withTrashed()->whereKey($content->book_id)->lockForUpdate()->first()?->isStudioManaged()) {
+            throw ValidationException::withMessages(['content_md' => 'Manage chapters through this novel’s writing studio.']);
+        }
+    }
+
     public function publish(PublishContentRequest $request, string $resource, string $id)
     {
         $content = $this->owned($request, $resource)->findOrFail($id);
         Gate::authorize('publish', $content);
-        $fields = $request->validated();
-        $fields['is_published'] ? $content->publish() : $content->unpublish();
+        DB::transaction(function () use ($content, $request): void {
+            $this->requireUnmanagedChapter($content);
+            if ($content instanceof Book) {
+                Book::whereKey($content->id)->lockForUpdate()->firstOrFail();
+                if ($content->isStudioManaged() && $request->boolean('is_published')) {
+                    throw ValidationException::withMessages(['is_published' => 'Publish this novel through its writing studio.']);
+                }
+            }
+            $request->validated()['is_published'] ? $content->publish() : $content->unpublish();
+        });
 
         return response()->json($content);
     }
@@ -148,7 +209,10 @@ class ContentController extends Controller
     {
         $content = $this->owned($request, $resource)->findOrFail($id);
         Gate::authorize('delete', $content);
-        $content->archive();
+        DB::transaction(function () use ($content): void {
+            $this->requireUnmanagedChapter($content);
+            $content->archive();
+        });
 
         return response()->json($content);
     }
@@ -157,7 +221,10 @@ class ContentController extends Controller
     {
         $content = $this->owned($request, $resource)->onlyTrashed()->findOrFail($id);
         Gate::authorize('restore', $content);
-        $content->restoreAsDraft();
+        DB::transaction(function () use ($content): void {
+            $this->requireUnmanagedChapter($content);
+            $content->restoreAsDraft();
+        });
 
         return response()->json($content);
     }

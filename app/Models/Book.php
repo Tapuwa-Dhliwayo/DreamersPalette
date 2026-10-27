@@ -7,6 +7,7 @@ use App\Models\Concerns\PublishesContent;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Book extends Model
@@ -32,6 +33,16 @@ class Book extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
+    }
+
+    public function isStudioManaged(): bool
+    {
+        return $this->manuscript()->exists();
+    }
+
+    public function manuscript(): HasOne
+    {
+        return $this->hasOne(Manuscript::class)->withTrashed();
     }
 
     public function chapters(): HasMany

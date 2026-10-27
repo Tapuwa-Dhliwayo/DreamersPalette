@@ -46,7 +46,7 @@ class ReaderController extends Controller
         if (in_array($resource, ['poems', 'chapters'])) {
             $query->select($resource === 'poems'
                 ? ['id', 'collection_id', 'author_id', 'title', 'slug', 'excerpt', 'created_at', 'published_at']
-                : ['id', 'book_id', 'title', 'chapter_number', 'is_preview']);
+                : ['id', 'book_id', 'title', 'chapter_number', 'reading_position', 'is_preview']);
         }
         if ($resource === 'poems' && $request->filled('collection')) {
             $query->whereHas('collection', fn ($parent) => $parent->where('slug', $request->query('collection')));
@@ -55,6 +55,9 @@ class ReaderController extends Controller
             $query->whereHas('book', fn ($parent) => $parent->where('slug', $request->query('book')));
         }
         $ascending = $resource === 'chapters' || ($resource === 'poems' && $request->filled('collection'));
+        if ($resource === 'chapters') {
+            $query->orderByRaw('COALESCE(reading_position, chapter_number)');
+        }
         $query->orderBy($resource === 'chapters' ? 'chapter_number' : 'created_at', $ascending ? 'asc' : 'desc')->orderBy('id');
         if ($request->has('page')) {
             $page = max(1, (int) $request->query('page', 1));

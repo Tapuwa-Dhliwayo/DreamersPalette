@@ -53,7 +53,7 @@ export default function ChapterPage() {
 
             <header className="space-y-3 md:space-y-4">
                 <p className="text-xs md:text-sm opacity-50">
-                    Chapter {chapter.chapter_number}
+                    Chapter {chapter.reading_position ?? chapter.chapter_number}
                 </p>
                 <h1 className="text-3xl md:text-4xl tracking-tight accent-underline">
                     {chapter.title}

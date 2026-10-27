@@ -38,6 +38,7 @@ export default function BookEditorPage() {
     const [generationError, setGenerationError] = useState("")
     const [saveError, setSaveError] = useState("")
     const [validationError, setValidationError] = useState("")
+    const [studioBook, setStudioBook] = useState(null)
     const [initialForm, setInitialForm] = useState(null)
 
     const [form, setForm] = useState({
@@ -64,6 +65,7 @@ export default function BookEditorPage() {
                         return
                     }
 
+                    setStudioBook(existingBook.is_studio_managed ? existingBook : null)
                     const nextForm = {
                         title: existingBook.title || "",
                         synopsis: existingBook.synopsis || "",
@@ -100,8 +102,7 @@ export default function BookEditorPage() {
             setValidationError("")
 
             const payload = {
-                title: form.title,
-                synopsis: form.synopsis,
+                ...(studioBook ? {} : { title: form.title, synopsis: form.synopsis }),
                 cover_image_url: form.cover_image_url || null
             }
 
@@ -191,11 +192,7 @@ export default function BookEditorPage() {
                     <h2 className="text-2xl font-semibold tracking-tight">
                         {isEditMode ? "Edit Novel" : "New Novel"}
                     </h2>
-                    <p className="text-sm text-neutral-500 mt-1">
-                        {isEditMode
-                            ? "Refine your long-form world."
-                            : "Begin your next literary journey."}
-                    </p>
+
                 </div>
 
                 <div className="flex gap-3">
@@ -219,10 +216,12 @@ export default function BookEditorPage() {
             </div>
 
             <div className="space-y-4 max-w-full md:max-w-2xl">
+                {studioBook && <p className="text-sm text-neutral-700">Writing is managed in the manuscript studio. <a className="underline" href={studioBook.studio_manuscript_id && !studioBook.studio_manuscript_archived ? `/studio/manuscripts/${studioBook.studio_manuscript_id}` : "/studio"}>Open manuscript</a>. Cover changes remain available here.</p>}
                 <StatusMessage tone="error">{validationError || saveError}</StatusMessage>
                 <FormField label="Novel title" htmlFor="book-title" required>
                     <Input
                         id="book-title"
+                        disabled={Boolean(studioBook)}
                         value={form.title}
                         maxLength={160}
                         onChange={(e) => {
@@ -235,6 +234,7 @@ export default function BookEditorPage() {
                 <FormField label="Synopsis" htmlFor="book-synopsis" hint="A concise introduction for readers.">
                     <Textarea
                         id="book-synopsis"
+                        disabled={Boolean(studioBook)}
                         value={form.synopsis}
                         maxLength={2000}
                         onChange={(e) =>

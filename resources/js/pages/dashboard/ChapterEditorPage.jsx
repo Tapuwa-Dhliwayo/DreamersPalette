@@ -30,6 +30,7 @@ export default function ChapterEditorPage() {
 
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [studioBook, setStudioBook] = useState(null)
     const [books, setBooks] = useState([])
     const [initialForm, setInitialForm] = useState(null)
     const [validationError, setValidationError] = useState("")
@@ -54,14 +55,16 @@ export default function ChapterEditorPage() {
         async function initialize() {
             try {
                 const booksData = await getMyBooks()
-                setBooks(booksData)
+                const editableBooks = booksData.filter(book => !book.is_studio_managed)
+                setBooks(editableBooks)
 
                 const queryBookId = searchParams.get("bookId")
-                const defaultBookId = queryBookId || booksData[0]?.id || ""
+                const defaultBookId = editableBooks.find(book => String(book.id) === queryBookId)?.id || editableBooks[0]?.id || ""
 
                 if (isEditMode) {
                     const existingChapter = await getMyChapterById(id)
 
+                    setStudioBook(booksData.find(book => book.id === existingChapter.book_id && book.is_studio_managed) || null)
                     const nextForm = {
                         book_id: existingChapter.book_id || defaultBookId,
                         title: existingChapter.title || "",
@@ -72,6 +75,7 @@ export default function ChapterEditorPage() {
                     setForm(nextForm)
                     setInitialForm(nextForm)
                 } else {
+                    setStudioBook(booksData.find(book => String(book.id) === queryBookId && book.is_studio_managed) || null)
                     const nextForm = {
                         title: "",
                         chapter_number: 1,
@@ -145,6 +149,15 @@ export default function ChapterEditorPage() {
         )
     }
 
+    if (studioBook) return (
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto">
+            <h2 className="text-2xl font-semibold">This novel uses the manuscript studio</h2>
+            <p>Chapters are edited and published from its manuscript. This copy is read-only; any recovered local writing is available to copy below.</p>
+            <a className="inline-flex min-h-11 items-center rounded-xl bg-neutral-900 px-4 text-sm font-medium text-white" href={studioBook.studio_manuscript_id && !studioBook.studio_manuscript_archived ? `/studio/manuscripts/${studioBook.studio_manuscript_id}` : "/studio"}>{studioBook.studio_manuscript_archived ? "Restore from manuscript library" : "Open manuscript studio"}</a>
+            {form.content_md && <textarea aria-label="Saved or recovered chapter Markdown" readOnly value={form.content_md} rows={16} className="w-full rounded-lg border border-neutral-300 p-4 font-mono text-sm" />}
+        </div>
+    )
+
     return (
         <div className="min-h-0 flex-1 space-y-8 overflow-y-auto">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -152,11 +165,7 @@ export default function ChapterEditorPage() {
                     <h2 className="text-2xl font-semibold tracking-tight">
                         {isEditMode ? "Edit Chapter" : "New Chapter"}
                     </h2>
-                    <p className="text-sm text-neutral-500 mt-1">
-                        {isEditMode
-                            ? "Refine your chapter."
-                            : "Write and preview your chapter."}
-                    </p>
+
                 </div>
 
                 <div className="flex gap-3">
