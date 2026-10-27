@@ -495,3 +495,9 @@ If a check cannot be run because of missing env vars, sandbox limits, or depende
 - Do not revert user changes or unrelated work.
 - Keep commits and diffs focused on the requested task.
 - Do not modify generated output such as `dist` unless the user explicitly asks for it.
+
+## UI copy
+
+No random subtitle or helper text. Add supporting copy only when it conveys useful
+record information or explains a non-obvious action, consequence, constraint or
+state. Do not add motivational filler or repeat a title under the application brand.

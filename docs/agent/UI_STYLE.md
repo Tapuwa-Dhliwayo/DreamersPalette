@@ -360,3 +360,11 @@ A monitoring page should feel operational.
 A finance screen should make money movement and attention states clear.
 
 A client page should make the client relationship understandable.
+
+## Supporting text must earn its place
+
+Do not add random subtitles, taglines, motivational placeholders or helper copy.
+Supporting text must explain a non-obvious action, consequence, constraint or
+state, or show information the author actually entered. A heading does not need
+a subtitle by default. Do not repeat manuscript titles beneath the application
+brand. Keep essential save, recovery and confirmation explanations.
