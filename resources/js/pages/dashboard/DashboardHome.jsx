@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import Button from "@/components/ui/Button"
 import Badge from "@/components/ui/Badge"
@@ -8,9 +8,16 @@ import { getMyProfile } from "@/services/profileService"
 import { getMyCollections, getMyPoems } from "@/services/contentService"
 import { getMyBooks, getMyChaptersByBook } from "@/services/bookService"
 import { DASHBOARD_ROUTES } from "@/app/routes"
+import { useAuth } from "@/hooks/useAuth"
+import { can } from "@/services/authService"
 import { formatDate } from "@/utils/formatDate"
 
 export default function DashboardHome() {
+    const { user } = useAuth()
+    const mayReadCollections = can(user, "collections.view")
+    const mayReadPoems = can(user, "poems.view")
+    const mayReadBooks = can(user, "books.view")
+    const mayReadChapters = can(user, "chapters.view")
     const [profile, setProfile] = useState(null)
     const [collections, setCollections] = useState([])
     const [poems, setPoems] = useState([])
@@ -19,33 +26,30 @@ export default function DashboardHome() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
 
-    useEffect(() => {
-        loadDashboard()
-    }, [])
+    const loadDashboard = useCallback(() => Promise.all([
+        getMyProfile(),
+        mayReadCollections ? getMyCollections() : [],
+        mayReadPoems ? getMyPoems() : [],
+        mayReadBooks ? getMyBooks() : [],
+    ]).then(async ([profileData, collectionData, poemData, bookData]) => {
+        const chapterData = (await Promise.all(
+            mayReadChapters ? bookData.map(book => getMyChaptersByBook(book.id)) : []
+        )).flat()
+        setProfile(profileData)
+        setCollections(collectionData)
+        setPoems(poemData)
+        setBooks(bookData)
+        setChapters(chapterData)
+    }).catch(err => {
+        setError(err.message || "Your studio overview could not be loaded.")
+    }).finally(() => setLoading(false)), [mayReadCollections, mayReadPoems, mayReadBooks, mayReadChapters])
 
-    async function loadDashboard() {
-        try {
-            setLoading(true)
-            setError("")
-            const [profileData, collectionData, poemData, bookData] = await Promise.all([
-                getMyProfile(),
-                getMyCollections(),
-                getMyPoems(),
-                getMyBooks()
-            ])
-            const chapterData = (await Promise.all(
-                bookData.map((book) => getMyChaptersByBook(book.id))
-            )).flat()
-            setProfile(profileData)
-            setCollections(collectionData)
-            setPoems(poemData)
-            setBooks(bookData)
-            setChapters(chapterData)
-        } catch (err) {
-            setError(err.message || "Your studio overview could not be loaded.")
-        } finally {
-            setLoading(false)
-        }
+    useEffect(() => { void loadDashboard() }, [loadDashboard])
+
+    function retryDashboard() {
+        setLoading(true)
+        setError("")
+        void loadDashboard()
     }
 
     const continueWriting = useMemo(() => {
@@ -61,7 +65,7 @@ export default function DashboardHome() {
             .map((item) => ({
                 ...item,
                 type: "Novel",
-                to: DASHBOARD_ROUTES.BOOK_EDIT(item.id)
+                to: item.studio_manuscript_id ? (item.studio_manuscript_archived ? "/studio" : `/studio/manuscripts/${item.studio_manuscript_id}`) : DASHBOARD_ROUTES.BOOK_EDIT(item.id)
             }))
         const chapterDrafts = chapters
             .filter((item) => !item.is_published)
@@ -69,7 +73,7 @@ export default function DashboardHome() {
                 ...item,
                 type: "Chapter",
                 updated_at: item.created_at,
-                to: DASHBOARD_ROUTES.CHAPTER_EDIT(item.id)
+                to: item.studio_manuscript_id ? (item.studio_manuscript_archived ? "/studio" : `/studio/manuscripts/${item.studio_manuscript_id}`) : DASHBOARD_ROUTES.CHAPTER_EDIT(item.id)
             }))
 
         return [...poemDrafts, ...bookDrafts, ...chapterDrafts]
@@ -78,11 +82,11 @@ export default function DashboardHome() {
     }, [books, chapters, poems])
 
     const totals = [
-        { label: "Collections", value: collections.length, to: DASHBOARD_ROUTES.COLLECTIONS },
-        { label: "Poems", value: poems.length, to: DASHBOARD_ROUTES.POEMS },
-        { label: "Novels", value: books.length, to: DASHBOARD_ROUTES.BOOKS },
-        { label: "Chapters", value: chapters.length, to: DASHBOARD_ROUTES.CHAPTERS }
-    ]
+        { label: "Collections", value: collections.length, to: DASHBOARD_ROUTES.COLLECTIONS, allowed: mayReadCollections },
+        { label: "Poems", value: poems.length, to: DASHBOARD_ROUTES.POEMS, allowed: mayReadPoems },
+        { label: "Novels", value: books.length, to: DASHBOARD_ROUTES.BOOKS, allowed: mayReadBooks },
+        { label: "Chapters", value: chapters.length, to: DASHBOARD_ROUTES.CHAPTERS, allowed: mayReadChapters }
+    ].filter(total => total.allowed)
 
     if (loading) {
         return (
@@ -99,27 +103,26 @@ export default function DashboardHome() {
                     <h2 className="text-2xl font-semibold tracking-tight">
                         Welcome back, {profile?.display_name || "Author"}
                     </h2>
-                    <p className="mt-1 text-sm text-neutral-600">
-                        Continue the work in progress, or begin a new piece.
-                    </p>
+
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    <Link to={DASHBOARD_ROUTES.POEM_NEW} className="no-underline!">
+                    {can(user, "poems.create") && <Link to={DASHBOARD_ROUTES.POEM_NEW} className="no-underline!">
                         <Button>New Poem</Button>
-                    </Link>
-                    <Link to={DASHBOARD_ROUTES.COLLECTION_NEW} className="no-underline!">
+                    </Link>}
+                    {can(user, "collections.create") && <Link to={DASHBOARD_ROUTES.COLLECTION_NEW} className="no-underline!">
                         <Button variant="subtle">New Collection</Button>
-                    </Link>
+                    </Link>}
                 </div>
             </header>
 
             <StatusMessage tone="error" action={
-                error ? <Button size="sm" variant="ghost" onClick={loadDashboard}>Try again</Button> : null
+                error ? <Button size="sm" variant="ghost" onClick={retryDashboard}>Try again</Button> : null
             }>
                 {error}
             </StatusMessage>
 
-            <section aria-labelledby="continue-writing-title">
+            {can(user, "reviews.view") && <a href="/studio/reviews" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-neutral-900 hover:bg-neutral-100">Open editorial reviews →</a>}
+            {totals.length > 0 && <section aria-labelledby="continue-writing-title">
                 <div className="flex items-end justify-between gap-4">
                     <div>
                         <h3 id="continue-writing-title" className="text-xl font-semibold">Continue writing</h3>
@@ -130,16 +133,16 @@ export default function DashboardHome() {
                 {continueWriting.length === 0 ? (
                     <div className="mt-5 border-y border-neutral-200 py-8">
                         <p className="m-0 text-sm text-neutral-600">You have no unfinished writing.</p>
-                        <Link to={DASHBOARD_ROUTES.POEM_NEW} className="mt-3 inline-flex text-sm font-medium text-neutral-900">
+                        {can(user, "poems.create") && <Link to={DASHBOARD_ROUTES.POEM_NEW} className="mt-3 inline-flex text-sm font-medium text-neutral-900">
                             Start a poem
-                        </Link>
+                        </Link>}
                     </div>
                 ) : (
                     <div className="mt-5 divide-y divide-neutral-200 border-y border-neutral-200">
                         {continueWriting.map((item) => (
-                            <Link
+                            <a
                                 key={`${item.type}-${item.id}`}
-                                to={item.to}
+                                href={item.to}
                                 className="flex items-center justify-between gap-4 py-4 text-neutral-900 no-underline! transition-colors hover:bg-neutral-100/70"
                             >
                                 <div className="min-w-0">
@@ -149,25 +152,25 @@ export default function DashboardHome() {
                                     </p>
                                 </div>
                                 <Badge>Draft</Badge>
-                            </Link>
+                            </a>
                         ))}
                     </div>
                 )}
-            </section>
+            </section>}
 
-            <section className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+            {totals.length > 0 && <section className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
                 <div>
                     <h3 className="text-lg font-semibold">Create</h3>
                     <div className="mt-4 flex flex-wrap gap-2">
-                        <Link to={DASHBOARD_ROUTES.BOOK_NEW} className="no-underline!">
+                        {can(user, "books.create") && <Link to={DASHBOARD_ROUTES.BOOK_NEW} className="no-underline!">
                             <Button variant="subtle">New Novel</Button>
-                        </Link>
-                        <Link to={DASHBOARD_ROUTES.CHAPTER_NEW} className="no-underline!">
+                        </Link>}
+                        {can(user, "chapters.create") && <Link to={DASHBOARD_ROUTES.CHAPTER_NEW} className="no-underline!">
                             <Button variant="subtle">New Chapter</Button>
-                        </Link>
-                        <Link to={DASHBOARD_ROUTES.TRASH} className="no-underline!">
+                        </Link>}
+                        {can(user, "trash.view") && <Link to={DASHBOARD_ROUTES.TRASH} className="no-underline!">
                             <Button variant="ghost">Review Trash</Button>
-                        </Link>
+                        </Link>}
                     </div>
                 </div>
 
@@ -186,7 +189,7 @@ export default function DashboardHome() {
                         ))}
                     </dl>
                 </div>
-            </section>
+            </section>}
         </div>
     )
 }

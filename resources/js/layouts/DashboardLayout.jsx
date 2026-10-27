@@ -15,12 +15,12 @@ export default function DashboardLayout() {
             />
 
             {/* Sidebar */}
-            <div className="relative z-10">
+            <div className={`relative ${sidebarOpen ? "z-20" : "z-10"}`}>
                 <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             </div>
 
             {/* Main Content */}
-            <main className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-6 md:px-10 md:py-12 xl:px-16">
+            <main inert={sidebarOpen} className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-6 md:px-10 md:py-12 xl:px-16">
                 {/* Hamburger — mobile only */}
                 <button
                     className="mb-4 min-h-11 min-w-11 shrink-0 rounded-xl bg-white text-xl leading-none shadow-sm md:hidden"
