@@ -1,4 +1,15 @@
-<div x-data="manuscriptEditor(@js($initialChapter))" @studio-reference-updated.window="manuscriptRevision = $event.detail.revision; worldCatalogue = $event.detail.catalogue; updatePreview()" x-on:studio-draft-finished.window="load($event.detail.chapter)" :class="{ 'studio-focused': focus }">
+{{-- Preserve Alpine’s live buffer when save responses update the server-rendered initial chapter. --}}
+<div wire:ignore.self x-data="manuscriptEditor(@js($initialChapter))" @studio-reference-updated.window="manuscriptRevision = $event.detail.revision; worldCatalogue = $event.detail.catalogue; updatePreview()" x-on:studio-draft-finished.window="load($event.detail.chapter)" :class="{ 'studio-focused': focus }" @resize.window="selectionTools = false" @scroll.window="selectionTools = false" @keydown.escape.window="selectionTools = false" @pointerdown.window="if (!$event.target.closest('[data-selection-tools]') && $event.target !== $refs.writing) selectionTools = false">
+    <div data-selection-tools class="writing-selection-tools" x-show="selectionTools" x-cloak
+        :style="{ left: selectionX + 'px', top: selectionY + 'px' }"
+        role="group" aria-label="Selected text actions" @pointerdown.prevent>
+        @if($canBrowseWorld)<button type="button" @click="referenceBrowser(true)" :disabled="!selection || Array.from(selection).length > 2000"><flux:icon.link variant="micro" /> Link to world</button>@endif
+        <button type="button" @click="openAssist()" :disabled="!selection || selection.length > 1000" title="Writing assistance (Alt + Enter)"><flux:icon.language variant="micro" /> Assist</button>
+        <span class="selection-tools-divider" aria-hidden="true"></span>
+        <button type="button" @click="wrap('**')" aria-label="Bold selected text" title="Bold"><strong>B</strong></button>
+        <button type="button" @click="wrap('*')" aria-label="Italicise selected text" title="Italic"><em>I</em></button>
+        <button type="button" @click="selectionTools = false; $refs.writing.focus()" aria-label="Dismiss selected text actions" title="Dismiss (Escape)"><flux:icon.x-mark variant="micro" /></button>
+    </div>
     <header class="studio-header">
         <a href="{{ route('studio.index') }}" class="studio-brand" @click="guardLink($event)">Dreamer’s Palette</a>
         <nav class="studio-header-links" aria-label="Application">@can('worlds.view')<a href="{{ $manuscript->world ? route('studio.world', ['world' => $manuscript->world_id, 'manuscript' => $manuscript->id]) : route('studio.worlds') }}" @click="guardLink($event)">World</a>
@@ -73,15 +84,15 @@
                 <div wire:key="chapter-surface-{{ $chapterId ?? 'none' }}-world-{{ $manuscript->world_id ?? 'none' }}">
                 @if($chapterId)
                     <div class="writing-document" wire:ignore>
-                        <div class="writing-document-heading"><span class="studio-eyebrow">Chapter <span x-text="chapterNumber"></span></span><label for="chapter-title" class="sr-only">Chapter title</label><input id="chapter-title" class="writing-title" x-bind:readonly="!canWrite" x-model="title" @input="changed()" maxlength="255" aria-label="Chapter title" /></div>
+                        <div class="writing-document-heading"><span class="studio-eyebrow">Chapter <span x-text="chapterNumber"></span></span><label for="chapter-title" class="sr-only">Chapter title</label><input id="chapter-title" class="writing-title" x-bind:readonly="!canWrite || !!recovery || conflict" x-model="title" @input="changed()" maxlength="255" aria-label="Chapter title" /></div>
                         <div class="markdown-toolbar" aria-label="Markdown tools"><button x-bind:disabled="!canWrite" @mousedown.prevent @click="wrap('**')" title="Bold (Ctrl or Cmd B)"><strong>B</strong><span class="sr-only">Bold</span></button><button x-bind:disabled="!canWrite" @mousedown.prevent @click="wrap('*')" title="Italic (Ctrl or Cmd I)"><em>I</em><span class="sr-only">Italic</span></button><button x-bind:disabled="!canWrite" @mousedown.prevent @click="prefix('## ')" title="Heading">H2</button><button x-bind:disabled="!canWrite" @mousedown.prevent @click="prefix('> ')" title="Quotation"><flux:icon.chat-bubble-bottom-center-text variant="micro" /><span class="sr-only">Quote</span></button><button x-bind:disabled="!canWrite" @mousedown.prevent @click="prefix('- ')" title="List"><flux:icon.list-bullet variant="micro" /><span class="sr-only">List</span></button><span></span><button @mousedown.prevent @click="openAssist()" :disabled="!selection || !canWrite" class="assist-trigger"><flux:icon.language variant="micro" /> Assist</button>@if($canBrowseWorld)<button @mousedown.prevent @click="referenceBrowser(true)" :disabled="!selection || !canWrite"><flux:icon.link variant="micro" /> Link to world</button>
 @endif
 </div>
                         <div class="markdown-panes" :class="{ split: mode === 'split' }">
-                            <textarea x-ref="writing" x-bind:readonly="!canWrite" x-model="content" @input="changed()" @select="captureSelection()" @keyup="captureSelection()" @mouseup="captureSelection()" @keydown="shortcut($event)" x-show="mode !== 'preview'" class="markdown-input" aria-label="Chapter Markdown" spellcheck="true"></textarea>
+                            <textarea x-ref="writing" x-bind:readonly="!canWrite || !!recovery || conflict" x-model="content" @input="changed()" @select="captureSelection()" @keyup="if ($event.key !== 'Escape') captureSelection()" @pointerup="captureSelection()" @scroll="selectionTools = false" @keydown="shortcut($event)" x-show="mode !== 'preview'" class="markdown-input" aria-label="Chapter Markdown" spellcheck="true"></textarea>
                             <article class="markdown-preview studio-prose" x-show="mode !== 'write'" x-html="previewHtml" @click="inspectPreviewReference($event)" aria-label="Rendered Markdown preview"></article>
                         </div>
-                        <details class="chapter-summary"><summary>Chapter summary <span>Optional · private</span></summary><textarea x-bind:readonly="!canWrite" x-model="summary" @input="changed()" aria-label="Private chapter summary" maxlength="50000"></textarea></details>
+                        <details class="chapter-summary"><summary>Chapter summary <span>Optional · private</span></summary><textarea x-bind:readonly="!canWrite || !!recovery || conflict" x-model="summary" @input="changed()" aria-label="Private chapter summary" maxlength="50000"></textarea></details>
                         <div class="writing-document-footer"><span><span x-text="wordCount()"></span> words</span><span>Markdown · Draft <span x-text="draftNumber"></span></span></div>
                     </div>
                 

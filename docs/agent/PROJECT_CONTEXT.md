@@ -156,3 +156,33 @@ record in STUDIO_V1_RELEASE.md for paths and Forge maintenance implications.
 2026/10/27: Tapuwa requested focused commits for a code read-through. The complete
 studio candidate is committed locally on dev; see STUDIO_CODE_READTHROUGH.md.
 No push, merge, studio migration or application deployment accompanied the commits.
+
+## Anubis-to-local testing baseline — 2026/11/03
+
+Tapuwa explicitly authorised replacing `dreamerspalette_laravel` with Anubis data.
+Anubis is the source of truth for test-data refreshes: copy Anubis to local only;
+never write local test data back to Anubis. Local changes are disposable and may
+be overwritten by a requested refresh. This is not an automatic sync schedule.
+
+The live database `dreamerspalette` was captured read-only and restored into the
+existing local `dreamerspalette_laravel`, replacing its prior tables. Public assets
+and private runtime assets were copied; server backups and historic migration
+source files were excluded. Both live and local code were revision
+`3568892d3e3077bc5b97c2bdf8979993e320cf50`; all studio migrations through
+`2026_10_26_000010_create_world_reasoning_tools` were already applied on Anubis.
+This supersedes earlier statements that the studio is undeployed.
+
+Private recovery/capture files are under
+`storage/app/private/anubis-refresh-20261103T091124Z/` and must stay ignored.
+All restored INSERT statements matched the source snapshot; all 48 copied asset
+files matched archive checksums. A local user-name write was read back and rolled
+back, confirming writable access without retaining a fixture. Local mail remains
+log-only and sessions file-based. The local encryption key is retained, with source
+decryption keys privately configured as previous keys. No migrations, account
+credential changes, live data writes or production deployment were performed.
+
+Manual check for the next issue-reproduction session: sign in locally using the
+copied account; open the affected manuscript/world and confirm its writing/assets;
+make a deliberate local edit, save and reload. Report issues against this captured
+baseline. Local browser login and application workflows were not verified by this
+refresh; database read/write and snapshot integrity were verified directly.

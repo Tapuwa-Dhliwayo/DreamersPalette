@@ -1,17 +1,19 @@
 import { Livewire, Alpine } from '../../vendor/livewire/livewire/dist/livewire.esm';
 import { getGrammarSuggestions, getThesaurusSuggestions, getDefinitions, getSpellingSuggestions } from './services/writingAssistantService';
 
+const MANUSCRIPT_AUTOSAVE_INTERVAL = 5 * 60 * 1000;
+
 Alpine.data('manuscriptEditor', (initial) => ({
     chapterId: null, chapterNumber: 0, canWrite: initial.can_write, manuscriptId: initial.manuscript_id, userId: initial.user_id,
     title: '', content: '', summary: '', revision: 1, draftNumber: 1, manuscriptRevision: initial.manuscript_revision,
     dirty: false, busy: false, undoing: false, conflict: false, error: '', status: 'Saved to server',
     mode: 'write', focus: false, chaptersOpen: false, previewHtml: '',
-    worldCatalogue: [], selection: '', selectionStart: 0, assistOpen: false, assistStatus: '', suggestions: [],
-    recovery: null, showRecovery: false, serverText: '', sequence: 0,
-    timer: null, previewTimer: null, savingPromise: null, pendingSave: null, assistSequence: 0, previewSequence: 0, checkpointTimer: null,
+    worldCatalogue: [], selection: '', selectionStart: 0, selectionTools: false, selectionX: 0, selectionY: 0, assistOpen: false, assistStatus: '', suggestions: [],
+    writerId: crypto.randomUUID(), recovery: null, showRecovery: false, serverText: '', sequence: 0,
+    previewTimer: null, savingPromise: null, pendingSave: null, assistSequence: 0, previewSequence: 0, checkpointTimer: null,
     init() {
         this.load(initial);
-        this.checkpointTimer = setInterval(() => { if (this.dirty && !this.busy) this.flush(); }, 15000);
+        this.checkpointTimer = setInterval(() => { if (this.dirty && !this.busy) this.flush(false); }, MANUSCRIPT_AUTOSAVE_INTERVAL);
         this.beforeLeave = (event) => {
             if (this.dirty || this.recovery || this.pendingSave) {
                 this.checkpoint(); event.preventDefault(); event.returnValue = '';
@@ -22,17 +24,17 @@ Alpine.data('manuscriptEditor', (initial) => ({
         window.addEventListener('keydown', this.escapeFocus);
     },
     destroy() {
-        clearTimeout(this.timer); clearTimeout(this.previewTimer); clearInterval(this.checkpointTimer);
+        clearTimeout(this.previewTimer); clearInterval(this.checkpointTimer);
         window.removeEventListener('beforeunload', this.beforeLeave);
         window.removeEventListener('keydown', this.escapeFocus);
     },
     recoveryKey() { return `dreamers:studio:${this.userId}:${this.manuscriptId}:${this.chapterId}:draft-${this.draftNumber}`; },
     load(chapter) {
-        clearTimeout(this.timer);
         this.worldCatalogue = chapter.world_catalogue || [];
         this.chapterId = chapter.id; this.chapterNumber = chapter.chapter_number; this.title = chapter.title; this.content = chapter.content_md;
         this.summary = chapter.summary_md; this.revision = chapter.revision; this.draftNumber = chapter.draft_number; this.manuscriptRevision = chapter.manuscript_revision;
         this.dirty = false; this.conflict = false; this.pendingSave = null; this.error = ''; this.recovery = null;
+        this.selection = ''; this.selectionTools = false;
         this.previewSequence++; this.sequence = 0; this.assistOpen = false; this.assistSequence++;
         this.status = 'Saved to server'; this.serverText = this.content;
         if (!this.chapterId) return;
@@ -40,7 +42,14 @@ Alpine.data('manuscriptEditor', (initial) => ({
             const local = JSON.parse(localStorage.getItem(this.recoveryKey()) || 'null');
             if (local && typeof local.content_md === 'string' && typeof local.title === 'string' && typeof local.summary_md === 'string') {
                 if (local.content_md !== this.content || local.title !== this.title || local.summary_md !== this.summary) {
-                    this.recovery = local; this.status = 'Local recovery available';
+                    const ownAcceptedSave = local.pending_request_uuid && local.pending_request_uuid === chapter.last_save_uuid;
+                    if (this.canWrite && (local.revision === this.revision || ownAcceptedSave)) {
+                        this.title = local.title; this.content = local.content_md; this.summary = local.summary_md;
+                        this.dirty = true; this.sequence++; this.status = 'Local writing restored · awaiting server save';
+                        this.checkpoint();
+                    } else {
+                        this.recovery = local; this.status = 'Local recovery available';
+                    }
                 } else localStorage.removeItem(this.recoveryKey());
             }
         } catch { this.status = 'Device recovery is unavailable. Save to the server regularly.'; }
@@ -50,8 +59,7 @@ Alpine.data('manuscriptEditor', (initial) => ({
         if (!this.canWrite) return;
         this.dirty = true; this.sequence++; this.status = 'Changes on this device';
         this.assistOpen = false; this.assistSequence++; this.selection = '';
-        this.checkpoint(); clearTimeout(this.timer);
-        if (!this.conflict && !this.recovery) this.timer = setTimeout(() => this.flush(), 1500);
+        this.checkpoint();
         clearTimeout(this.previewTimer);
         if (this.mode !== 'write') this.previewTimer = setTimeout(() => this.updatePreview(), 600);
     },
@@ -59,17 +67,22 @@ Alpine.data('manuscriptEditor', (initial) => ({
         if (!this.chapterId || this.recovery) return;
         try {
             localStorage.setItem(this.recoveryKey(), JSON.stringify({ title: this.title, content_md: this.content,
-                summary_md: this.summary, revision: this.revision, saved_at: new Date().toISOString() }));
+                summary_md: this.summary, revision: this.revision, writer_id: this.writerId, pending_request_uuid: this.pendingSave?.request_uuid || null, saved_at: new Date().toISOString() }));
         } catch { this.error = 'Device recovery could not be stored. Save to the server or download your local copy before leaving.'; }
     },
-    async flush() {
-        clearTimeout(this.timer);
-        if (this.conflict || this.recovery) return false;
-        if (this.savingPromise) return this.savingPromise;
-        this.savingPromise = this.saveQueue();
-        try { return await this.savingPromise; } finally { this.savingPromise = null; }
+    async flush(drain = true) {
+        do {
+            if (this.conflict || this.recovery) return false;
+            if (!this.savingPromise) {
+                const saving = this.saveQueue(drain);
+                this.savingPromise = saving;
+                saving.finally(() => { if (this.savingPromise === saving) this.savingPromise = null; });
+            }
+            if (!(await this.savingPromise)) return false;
+        } while (drain && (this.dirty || this.pendingSave));
+        return true;
     },
-    async saveQueue() {
+    async saveQueue(drain) {
         this.busy = true;
         try {
             while (this.dirty || this.pendingSave) {
@@ -77,7 +90,8 @@ Alpine.data('manuscriptEditor', (initial) => ({
                     content_md: this.content, summary_md: this.summary, revision: this.revision,
                     draft_number: this.draftNumber, request_uuid: crypto.randomUUID() };
                 const request = this.pendingSave;
-                this.status = 'Saving…';
+                this.checkpoint();
+                this.status = 'Saving to server…';
                 const response = await this.$wire.saveChapter(request.chapterId, request);
                 if (!response.ok) {
                     this.conflict = Boolean(response.conflict); this.error = response.message;
@@ -91,11 +105,20 @@ Alpine.data('manuscriptEditor', (initial) => ({
                 }
                 this.worldCatalogue = response.world_catalogue || this.worldCatalogue;
                 this.revision = response.revision; this.manuscriptRevision = response.manuscript_revision; this.pendingSave = null;
+                this.serverText = request.content_md;
                 this.dirty = request.sequence !== this.sequence;
                 if (!this.dirty) {
-                    try { localStorage.removeItem(this.recoveryKey()); } catch { /* Server acknowledgement remains authoritative. */ }
-                    this.error = ''; this.status = 'Saved to server'; this.serverText = this.content;
-                } else this.checkpoint();
+                    try {
+                        const local = JSON.parse(localStorage.getItem(this.recoveryKey()) || 'null');
+                        if (local?.writer_id === this.writerId) localStorage.removeItem(this.recoveryKey());
+                    } catch { /* Server acknowledgement remains authoritative. */ }
+                    this.error = ''; this.status = 'Saved to server';
+                } else {
+                    this.checkpoint(); this.status = 'Newer changes on this device';
+                }
+                // A timed save captures one version. Typing during the request stays
+                // local until the next interval; explicit save/navigation drains it.
+                if (!drain) break;
             }
             return true;
         } catch {
@@ -163,7 +186,7 @@ Alpine.data('manuscriptEditor', (initial) => ({
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     },
     wordCount() { return this.content.trim() ? this.content.trim().split(/\s+/u).length : 0; },
-    async setMode(mode) { this.mode = mode; if (mode !== 'write') await this.updatePreview(); },
+    async setMode(mode) { this.selectionTools = false; this.mode = mode; if (mode !== 'write') await this.updatePreview(); },
     async updatePreview() {
         if (this.mode === 'write') return;
         const sequence = ++this.previewSequence;
@@ -176,6 +199,10 @@ Alpine.data('manuscriptEditor', (initial) => ({
         if (await this.flush()) await this.$wire.beginWorldLink();
     },
     async referenceBrowser(useSelection = false, name = '', key = '') {
+        this.selectionTools = false;
+        if (useSelection && (!this.selection || Array.from(this.selection).length > 2000)) {
+            this.error = 'Select up to 2,000 characters to link a world reference.'; return;
+        }
         const source = this.content;
         const wording = useSelection ? this.selection : '';
         const start = this.selectionStart;
@@ -233,6 +260,7 @@ Alpine.data('manuscriptEditor', (initial) => ({
         this.load(await this.$wire.archiveChapter(id, archive, this.draftNumber, this.manuscriptRevision));
     },
     wrap(marker) {
+        this.selectionTools = false;
         const input = this.$refs.writing; if (!input) return;
         const start = input.selectionStart, end = input.selectionEnd;
         input.focus(); document.execCommand('insertText', false, marker + this.content.slice(start, end) + marker);
@@ -245,6 +273,8 @@ Alpine.data('manuscriptEditor', (initial) => ({
         this.content = input.value; this.changed();
     },
     shortcut(event) {
+        if (event.key === 'Escape') { this.selectionTools = false; return; }
+        if (event.altKey && event.key === 'Enter') { event.preventDefault(); this.openAssist(); return; }
         if (!(event.ctrlKey || event.metaKey)) return;
         const key = event.key.toLowerCase();
         if (key === 's') { event.preventDefault(); this.flush(); }
@@ -254,8 +284,39 @@ Alpine.data('manuscriptEditor', (initial) => ({
         const input = this.$refs.writing; if (!input) return;
         const raw = input.value.slice(input.selectionStart, input.selectionEnd);
         this.selection = raw.trim(); this.selectionStart = input.selectionStart + raw.length - raw.trimStart().length;
+        this.selectionTools = Boolean(this.selection && this.canWrite && !this.recovery && !this.conflict && !this.assistOpen && this.mode !== 'preview');
+        if (this.selectionTools) this.$nextTick(() => this.positionSelectionTools());
+    },
+    positionSelectionTools() {
+        const input = this.$refs.writing;
+        if (!input || !this.selectionTools) return;
+        // A textarea exposes offsets, but no selection rectangle. Mirror its wrapping
+        // so keyboard and touch selections get the same anchored controls as a mouse.
+        const bounds = input.getBoundingClientRect(), style = getComputedStyle(input);
+        const mirror = document.createElement('div');
+        for (const property of ['boxSizing', 'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'lineHeight',
+            'letterSpacing', 'wordSpacing', 'padding', 'borderWidth', 'borderStyle', 'textIndent', 'tabSize', 'wordBreak', 'overflowWrap']) {
+            mirror.style[property] = style[property];
+        }
+        Object.assign(mirror.style, { position: 'fixed', visibility: 'hidden', pointerEvents: 'none',
+            left: `${bounds.left}px`, top: `${bounds.top - input.scrollTop}px`,
+            width: `${input.clientWidth + parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth)}px`, whiteSpace: 'pre-wrap' });
+        mirror.append(document.createTextNode(input.value.slice(0, input.selectionEnd)));
+        const caret = document.createElement('span'); caret.textContent = '\u200b'; mirror.append(caret);
+        document.body.append(mirror);
+        const anchor = caret.getBoundingClientRect(); mirror.remove();
+        const menu = this.$root.querySelector('[data-selection-tools]');
+        const width = menu?.offsetWidth || 320, height = menu?.offsetHeight || 48;
+        const viewport = window.visualViewport;
+        const left = viewport?.offsetLeft || 0, top = viewport?.offsetTop || 0;
+        const viewportWidth = viewport?.width || window.innerWidth, viewportHeight = viewport?.height || window.innerHeight;
+        this.selectionX = Math.max(left + 8, Math.min(anchor.left, left + viewportWidth - width - 8));
+        const below = Math.max(bounds.top, Math.min(anchor.bottom, bounds.bottom)) + 8;
+        const above = Math.max(bounds.top, Math.min(anchor.top, bounds.bottom)) - height - 8;
+        this.selectionY = Math.max(top + 8, below + height <= top + viewportHeight - 8 ? below : above);
     },
     openAssist() {
+        this.selectionTools = false;
         if (!this.selection) return;
         if (this.selection.length > 1000) { this.error = 'Select up to 1,000 characters for writing assistance.'; return; }
         this.assistSnapshot = this.content; this.assistChapter = this.chapterId; this.assistSelection = this.selection;

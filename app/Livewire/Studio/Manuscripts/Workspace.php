@@ -337,7 +337,7 @@ class Workspace extends Component
         return ['can_write' => Auth::user()->can('update', $this->manuscript), 'id' => $chapter?->id, 'manuscript_id' => $this->manuscript->id, 'user_id' => Auth::id(),
             'chapter_number' => $chapter ? $this->manuscript->chapters()->pluck('id')->search($chapter->id) + 1 : 0,
             'title' => $chapter?->title ?? '', 'content_md' => $chapter?->content_md ?? '',
-            'summary_md' => $chapter?->summary_md ?? '', 'revision' => $chapter?->revision ?? 1,
+            'summary_md' => $chapter?->summary_md ?? '', 'revision' => $chapter?->revision ?? 1, 'last_save_uuid' => $chapter?->last_save_uuid,
             'world_catalogue' => $this->referenceWorld()?->referenceCatalogue()->all() ?? [],
             'draft_number' => $this->manuscript->working_draft_number, 'manuscript_revision' => $this->manuscript->revision];
     }

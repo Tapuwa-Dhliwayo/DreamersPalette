@@ -1708,3 +1708,37 @@ a.thinking-subject:hover { text-decoration: underline; text-underline-offset: 4p
 .reasoning-document > section { margin-block: 1.75rem; }
 .reasoning-document h2 { font-family: Georgia, serif; font-size: 1.2rem; margin-bottom: .65rem; }
 .reasoning-document .reasoning-evidence-grid { margin-block: 2rem; }
+
+/* Above the writing surface, below the existing Assist and modal layers. */
+.writing-selection-tools {
+    position: fixed;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    max-width: calc(100vw - 16px);
+    padding: 4px;
+    border: 1px solid var(--studio-border);
+    border-radius: 8px;
+    background: var(--studio-white);
+    color: var(--studio-ink);
+}
+.writing-selection-tools button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 36px;
+    min-height: 40px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    white-space: nowrap;
+}
+.writing-selection-tools button:hover:not(:disabled) { background: var(--studio-selected); }
+.writing-selection-tools svg { width: 16px; height: 16px; }
+.selection-tools-divider { width: 1px; height: 20px; background: var(--studio-line); }
+@media (max-width: 380px) {
+    .writing-selection-tools { gap: 0; }
+    .writing-selection-tools button { min-width: 30px; padding-inline: 5px; font-size: 12px; }
+}
