@@ -13,13 +13,13 @@ use Illuminate\Validation\ValidationException;
 
 class AssistantConversation
 {
-    public function __construct(private ExerciseContext $context, private AssistantProviders $providers, private SandboxProposals $proposals) {}
+    public function __construct(private ExerciseContext $context, private AssistantProviders $providers, private SandboxProposals $proposals, private SourceReading $reading) {}
 
-    public function send(WorldExercise $exercise, AssistantConnection $connection, string $content, string $mode, string $requestUuid): AssistantTurn
+    public function send(WorldExercise $exercise, AssistantConnection $connection, string $content, string $mode, string $requestUuid, string $readingDepth = 'focused'): AssistantTurn
     {
         Gate::authorize('update', $exercise);
         Gate::authorize('update', $connection);
-        $turn = DB::transaction(function () use ($exercise, $connection, $content, $mode, $requestUuid): AssistantTurn {
+        $turn = DB::transaction(function () use ($exercise, $connection, $content, $mode, $requestUuid, $readingDepth): AssistantTurn {
             World::lockForUpdate()->findOrFail($exercise->world_id);
             $exercise = WorldExercise::lockForUpdate()->findOrFail($exercise->id);
             Gate::authorize('update', $exercise);
@@ -33,19 +33,47 @@ class AssistantConversation
                 throw ValidationException::withMessages(['conversationForm.content' => 'Stop or finish the current response before sending another.']);
             }
             $message = $exercise->messages()->create(['role' => 'user', 'content' => $content]);
-            $context = $this->context->build($exercise, $mode);
-            $turn = $exercise->turns()->create(['connection_id' => $connection->id, 'message_id' => $message->id, 'request_uuid' => $requestUuid, 'provider' => $connection->provider, 'model' => $connection->model, 'mode' => $mode, 'context_manifest' => $context['manifest'], 'prompt' => $context['prompt']]);
+            $requestContext = $this->context->capture($exercise);
+            $turn = $exercise->turns()->create(['connection_id' => $connection->id, 'message_id' => $message->id, 'request_uuid' => $requestUuid, 'provider' => $connection->provider, 'model' => $connection->model, 'mode' => $mode, 'context_manifest' => [], 'prompt' => '', 'request_context' => $requestContext, 'reading_depth' => $readingDepth, 'stage' => 'preparing', 'progress' => 'Question saved. Preparing the source collection.']);
             $exercise->forceFill(['connection_id' => $connection->id])->save();
 
             return $turn;
         });
-        $turn->refresh();
-        if ($turn->status === 'queued') {
-            $command = 'setsid nohup '.escapeshellarg(PHP_BINARY).' '.escapeshellarg(base_path('artisan')).' studio:assistant-turn '.(int) $turn->id.' > '.escapeshellarg(storage_path('logs/assistant-worker.log')).' 2>&1 < /dev/null &';
-            exec($command);
-        }
+        $this->launch($turn->refresh());
 
         return $turn;
+    }
+
+    private function launch(AssistantTurn $turn): void
+    {
+        if ($turn->status === 'queued') {
+            $command = 'setsid nohup '.escapeshellarg(PHP_BINARY).' '.escapeshellarg(base_path('artisan')).' studio:assistant-turn '.(int) $turn->id.' >> '.escapeshellarg(storage_path('logs/assistant-worker.log')).' 2>&1 < /dev/null &';
+            exec($command);
+        }
+    }
+
+    public function retry(AssistantTurn $turn): void
+    {
+        Gate::authorize('update', $turn->exercise);
+        $connection = AssistantConnection::where('user_id', auth()->id())->findOrFail($turn->connection_id);
+        Gate::authorize('update', $connection);
+        if (! $connection->enabled || $connection->provider !== $turn->provider || $connection->model !== $turn->model) {
+            throw ValidationException::withMessages(['conversationForm.content' => 'Restore the original connection and model to retry this saved question, or send a new request with a different connection.']);
+        }
+        DB::transaction(function () use ($turn): void {
+            World::lockForUpdate()->findOrFail($turn->exercise->world_id);
+            $exercise = WorldExercise::lockForUpdate()->findOrFail($turn->exercise_id);
+            Gate::authorize('update', $exercise);
+            $turn = $exercise->turns()->lockForUpdate()->findOrFail($turn->id);
+            if (! in_array($turn->status, ['failed', 'paused', 'cancelled'], true)) {
+                return;
+            }
+            if ($exercise->turns()->whereIn('status', ['queued', 'running'])->exists()) {
+                throw ValidationException::withMessages(['conversationForm.content' => 'Finish or stop the current response before retrying.']);
+            }
+            $turn->update(['status' => 'queued', 'stage' => 'preparing', 'progress' => 'Resuming the saved question and completed reading.', 'error' => null, 'finished_at' => null]);
+        });
+        $this->launch($turn->refresh());
     }
 
     public function run(AssistantTurn $turn): void
@@ -66,6 +94,25 @@ class AssistantConversation
             if ($connection->provider !== $turn->provider || $connection->model !== $turn->model) {
                 throw new \RuntimeException('The connection changed before the turn started. Send a new request.');
             }
+            $cancelled = fn () => $turn->fresh()->status !== 'running' || ! $connection->fresh()->enabled || ! $exercise->fresh() || ! Gate::forUser($user)->allows('update', $exercise->fresh());
+            if ($turn->request_context !== null) {
+                $turn->update(['stage' => 'preparing', 'progress' => 'Preparing the saved question and source collection.']);
+                $brief = $this->context->build($exercise, $turn->mode, $turn);
+                $settings = $turn->request_context;
+                $settings['focus_names'] = $brief['focus_names'];
+                $turn->update(['request_context' => $settings]);
+                $evidence = $this->reading->prepare($turn, $connection, $brief['prompt'], $cancelled);
+                if ($evidence['paused'] ?? false) {
+                    AssistantTurn::whereKey($turn->id)->where('status', 'running')->update(['status' => 'paused', 'progress' => $evidence['progress'], 'error' => $evidence['progress'], 'finished_at' => now()]);
+
+                    return;
+                }
+                $context = $this->context->build($exercise, $turn->mode, $turn, $evidence);
+                if ($cancelled()) {
+                    return;
+                }
+                $turn->update(['prompt' => $context['prompt'], 'context_manifest' => $context['manifest'], 'stage' => 'responding', 'progress' => 'Writing a response with the recorded source coverage.']);
+            }
             $text = '';
             $lastWrite = 0;
             $this->providers->stream($connection, $turn->prompt, function (string $delta) use (&$text, &$lastWrite, $response): void {
@@ -74,7 +121,7 @@ class AssistantConversation
                     $response->update(['content' => $text]);
                     $lastWrite = microtime(true);
                 }
-            }, fn () => $turn->fresh()->status !== 'running' || ! $connection->fresh()->enabled || ! $exercise->fresh() || ! Gate::forUser($user)->allows('update', $exercise->fresh()));
+            }, $cancelled);
             $response->update(['content' => $text]);
             if ($turn->fresh()->status !== 'running') {
                 return;
@@ -82,7 +129,16 @@ class AssistantConversation
             $proposal = null;
             if (in_array($turn->mode, ['collect', 'naming'], true)) {
                 $proposal = $this->proposals->decode($text);
-                $response->update(['content' => $proposal['reply']]);
+                foreach ($proposal['ideas'] as &$idea) {
+                    if (isset($idea['notes_md'])) {
+                        $idea['notes_md'] = $this->reading->citations($turn, $idea['notes_md']);
+                    }
+                }
+                unset($idea);
+                $response->update(['content' => $this->reading->citations($turn, $proposal['reply'])]);
+            }
+            if ($proposal === null) {
+                $response->update(['content' => $this->reading->citations($turn, $text)]);
             }
             // Cancellation can arrive while the final response is being decoded.
             AssistantTurn::whereKey($turn->id)->where('status', 'running')->update([
@@ -93,7 +149,7 @@ class AssistantConversation
             if (isset($text)) {
                 $response->update(['content' => $text]);
             }
-            $message = $exception instanceof ValidationException ? collect($exception->errors())->flatten()->first() : ($exception instanceof \RuntimeException ? $exception->getMessage() : 'The response could not finish. Check the connection and retry explicitly.');
+            $message = $exception instanceof ValidationException ? collect($exception->errors())->flatten()->first() : (get_class($exception) === \RuntimeException::class ? $exception->getMessage() : 'The response could not finish. Check the connection and retry explicitly.');
             AssistantTurn::whereKey($turn->id)->where('status', 'running')->update(['status' => 'failed', 'error' => mb_substr($message, 0, 1000), 'finished_at' => now()]);
         }
     }

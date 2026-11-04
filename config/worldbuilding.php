@@ -7,5 +7,9 @@ return [
     'codex_binary' => env('STUDIO_CODEX_BINARY', 'codex'),
     'claude_binary' => env('STUDIO_CLAUDE_BINARY', 'claude'),
     'timeout' => 300,
+    'reading_window_characters' => 12000,
+    'focused_reading_rounds' => 5,
+    'whole_reading_rounds' => 24,
+    'evidence_characters' => 70000,
     'max_context_characters' => 180000,
 ];

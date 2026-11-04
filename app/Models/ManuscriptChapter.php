@@ -20,6 +20,26 @@ class ManuscriptChapter extends Model
         return ['manuscript_id' => 'integer', 'revision' => 'integer', 'position' => 'integer'];
     }
 
+    public function readingPassages(): array
+    {
+        $paragraphs = preg_split('/\\R\\s*\\R/u', trim($this->content_md ?? ''), -1, PREG_SPLIT_NO_EMPTY);
+        $passages = [];
+        foreach ($paragraphs as $paragraph) {
+            // Very large pasted paragraphs still need bounded, stable reading ranges.
+            while (mb_strlen($paragraph) > 4000) {
+                $boundary = mb_strrpos(mb_substr($paragraph, 0, 4000), ' ');
+                $boundary = $boundary && $boundary > 2000 ? $boundary : 4000;
+                $passages[] = mb_substr($paragraph, 0, $boundary);
+                $paragraph = mb_substr($paragraph, $boundary);
+            }
+            if (trim($paragraph) !== '') {
+                $passages[] = $paragraph;
+            }
+        }
+
+        return $passages;
+    }
+
     public function manuscript(): BelongsTo
     {
         return $this->belongsTo(Manuscript::class);
