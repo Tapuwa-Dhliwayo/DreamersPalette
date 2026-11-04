@@ -9,12 +9,14 @@ class ConversationForm extends Form
 {
     public string $content = '';
 
+    public string $reading_depth = 'focused';
+
     public string $mode = 'conversation';
 
     public ?int $connection_id = null;
 
     public function fields(): array
     {
-        return $this->validate(['content' => 'required|string|max:30000', 'mode' => ['required', Rule::in(['conversation', 'collect', 'naming', 'summary'])], 'connection_id' => 'required|integer|min:1']);
+        return $this->validate(['content' => 'required|string|max:30000', 'mode' => ['required', Rule::in(['conversation', 'collect', 'naming', 'summary'])], 'reading_depth' => ['required', Rule::in(['focused', 'whole'])], 'connection_id' => 'required|integer|min:1']);
     }
 }

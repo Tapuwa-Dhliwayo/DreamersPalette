@@ -8,6 +8,7 @@ use App\Livewire\Forms\Worlds\NamingConventionForm;
 use App\Livewire\Forms\Worlds\SandboxIdeaForm;
 use App\Livewire\Forms\Worlds\SandboxLinkForm;
 use App\Models\AssistantConnection;
+use App\Models\AssistantSource;
 use App\Models\ManuscriptChapter;
 use App\Models\NamingConvention;
 use App\Models\World;
@@ -42,6 +43,15 @@ class Sandbox extends Component
 
     #[Url(as: 'exercise')]
     public ?int $exerciseId = null;
+
+    #[Url(as: 'reading')]
+    public ?int $readingId = null;
+
+    #[Url(as: 'from')]
+    public int $readingFrom = 1;
+
+    #[Url(as: 'to')]
+    public int $readingTo = 12;
 
     #[Locked]
     public ?int $ideaId = null;
@@ -84,6 +94,9 @@ class Sandbox extends Component
         $this->sendRequest = (string) Str::uuid();
         if ($this->exerciseId) {
             $this->openExercise($this->exerciseId);
+            if ($this->readingId) {
+                $this->openSource($this->readingId, $this->readingFrom, $this->readingTo);
+            }
         } elseif (request()->integer('nameFor')) {
             $this->beginNaming(request()->integer('nameFor'));
         }
@@ -135,6 +148,9 @@ class Sandbox extends Component
 
     public function openExercise(int $id): void
     {
+        if ($this->exerciseId !== $id) {
+            $this->readingId = null;
+        }
         $exercise = $this->world->exercises()->findOrFail($id);
         $this->authorize('view', $exercise);
         $this->exerciseId = $id;
@@ -377,10 +393,38 @@ class Sandbox extends Component
     {
         $fields = $this->conversationForm->fields();
         $connection = AssistantConnection::where('user_id', auth()->id())->findOrFail($fields['connection_id']);
-        $conversation->send($this->exercise(true), $connection, $fields['content'], $fields['mode'], $this->sendRequest);
+        $conversation->send($this->exercise(true), $connection, $fields['content'], $fields['mode'], $this->sendRequest, $fields['reading_depth']);
         $this->sendRequest = (string) Str::uuid();
         $this->conversationForm->content = '';
         $this->notice = 'Request saved. This turn uses '.$connection->name.'.';
+    }
+
+    public function editSavedQuestion(int $id): void
+    {
+        $turn = $this->exercise()->turns()->findOrFail($id);
+        $message = $this->exercise()->messages()->findOrFail($turn->message_id);
+        $this->conversationForm->content = $message->content;
+        $this->conversationForm->mode = $turn->mode;
+        $this->conversationForm->reading_depth = $turn->reading_depth;
+        $this->conversationForm->connection_id = $turn->connection_id;
+        $this->dispatch('sandbox-conversation-focus');
+        $this->notice = 'Saved question restored to the composer. You can edit it or save a different source collection before sending.';
+    }
+
+    public function retryTurn(int $id, AssistantConversation $conversation): void
+    {
+        $conversation->retry($this->exercise(true)->turns()->findOrFail($id));
+        $this->notice = 'Resuming your saved question. Completed reading notes are retained.';
+    }
+
+    public function openSource(int $id, int $from = 1, int $to = 12): void
+    {
+        $exercise = $this->exercise();
+        $source = AssistantSource::whereHas('turn', fn ($query) => $query->where('exercise_id', $exercise->id))->findOrFail($id);
+        $this->readingId = $source->id;
+        $this->readingFrom = max(1, min($from, max(1, count($source->passages))));
+        $this->readingTo = max($this->readingFrom, min($to, count($source->passages), $this->readingFrom + 29));
+        $this->panel = 'source';
     }
 
     public function stopTurn(int $id): void
@@ -393,7 +437,7 @@ class Sandbox extends Component
     public function refreshConversation(): void
     {
         $exercise = $this->exercise(true);
-        $exercise->turns()->whereIn('status', ['queued', 'running'])->where('updated_at', '<', now()->subSeconds(config('worldbuilding.timeout') + 60))->update(['status' => 'failed', 'error' => 'This response was interrupted or timed out. Received writing is retained. Send a new request to continue.', 'finished_at' => now()]);
+        $exercise->turns()->whereIn('status', ['queued', 'running'])->where('updated_at', '<', now()->subSeconds(config('worldbuilding.timeout') + 60))->update(['status' => 'failed', 'error' => 'This response was interrupted or timed out. Your question and completed reading are saved. Retry this request to continue.', 'finished_at' => now()]);
     }
 
     public function acceptSummary(int $id): void
@@ -553,10 +597,14 @@ class Sandbox extends Component
         $visible = $ideas->filter(fn ($idea) => $this->alternativeFilter === '' || $idea->alternative === $this->alternativeFilter);
         $links = $exercise?->links()->whereIn('source_id', $activeIds)->whereIn('target_id', $activeIds)->get() ?? collect();
         $catalogue = $context->catalogue($this->world);
-        $chapters = ManuscriptChapter::whereHas('manuscript', fn ($query) => $query->where('world_id', $this->world->id)->where('author_id', auth()->id()))->get(['id', 'title']);
+        $chapters = ManuscriptChapter::whereHas('manuscript', fn ($query) => $query->where('world_id', $this->world->id)->where('author_id', auth()->id()))->with('manuscript:id,title')->orderBy('manuscript_id')->orderBy('position')->get(['id', 'manuscript_id', 'position', 'title']);
         $selected = $this->ideaId ? $exercise?->ideas()->withTrashed()->find($this->ideaId) : null;
         $similar = $selected ? $this->world->referenceCatalogue()->filter(fn ($entry) => mb_strtolower($entry['name']) === mb_strtolower($selected->title) || levenshtein(mb_strtolower($entry['name']), mb_strtolower($selected->title)) <= 2)->pluck('name')->unique() : collect();
 
-        return view('livewire.studio.worlds.sandbox', ['exercise' => $exercise, 'exercises' => $this->world->exercises()->get(), 'archivedExercises' => $this->world->exercises()->onlyTrashed()->get(), 'ideas' => $ideas, 'visibleIdeas' => $visible, 'links' => $links, 'selected' => $selected, 'recordUrl' => $selected?->target_key ? $context->url($this->world, $selected->target_key) : null, 'catalogue' => $catalogue, 'chapters' => $chapters, 'connections' => AssistantConnection::where('user_id', auth()->id())->where('enabled', true)->get(), 'messages' => $exercise?->messages()->get() ?? collect(), 'turns' => $exercise?->turns()->get() ?? collect(), 'changes' => $exercise?->changes()->get() ?? collect(), 'conventions' => $this->conventions()->get(), 'similarNames' => $similar, 'entryTypes' => WorldEntryType::all(), 'kinds' => SandboxProposals::KINDS]);
+        $source = $exercise && $this->readingId ? AssistantSource::whereHas('turn', fn ($query) => $query->where('exercise_id', $exercise->id))->findOrFail($this->readingId) : null;
+        $readingSources = $exercise ? AssistantSource::whereHas('turn', fn ($query) => $query->where('exercise_id', $exercise->id))->get()->groupBy('turn_id') : collect();
+        $sourceRevisions = ManuscriptChapter::whereIn('id', $readingSources->flatten()->pluck('chapter_id'))->pluck('revision', 'id');
+
+        return view('livewire.studio.worlds.sandbox', ['source' => $source, 'readingSources' => $readingSources, 'sourceRevisions' => $sourceRevisions, 'exercise' => $exercise, 'exercises' => $this->world->exercises()->get(), 'archivedExercises' => $this->world->exercises()->onlyTrashed()->get(), 'ideas' => $ideas, 'visibleIdeas' => $visible, 'links' => $links, 'selected' => $selected, 'recordUrl' => $selected?->target_key ? $context->url($this->world, $selected->target_key) : null, 'catalogue' => $catalogue, 'chapters' => $chapters, 'connections' => AssistantConnection::where('user_id', auth()->id())->where('enabled', true)->get(), 'messages' => $exercise?->messages()->get() ?? collect(), 'turns' => $exercise?->turns()->get() ?? collect(), 'changes' => $exercise?->changes()->get() ?? collect(), 'conventions' => $this->conventions()->get(), 'similarNames' => $similar, 'entryTypes' => WorldEntryType::all(), 'kinds' => SandboxProposals::KINDS]);
     }
 }

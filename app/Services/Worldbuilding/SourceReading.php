@@ -218,7 +218,7 @@ class SourceReading
         foreach ($turn->sources()->get() as $source) {
             $ranges = $this->ranges($source);
             $readCount = array_sum(array_map(fn ($range) => $range[1] - $range[0] + 1, $ranges));
-            $coverage[] = ['source_id' => $source->id, 'chapter_id' => $source->chapter_id, 'title' => $source->title, 'revision' => $source->chapter_revision, 'passages' => count($source->passages), 'read_passages' => $readCount, 'ranges' => $ranges, 'coverage' => $readCount === 0 ? 'unread' : ($readCount === count($source->passages) ? 'full' : 'partial')];
+            $coverage[] = ['source_id' => $source->id, 'chapter_id' => $source->chapter_id, 'title' => $source->title, 'revision' => $source->chapter_revision, 'passages' => count($source->passages), 'read_passages' => $readCount, 'ranges' => $ranges, 'coverage' => count($source->passages) === 0 ? 'empty' : ($readCount === 0 ? 'unread' : ($readCount === count($source->passages) ? 'full' : 'partial'))];
             foreach ($source->reads ?? [] as $read) {
                 $notes[] = ['source_id' => $source->id, 'start' => $read['start'], 'end' => $read['end'], 'notes' => $read['notes']];
             }

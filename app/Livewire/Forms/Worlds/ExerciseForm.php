@@ -22,6 +22,6 @@ class ExerciseForm extends Form
 
     public function fields(): array
     {
-        return $this->validate(['title' => 'required|string|max:255', 'purpose' => 'nullable|string|max:10000', 'instructions' => 'nullable|string|max:10000', 'summary' => 'nullable|string|max:20000', 'context_keys' => 'array|max:100', 'context_keys.*' => 'string|max:80', 'passages' => 'array|max:20', 'passages.*' => 'integer|min:1']);
+        return $this->validate(['title' => 'required|string|max:255', 'purpose' => 'nullable|string|max:10000', 'instructions' => 'nullable|string|max:10000', 'summary' => 'nullable|string|max:20000', 'context_keys' => 'array|max:100', 'context_keys.*' => 'string|max:80', 'passages' => 'array|max:500', 'passages.*' => 'integer|min:1|distinct']);
     }
 }

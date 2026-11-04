@@ -10,7 +10,7 @@ class AssistantTurn extends Model
 {
     protected $table = 'studio_assistant_turns';
 
-    protected $fillable = ['connection_id', 'message_id', 'response_id', 'request_uuid', 'provider', 'model', 'mode', 'status', 'context_manifest', 'prompt', 'proposals', 'error', 'started_at', 'finished_at', 'request_context', 'reading_depth', 'stage', 'progress'];
+    protected $fillable = ['connection_id', 'message_id', 'response_id', 'request_uuid', 'provider', 'model', 'mode', 'status', 'context_manifest', 'prompt', 'proposals', 'error', 'started_at', 'finished_at', 'request_context', 'reading_depth', 'stage', 'progress', 'run_uuid'];
 
     protected function casts(): array
     {

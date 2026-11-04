@@ -30,7 +30,21 @@ class AssistantSource extends Model
 
     public function hasRead(int $start, int $end): bool
     {
-        return collect($this->reads ?? [])->contains(fn ($read) => $read['start'] <= $start && $read['end'] >= $end);
+        $cursor = $start;
+        foreach (collect($this->reads ?? [])->sortBy('start') as $read) {
+            if ($read['end'] < $cursor) {
+                continue;
+            }
+            if ($read['start'] > $cursor) {
+                return false;
+            }
+            $cursor = max($cursor, $read['end'] + 1);
+            if ($cursor > $end) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function recordRead(int $start, int $end, string $notes): void

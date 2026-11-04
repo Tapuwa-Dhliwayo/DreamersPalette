@@ -9,6 +9,7 @@ use App\Models\World;
 use App\Models\WorldExercise;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AssistantConversation
@@ -71,14 +72,15 @@ class AssistantConversation
             if ($exercise->turns()->whereIn('status', ['queued', 'running'])->exists()) {
                 throw ValidationException::withMessages(['conversationForm.content' => 'Finish or stop the current response before retrying.']);
             }
-            $turn->update(['status' => 'queued', 'stage' => 'preparing', 'progress' => 'Resuming the saved question and completed reading.', 'error' => null, 'finished_at' => null]);
+            $turn->update(['status' => 'queued', 'run_uuid' => null, 'stage' => 'preparing', 'progress' => 'Resuming the saved question and completed reading.', 'error' => null, 'finished_at' => null]);
         });
         $this->launch($turn->refresh());
     }
 
     public function run(AssistantTurn $turn): void
     {
-        $claimed = AssistantTurn::whereKey($turn->id)->where('status', 'queued')->update(['status' => 'running', 'started_at' => now()]);
+        $runId = (string) Str::uuid();
+        $claimed = AssistantTurn::whereKey($turn->id)->where('status', 'queued')->update(['status' => 'running', 'run_uuid' => $runId, 'started_at' => now()]);
         if (! $claimed) {
             return;
         }
@@ -94,7 +96,7 @@ class AssistantConversation
             if ($connection->provider !== $turn->provider || $connection->model !== $turn->model) {
                 throw new \RuntimeException('The connection changed before the turn started. Send a new request.');
             }
-            $cancelled = fn () => $turn->fresh()->status !== 'running' || ! $connection->fresh()->enabled || ! $exercise->fresh() || ! Gate::forUser($user)->allows('update', $exercise->fresh());
+            $cancelled = fn () => $turn->fresh()->status !== 'running' || $turn->fresh()->run_uuid !== $runId || ! $connection->fresh()->enabled || ! $exercise->fresh() || ! Gate::forUser($user)->allows('update', $exercise->fresh());
             if ($turn->request_context !== null) {
                 $turn->update(['stage' => 'preparing', 'progress' => 'Preparing the saved question and source collection.']);
                 $brief = $this->context->build($exercise, $turn->mode, $turn);
@@ -103,7 +105,7 @@ class AssistantConversation
                 $turn->update(['request_context' => $settings]);
                 $evidence = $this->reading->prepare($turn, $connection, $brief['prompt'], $cancelled);
                 if ($evidence['paused'] ?? false) {
-                    AssistantTurn::whereKey($turn->id)->where('status', 'running')->update(['status' => 'paused', 'progress' => $evidence['progress'], 'error' => $evidence['progress'], 'finished_at' => now()]);
+                    AssistantTurn::whereKey($turn->id)->where('status', 'running')->where('run_uuid', $runId)->update(['status' => 'paused', 'progress' => $evidence['progress'], 'error' => $evidence['progress'], 'finished_at' => now()]);
 
                     return;
                 }
@@ -123,7 +125,7 @@ class AssistantConversation
                 }
             }, $cancelled);
             $response->update(['content' => $text]);
-            if ($turn->fresh()->status !== 'running') {
+            if ($turn->fresh()->status !== 'running' || $turn->fresh()->run_uuid !== $runId) {
                 return;
             }
             $proposal = null;
@@ -141,7 +143,7 @@ class AssistantConversation
                 $response->update(['content' => $this->reading->citations($turn, $text)]);
             }
             // Cancellation can arrive while the final response is being decoded.
-            AssistantTurn::whereKey($turn->id)->where('status', 'running')->update([
+            AssistantTurn::whereKey($turn->id)->where('status', 'running')->where('run_uuid', $runId)->update([
                 'status' => 'completed', 'finished_at' => now(),
                 'proposals' => $proposal ? json_encode($proposal, JSON_THROW_ON_ERROR) : null,
             ]);
@@ -150,7 +152,7 @@ class AssistantConversation
                 $response->update(['content' => $text]);
             }
             $message = $exception instanceof ValidationException ? collect($exception->errors())->flatten()->first() : (get_class($exception) === \RuntimeException::class ? $exception->getMessage() : 'The response could not finish. Check the connection and retry explicitly.');
-            AssistantTurn::whereKey($turn->id)->where('status', 'running')->update(['status' => 'failed', 'error' => mb_substr($message, 0, 1000), 'finished_at' => now()]);
+            AssistantTurn::whereKey($turn->id)->where('status', 'running')->where('run_uuid', $runId)->update(['status' => 'failed', 'error' => mb_substr($message, 0, 1000), 'finished_at' => now()]);
         }
     }
 }
