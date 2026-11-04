@@ -2,6 +2,7 @@
 
 return [
     // Local CLI credentials never travel with an Anubis content refresh.
+    'local_user_id' => (int) env('STUDIO_LOCAL_AUTHOR_ID', 1),
     'local_connections' => env('APP_ENV') === 'local',
     'codex_binary' => env('STUDIO_CODEX_BINARY', 'codex'),
     'claude_binary' => env('STUDIO_CLAUDE_BINARY', 'claude'),
