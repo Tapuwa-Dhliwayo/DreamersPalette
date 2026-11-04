@@ -9,11 +9,11 @@ class WorldExercisePolicy
 {
     public function view(User $user, WorldExercise $exercise): bool
     {
-        return ! $exercise->trashed() && $user->can('view', $exercise->world);
+        return ! $exercise->trashed() && $exercise->world !== null && $user->can('view', $exercise->world);
     }
 
     public function update(User $user, WorldExercise $exercise): bool
     {
-        return ! $exercise->trashed() && $user->can('update', $exercise->world);
+        return ! $exercise->trashed() && $exercise->world !== null && $user->can('update', $exercise->world);
     }
 }

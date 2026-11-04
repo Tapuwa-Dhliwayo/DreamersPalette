@@ -1,3 +1,4 @@
+import './sandbox';
 import { Livewire, Alpine } from '../../vendor/livewire/livewire/dist/livewire.esm';
 import { getGrammarSuggestions, getThesaurusSuggestions, getDefinitions, getSpellingSuggestions } from './services/writingAssistantService';
 

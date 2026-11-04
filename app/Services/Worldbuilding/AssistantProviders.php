@@ -77,6 +77,10 @@ class AssistantProviders
             $environment['CODEX_HOME'] = $home;
             $command = [$this->binary('codex'), 'exec', '--json', '--ephemeral', '--skip-git-repo-check', '--ignore-rules', '--sandbox', 'read-only', '--disable', 'shell_tool', '--disable', 'apps', '--disable', 'plugins', '-c', 'web_search="disabled"', '-c', 'check_for_update_on_startup=false', '-c', 'notify=[]', '--model', $connection->model, '-'];
         }
+        if ($connection->model === 'default') {
+            $modelIndex = array_search('--model', $command, true);
+            array_splice($command, $modelIndex, 2);
+        }
         $process = new Process($command, $directory, $environment, $prompt, config('worldbuilding.timeout'));
         $buffer = '';
         $received = false;
