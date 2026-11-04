@@ -10,6 +10,8 @@ return new class extends Migration
     {
         Schema::table('studio_assistant_turns', function (Blueprint $table): void {
             $table->uuid('run_uuid')->nullable();
+            $table->timestamp('acknowledged_at')->nullable();
+            $table->index(['acknowledged_at', 'status'], 'assistant_activity_idx');
         });
     }
 

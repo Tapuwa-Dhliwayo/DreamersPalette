@@ -82,6 +82,9 @@ class AssistantProviders
             $modelIndex = array_search('--model', $command, true);
             array_splice($command, $modelIndex, 2);
         }
+        if (($connection->getAttribute('effort') ?? 'default') !== 'default') {
+            $command = array_merge($command, $connection->provider === 'claude' ? ['--effort', $connection->getAttribute('effort')] : ['-c', 'model_reasoning_effort="'.$connection->getAttribute('effort').'"']);
+        }
         $process = new Process($command, $directory, $environment, $prompt, config('worldbuilding.timeout'));
         $buffer = '';
         $received = false;

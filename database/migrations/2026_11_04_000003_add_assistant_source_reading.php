@@ -26,6 +26,7 @@ return new class extends Migration
             $table->json('reads')->nullable();
             $table->timestamps();
             $table->unique(['turn_id', 'chapter_id']);
+            $table->index(['chapter_id', 'chapter_revision'], 'assistant_reference_idx');
         });
     }
 

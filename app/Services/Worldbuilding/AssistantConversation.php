@@ -16,16 +16,19 @@ class AssistantConversation
 {
     public function __construct(private ExerciseContext $context, private AssistantProviders $providers, private SandboxProposals $proposals, private SourceReading $reading) {}
 
-    public function send(WorldExercise $exercise, AssistantConnection $connection, string $content, string $mode, string $requestUuid, string $readingDepth = 'focused'): AssistantTurn
+    public function send(WorldExercise $exercise, AssistantConnection $connection, string $content, string $mode, string $requestUuid, string $readingDepth = 'focused', array $preferences = []): AssistantTurn
     {
         Gate::authorize('update', $exercise);
         Gate::authorize('update', $connection);
-        $turn = DB::transaction(function () use ($exercise, $connection, $content, $mode, $requestUuid, $readingDepth): AssistantTurn {
+        $turn = DB::transaction(function () use ($exercise, $connection, $content, $mode, $requestUuid, $readingDepth, $preferences): AssistantTurn {
             World::lockForUpdate()->findOrFail($exercise->world_id);
             $exercise = WorldExercise::lockForUpdate()->findOrFail($exercise->id);
             Gate::authorize('update', $exercise);
             if ($existing = $exercise->turns()->where('request_uuid', $requestUuid)->first()) {
                 return $existing;
+            }
+            if (($preferences['effort'] ?? 'default') !== 'default' && ! $connection->isLocal()) {
+                throw ValidationException::withMessages(['conversationForm.effort' => 'Thinking effort is available for local ChatGPT and Claude connections. Use provider default for this API connection.']);
             }
             if (! $connection->enabled) {
                 throw ValidationException::withMessages(['conversationForm.content' => 'Reconnect this provider before sending.']);
@@ -35,7 +38,10 @@ class AssistantConversation
             }
             $message = $exercise->messages()->create(['role' => 'user', 'content' => $content]);
             $requestContext = $this->context->capture($exercise);
-            $turn = $exercise->turns()->create(['connection_id' => $connection->id, 'message_id' => $message->id, 'request_uuid' => $requestUuid, 'provider' => $connection->provider, 'model' => $connection->model, 'mode' => $mode, 'context_manifest' => [], 'prompt' => '', 'request_context' => $requestContext, 'reading_depth' => $readingDepth, 'stage' => 'preparing', 'progress' => 'Question saved. Preparing the source collection.']);
+            $requestContext['connection_model'] = $connection->model;
+            $requestContext['effort'] = $preferences['effort'] ?? 'default';
+            $requestContext['auto_continue'] = $preferences['auto_continue'] ?? true;
+            $turn = $exercise->turns()->create(['connection_id' => $connection->id, 'message_id' => $message->id, 'request_uuid' => $requestUuid, 'provider' => $connection->provider, 'model' => ($preferences['model'] ?? '') ?: $connection->model, 'mode' => $mode, 'context_manifest' => [], 'prompt' => '', 'request_context' => $requestContext, 'reading_depth' => $readingDepth, 'stage' => 'preparing', 'progress' => 'Question saved. Preparing the source collection.']);
             $exercise->forceFill(['connection_id' => $connection->id])->save();
 
             return $turn;
@@ -53,15 +59,15 @@ class AssistantConversation
         }
     }
 
-    public function retry(AssistantTurn $turn): void
+    public function retry(AssistantTurn $turn, bool $autoContinue = true): void
     {
         Gate::authorize('update', $turn->exercise);
         $connection = AssistantConnection::where('user_id', auth()->id())->findOrFail($turn->connection_id);
         Gate::authorize('update', $connection);
-        if (! $connection->enabled || $connection->provider !== $turn->provider || $connection->model !== $turn->model) {
+        if (! $connection->enabled || $connection->provider !== $turn->provider || $connection->model !== ($turn->request_context['connection_model'] ?? $turn->model)) {
             throw ValidationException::withMessages(['conversationForm.content' => 'Restore the original connection and model to retry this saved question, or send a new request with a different connection.']);
         }
-        DB::transaction(function () use ($turn): void {
+        DB::transaction(function () use ($turn, $autoContinue): void {
             World::lockForUpdate()->findOrFail($turn->exercise->world_id);
             $exercise = WorldExercise::lockForUpdate()->findOrFail($turn->exercise_id);
             Gate::authorize('update', $exercise);
@@ -72,7 +78,9 @@ class AssistantConversation
             if ($exercise->turns()->whereIn('status', ['queued', 'running'])->exists()) {
                 throw ValidationException::withMessages(['conversationForm.content' => 'Finish or stop the current response before retrying.']);
             }
-            $turn->update(['status' => 'queued', 'run_uuid' => null, 'stage' => 'preparing', 'progress' => 'Resuming the saved question and completed reading.', 'error' => null, 'finished_at' => null]);
+            $settings = $turn->request_context ?? [];
+            $settings['auto_continue'] = $autoContinue;
+            $turn->update(['request_context' => $settings, 'status' => 'queued', 'run_uuid' => null, 'stage' => 'preparing', 'progress' => 'Resuming the saved question and completed reading.', 'error' => null, 'finished_at' => null, 'acknowledged_at' => null]);
         });
         $this->launch($turn->refresh());
     }
@@ -93,9 +101,11 @@ class AssistantConversation
             $user = User::findOrFail($author);
             Gate::forUser($user)->authorize('update', $exercise);
             $connection = AssistantConnection::where('user_id', $author)->whereKey($turn->connection_id)->firstOrFail();
-            if ($connection->provider !== $turn->provider || $connection->model !== $turn->model) {
+            if ($connection->provider !== $turn->provider || $connection->model !== ($turn->request_context['connection_model'] ?? $turn->model)) {
                 throw new \RuntimeException('The connection changed before the turn started. Send a new request.');
             }
+            $connection->model = $turn->model;
+            $connection->setAttribute('effort', $turn->request_context['effort'] ?? 'default');
             $cancelled = fn () => $turn->fresh()->status !== 'running' || $turn->fresh()->run_uuid !== $runId || ! $connection->fresh()->enabled || ! $exercise->fresh() || ! Gate::forUser($user)->allows('update', $exercise->fresh());
             if ($turn->request_context !== null) {
                 $turn->update(['stage' => 'preparing', 'progress' => 'Preparing the saved question and source collection.']);
