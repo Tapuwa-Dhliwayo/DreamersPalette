@@ -186,3 +186,17 @@ copied account; open the affected manuscript/world and confirm its writing/asset
 make a deliberate local edit, save and reload. Report issues against this captured
 baseline. Local browser login and application workflows were not verified by this
 refresh; database read/write and snapshot integrity were verified directly.
+
+## Anubis refresh instruction — 2026/11/04
+
+Tapuwa clarified that requests to “read” or pull current Anubis data mean replacing
+local data with the current Anubis snapshot, not merely inspecting the server.
+This authorization persists for future refresh requests. Copy Anubis to local only;
+never send local test data back to Anubis. Retain local environment configuration
+and a private recovery backup; refresh runtime assets alongside the database.
+
+Refreshed the existing local database and runtime assets on 2026/11/04. Imported
+INSERT statements match the current source snapshot; all 46 runtime asset files
+match the captured archive. Recovery capture:
+`storage/app/private/anubis-refresh-20261104T112543Z/` (ignored/private).
+No application code or Anubis data was changed.

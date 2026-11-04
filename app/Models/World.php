@@ -21,6 +21,11 @@ class World extends Model
         return ['author_id' => 'integer'];
     }
 
+    public function exercises(): HasMany
+    {
+        return $this->hasMany(WorldExercise::class)->latest('updated_at');
+    }
+
     public function systems(): HasMany
     {
         return $this->hasMany(MagicSystem::class)->orderBy('name');
