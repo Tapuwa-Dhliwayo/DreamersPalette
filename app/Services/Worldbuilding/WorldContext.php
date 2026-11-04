@@ -23,6 +23,19 @@ class WorldContext
         return $records;
     }
 
+    public function url(World $world, string $key): string
+    {
+        [$kind,$id] = explode(':', $key);
+        $section = match ($kind) {
+            'person' => 'people','entry' => 'entries','event' => 'timeline','arc' => 'arcs','alignment' => 'alignments','relationship' => 'relationships','comparison' => 'comparisons','investigation' => 'investigations','knowledge' => 'knowledge',default => $kind,
+        };
+        $route = match ($kind) {
+            'system' => 'studio.world', 'map' => 'studio.world.maps', 'relationship','comparison' => 'studio.world.thinking', 'knowledge','investigation' => 'studio.world.reasoning', default => 'studio.world.develop',
+        };
+
+        return route($route, ['world' => $world, 'section' => $section, $kind === 'system' ? 'system' : 'selected' => $id]);
+    }
+
     public function target(World $world, string $key, bool $archived = false): Model
     {
         if (! preg_match('/^(person|entry|event|relationship|system|arc|knowledge|investigation|map|alignment|comparison):([1-9][0-9]*)$/D', $key, $parts)) {

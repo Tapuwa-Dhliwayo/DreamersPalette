@@ -79,12 +79,16 @@ class AssistantConversation
             if ($turn->fresh()->status !== 'running') {
                 return;
             }
-            if ($turn->mode !== 'conversation') {
+            $proposal = null;
+            if (in_array($turn->mode, ['collect', 'naming'], true)) {
                 $proposal = $this->proposals->decode($text);
-                $turn->proposals = $proposal;
                 $response->update(['content' => $proposal['reply']]);
             }
-            $turn->fill(['status' => 'completed', 'finished_at' => now()])->save();
+            // Cancellation can arrive while the final response is being decoded.
+            AssistantTurn::whereKey($turn->id)->where('status', 'running')->update([
+                'status' => 'completed', 'finished_at' => now(),
+                'proposals' => $proposal ? json_encode($proposal, JSON_THROW_ON_ERROR) : null,
+            ]);
         } catch (\Throwable $exception) {
             if (isset($text)) {
                 $response->update(['content' => $text]);

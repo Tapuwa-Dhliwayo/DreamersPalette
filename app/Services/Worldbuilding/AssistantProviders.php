@@ -59,7 +59,7 @@ class AssistantProviders
         if (! config('worldbuilding.local_connections') || $connection->user_id !== (int) config('worldbuilding.local_user_id')) {
             throw new RuntimeException('Local subscription access is only enabled for the configured local author.');
         }
-        $directory = storage_path('app/private/assistant-runtime/'.Str::uuid());
+        $directory = sys_get_temp_dir().'/dreamers-assistant-'.Str::uuid();
         File::ensureDirectoryExists($directory, 0700);
         $environment = ['CLAUDECODE' => false, 'ANTHROPIC_API_KEY' => false, 'ANTHROPIC_AUTH_TOKEN' => false, 'ANTHROPIC_BASE_URL' => false, 'OPENAI_API_KEY' => false];
         if ($connection->provider === 'claude') {
@@ -76,7 +76,7 @@ class AssistantProviders
             copy($auth, $home.'/auth.json');
             chmod($home.'/auth.json', 0600);
             $environment['CODEX_HOME'] = $home;
-            $command = [$this->binary('codex'), 'exec', '--json', '--ephemeral', '--skip-git-repo-check', '--ignore-rules', '--sandbox', 'read-only', '--disable', 'shell_tool', '--disable', 'apps', '--disable', 'plugins', '--disable', 'view_image', '--disable', 'image_generation', '--disable', 'multi_agent', '--disable', 'in_app_browser', '-c', 'web_search="disabled"', '-c', 'check_for_update_on_startup=false', '-c', 'notify=[]', '--model', $connection->model, '-'];
+            $command = [$this->binary('codex'), 'exec', '--json', '--ephemeral', '--skip-git-repo-check', '--ignore-rules', '--sandbox', 'read-only', '--disable', 'shell_tool', '--disable', 'apps', '--disable', 'plugins', '--disable', 'view_image', '--disable', 'image_generation', '--disable', 'multi_agent', '--disable', 'in_app_browser', '--disable', 'browser_use', '--disable', 'browser_use_external', '--disable', 'computer_use', '--disable', 'unified_exec', '--disable', 'skill_search', '--disable', 'skill_mcp_dependency_install', '--disable', 'tool_suggest', '--enable', 'skip_host_skill_discovery', '-c', 'web_search="disabled"', '-c', 'check_for_update_on_startup=false', '-c', 'notify=[]', '--model', $connection->model, '-'];
         }
         if ($connection->model === 'default') {
             $modelIndex = array_search('--model', $command, true);

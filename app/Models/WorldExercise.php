@@ -12,11 +12,11 @@ class WorldExercise extends Model
 {
     protected $table = 'studio_world_exercises';
 
-    protected $fillable = ['title', 'purpose', 'instructions', 'summary', 'context_keys', 'passages', 'connection_id'];
+    protected $fillable = ['title', 'purpose', 'instructions', 'summary', 'summary_through_id', 'context_keys', 'passages', 'connection_id'];
 
     protected function casts(): array
     {
-        return ['world_id' => 'integer', 'connection_id' => 'integer', 'context_keys' => 'array', 'passages' => 'array', 'revision' => 'integer'];
+        return ['world_id' => 'integer', 'summary_through_id' => 'integer', 'connection_id' => 'integer', 'context_keys' => 'array', 'passages' => 'array', 'revision' => 'integer'];
     }
 
     use ArchivesStudioRecords;

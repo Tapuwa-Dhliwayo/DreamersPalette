@@ -15,6 +15,6 @@ class ConversationForm extends Form
 
     public function fields(): array
     {
-        return $this->validate(['content' => 'required|string|max:30000', 'mode' => ['required', Rule::in(['conversation', 'collect', 'naming'])], 'connection_id' => 'required|integer|min:1']);
+        return $this->validate(['content' => 'required|string|max:30000', 'mode' => ['required', Rule::in(['conversation', 'collect', 'naming', 'summary'])], 'connection_id' => 'required|integer|min:1']);
     }
 }

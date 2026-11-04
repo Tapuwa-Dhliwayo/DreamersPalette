@@ -313,7 +313,9 @@ class Sandbox extends Component
 
     public function moveEvent(int $sourceId, int $sourceRevision, int $targetId, int $targetRevision, bool $after = false): void
     {
-        $this->write(function ($exercise) use ($sourceId, $sourceRevision, $targetId, $targetRevision, $after): void {
+        $editorRevision = $this->ideaForm->revision;
+        $selectedWasCurrent = false;
+        $this->write(function ($exercise) use ($sourceId, $sourceRevision, $targetId, $targetRevision, $after, $editorRevision, &$selectedWasCurrent): void {
             $source = $exercise->ideas()->lockForUpdate()->findOrFail($sourceId);
             $target = $exercise->ideas()->lockForUpdate()->findOrFail($targetId);
             abort_unless($source->kind === 'event' && $target->kind === 'event' && $source->canEdit() && $target->canEdit(), 422);
@@ -330,10 +332,13 @@ class Sandbox extends Component
             $index = $ordered->search(fn ($idea) => $idea->id === $targetId);
             $ordered->splice($index + ($after ? 1 : 0), 0, [$source]);
             foreach ($ordered as $index => $idea) {
+                if ($idea->id === $this->ideaId && $idea->revision === $editorRevision) {
+                    $selectedWasCurrent = true;
+                }
                 $idea->revise(['position' => ($index + 1) * 10, 'lane' => $target->lane], $idea->revision);
             }
         });
-        if ($this->ideaId) {
+        if ($this->ideaId && $selectedWasCurrent) {
             $this->ideaForm->revision = $this->exercise()->ideas()->findOrFail($this->ideaId)->revision;
         }
         $this->notice = 'Sandbox event sequence saved. Established dates are unchanged.';
@@ -391,6 +396,30 @@ class Sandbox extends Component
         $exercise->turns()->whereIn('status', ['queued', 'running'])->where('updated_at', '<', now()->subSeconds(config('worldbuilding.timeout') + 60))->update(['status' => 'failed', 'error' => 'This response was interrupted or timed out. Received writing is retained. Send a new request to continue.', 'finished_at' => now()]);
     }
 
+    public function acceptSummary(int $id): void
+    {
+        $editorWasCurrent = false;
+        $this->write(function ($exercise) use ($id, &$editorWasCurrent): void {
+            $editorWasCurrent = $this->exerciseForm->revision === $exercise->revision;
+            $turn = $exercise->turns()->findOrFail($id);
+            abort_unless($turn->status === 'completed' && $turn->mode === 'summary', 409);
+            $message = $exercise->messages()->findOrFail($turn->response_id);
+            if (mb_strlen($message->content) > 20000) {
+                throw ValidationException::withMessages(['summary' => 'Ask for a shorter summary before using it as working context.']);
+            }
+            if (($exercise->summary_through_id ?? 0) > $turn->response_id) {
+                throw ValidationException::withMessages(['summary' => 'A newer summary is already in use.']);
+            }
+            $exercise->revise(['summary' => $message->content, 'summary_through_id' => $turn->response_id], $exercise->revision);
+        });
+        $exercise = $this->exercise();
+        if ($editorWasCurrent) {
+            $this->exerciseForm->summary = $exercise->summary;
+            $this->exerciseForm->revision = $exercise->revision;
+        }
+        $this->notice = 'Working summary accepted. Covered messages remain saved and visible; future requests use the summary plus newer messages.';
+    }
+
     public function collectTurn(int $id, SandboxProposals $proposals): void
     {
         $exercise = $this->exercise(true);
@@ -420,7 +449,11 @@ class Sandbox extends Component
     {
         $this->write(function ($exercise): void {
             $name = $exercise->ideas()->findOrFail($this->ideaId);
-            $person = $exercise->ideas()->findOrFail((int) $this->nameTarget);
+            $selection = explode(':', $this->nameTarget);
+            $person = $exercise->ideas()->findOrFail((int) ($selection[0] ?? 0));
+            if ($person->revision !== (int) ($selection[1] ?? 0)) {
+                throw ValidationException::withMessages(['nameTarget' => 'The character changed. Choose its current version again before assigning a name.']);
+            }
             abort_unless($name->kind === 'name' && $person->kind === 'person' && $person->canEdit(), 422);
             $person->revise(['title' => $name->title], $person->revision);
         });
@@ -524,6 +557,6 @@ class Sandbox extends Component
         $selected = $this->ideaId ? $exercise?->ideas()->withTrashed()->find($this->ideaId) : null;
         $similar = $selected ? $this->world->referenceCatalogue()->filter(fn ($entry) => mb_strtolower($entry['name']) === mb_strtolower($selected->title) || levenshtein(mb_strtolower($entry['name']), mb_strtolower($selected->title)) <= 2)->pluck('name')->unique() : collect();
 
-        return view('livewire.studio.worlds.sandbox', ['exercise' => $exercise, 'exercises' => $this->world->exercises()->get(), 'archivedExercises' => $this->world->exercises()->onlyTrashed()->get(), 'ideas' => $ideas, 'visibleIdeas' => $visible, 'links' => $links, 'selected' => $selected, 'catalogue' => $catalogue, 'chapters' => $chapters, 'connections' => AssistantConnection::where('user_id', auth()->id())->where('enabled', true)->get(), 'messages' => $exercise?->messages()->get() ?? collect(), 'turns' => $exercise?->turns()->get() ?? collect(), 'changes' => $exercise?->changes()->get() ?? collect(), 'conventions' => $this->conventions()->get(), 'similarNames' => $similar, 'entryTypes' => WorldEntryType::all(), 'kinds' => SandboxProposals::KINDS]);
+        return view('livewire.studio.worlds.sandbox', ['exercise' => $exercise, 'exercises' => $this->world->exercises()->get(), 'archivedExercises' => $this->world->exercises()->onlyTrashed()->get(), 'ideas' => $ideas, 'visibleIdeas' => $visible, 'links' => $links, 'selected' => $selected, 'recordUrl' => $selected?->target_key ? $context->url($this->world, $selected->target_key) : null, 'catalogue' => $catalogue, 'chapters' => $chapters, 'connections' => AssistantConnection::where('user_id', auth()->id())->where('enabled', true)->get(), 'messages' => $exercise?->messages()->get() ?? collect(), 'turns' => $exercise?->turns()->get() ?? collect(), 'changes' => $exercise?->changes()->get() ?? collect(), 'conventions' => $this->conventions()->get(), 'similarNames' => $similar, 'entryTypes' => WorldEntryType::all(), 'kinds' => SandboxProposals::KINDS]);
     }
 }
