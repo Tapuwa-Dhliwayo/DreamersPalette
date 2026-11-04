@@ -13,6 +13,7 @@
 <body class="studio-body">
     <a href="#studio-main" class="studio-skip">Skip to writing</a>
     <div class="studio-shell">
+        @can('worlds.update')<livewire:studio.assistant-activity />@endcan
         {{ $slot }}
     </div>
     @livewireScriptConfig

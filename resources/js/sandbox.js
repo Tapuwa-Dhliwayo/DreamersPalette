@@ -64,3 +64,21 @@ Alpine.data('sandboxBoard', (initial) => ({
         }
     },
 }));
+
+
+Alpine.data('sandboxWorkspace', () => ({
+    openCitation(event, link, wire, exerciseId) {
+        const target = new URL(link.href, window.location.href);
+        if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || target.origin !== window.location.origin || target.pathname !== window.location.pathname || Number(target.searchParams.get('exercise')) !== exerciseId || !target.searchParams.has('reading')) return false;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (this.dirty && !window.confirm('You have unsaved details. Discard them and open this source?')) return true;
+        this.dirty = false;
+        wire.openSource(Number(target.searchParams.get('reading')), Number(target.searchParams.get('from') || 1), Number(target.searchParams.get('to') || 12)).then(() => {
+            this.detailsOpen = true;
+            this.conversationFocus = true;
+            this.mobilePane = 'details';
+        });
+        return true;
+    },
+}));

@@ -78,7 +78,7 @@ class AssistantConversation
             if ($exercise->turns()->whereIn('status', ['queued', 'running'])->exists()) {
                 throw ValidationException::withMessages(['conversationForm.content' => 'Finish or stop the current response before retrying.']);
             }
-            $settings = $turn->request_context ?? [];
+            $settings = $turn->request_context ?? $this->context->capture($exercise);
             $settings['auto_continue'] = $autoContinue;
             $turn->update(['request_context' => $settings, 'status' => 'queued', 'run_uuid' => null, 'stage' => 'preparing', 'progress' => 'Resuming the saved question and completed reading.', 'error' => null, 'finished_at' => null, 'acknowledged_at' => null]);
         });

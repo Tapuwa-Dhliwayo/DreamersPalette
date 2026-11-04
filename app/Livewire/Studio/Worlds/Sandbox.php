@@ -160,6 +160,11 @@ class Sandbox extends Component
         $this->exerciseForm->context_keys ??= [];
         $this->exerciseForm->passages ??= [];
         $this->conversationForm->connection_id = $exercise->connection_id;
+        $lastTurn = $exercise->turns()->first();
+        $this->conversationForm->model = $lastTurn?->model ?? '';
+        $this->conversationForm->effort = $lastTurn?->request_context['effort'] ?? 'default';
+        $this->conversationForm->reading_depth = $lastTurn?->reading_depth ?? 'focused';
+        $this->conversationForm->auto_continue = $lastTurn?->request_context['auto_continue'] ?? true;
         $this->reset('ideaId', 'selectedIdeas', 'canonReview', 'undoMove', 'alternativeFilter');
         $this->panel = 'idea';
         $this->resetValidation();
@@ -393,10 +398,10 @@ class Sandbox extends Component
     {
         $fields = $this->conversationForm->fields();
         $connection = AssistantConnection::where('user_id', auth()->id())->findOrFail($fields['connection_id']);
-        $conversation->send($this->exercise(true), $connection, $fields['content'], $fields['mode'], $this->sendRequest, $fields['reading_depth']);
+        $conversation->send($this->exercise(true), $connection, $fields['content'], $fields['mode'], $this->sendRequest, $fields['reading_depth'], $fields);
         $this->sendRequest = (string) Str::uuid();
         $this->conversationForm->content = '';
-        $this->notice = 'Request saved. This turn uses '.$connection->name.'.';
+        $this->notice = 'Question saved. Reading continues in the background; Studio activity will show when your answer is ready or needs attention.';
     }
 
     public function editSavedQuestion(int $id): void
@@ -404,6 +409,9 @@ class Sandbox extends Component
         $turn = $this->exercise()->turns()->findOrFail($id);
         $message = $this->exercise()->messages()->findOrFail($turn->message_id);
         $this->conversationForm->content = $message->content;
+        $this->conversationForm->model = $turn->model;
+        $this->conversationForm->effort = $turn->request_context['effort'] ?? 'default';
+        $this->conversationForm->auto_continue = $turn->request_context['auto_continue'] ?? true;
         $this->conversationForm->mode = $turn->mode;
         $this->conversationForm->reading_depth = $turn->reading_depth;
         $this->conversationForm->connection_id = $turn->connection_id;
@@ -413,8 +421,21 @@ class Sandbox extends Component
 
     public function retryTurn(int $id, AssistantConversation $conversation): void
     {
-        $conversation->retry($this->exercise(true)->turns()->findOrFail($id));
+        $conversation->retry($this->exercise(true)->turns()->findOrFail($id), $this->conversationForm->auto_continue);
         $this->notice = 'Resuming your saved question. Completed reading notes are retained.';
+    }
+
+    public function updatedView(): void
+    {
+        if (! in_array($this->view, ['board', 'timeline', 'list'], true)) {
+            $this->view = 'board';
+        }
+    }
+
+    public function updatedConversationFormConnectionId(): void
+    {
+        $this->conversationForm->model = '';
+        $this->conversationForm->effort = 'default';
     }
 
     public function openSource(int $id, int $from = 1, int $to = 12): void
