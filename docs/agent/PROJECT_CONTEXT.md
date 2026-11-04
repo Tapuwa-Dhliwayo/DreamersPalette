@@ -216,3 +216,11 @@ The local app runs as transient user service `dreamers-studio.service`, not at b
 Disposable review fixtures were removed; original populated source tables match the
 captured Anubis baseline except the advanced local migration ledger. Original world,
 people and chapter counts remain 1, 5 and 20. No push or deployment performed.
+
+2026/11/04 local source-reading correction: selected exercise chapters are now a
+consultable collection rather than full text in each request. Questions persist
+before preparation; shared bounded reading, saved source snapshots/notes, scoped
+citations and whole-reading pause/resume are implemented. Conversation summaries
+exclude manuscript reading. Exercise 13 and its selected 15 chapters are preserved;
+its question was not automatically resubmitted. See WORLD_SANDBOX.md and the focused
+world-sandbox-source-reading manual charter. No Anubis refresh/deployment occurred.

@@ -116,3 +116,48 @@ explicit Save and leave warnings, not a separate browser recovery archive.
 The core charter is `docs/manual-testing/world-sandbox.md`. Rich map pins, alignment
 placements, comparison cells, magic rules, arc beats, evidence and knowledge
 perspectives use the existing tools; the sandbox does not invent those histories.
+
+## Source-reading correction — 2026/11/04
+
+The source-size guard previously rejected a legitimate first question when an
+exercise selected more than 180,000 characters of prose. It also rolled back the
+question, and conversation summarisation could not recover because it resent the
+same prose. Source selection now defines a consultable collection, not full prose
+included in every prompt.
+
+Questions and captured exercise settings are committed before preparation. A
+background run snapshots only authorised selected chapters, performs bounded
+application-controlled read/search rounds, retains sourced notes, and assembles a
+bounded final request. CLI tools remain disabled; the reading protocol cannot
+access arbitrary files, other worlds or unselected chapters. This is shared by
+all provider adapters. Accent-normalised name/alias search is a navigation aid;
+model-directed reading expands around candidate scenes and qualifies coverage.
+
+Focused reading has bounded investigation rounds. Whole-source reading traverses
+all selected passages and can pause after a bounded run. Continue resumes completed
+reading without discarding notes. A preparation error retains the question and
+turn; retries reuse the question. Edit saved question restores it for a new scope
+or connection. Each turn has its own source snapshots and derived reading notes.
+No notes are automatically treated as canon or written into chapter summaries.
+
+Sources consulted shows unread/partial/full ranges, saved revisions, and changes
+since capture. Valid citations open the saved source inside the app; unknown or
+unread citations do not become trusted links. Read & discuss makes room for prose
+beside the conversation. Source collections are grouped by manuscript with whole-
+book selection. Conversation summaries do not reread the manuscript collection.
+
+Implementation: `SourceReading`, `AssistantSource`, chapter-owned passage splitting,
+and forward migrations adding request context, reading progress, source rows and
+worker attempt identities. A replaced worker cannot complete a resumed request or
+overwrite the current attempt's response.
+The conservative character guard still protects final/context requests; this work
+does not claim to discover every provider's exact token capacity. Whole-source
+reading uses multiple requests on the chosen account; no automatic fallback exists.
+
+Verification: the real exercise 13 retains its 15 selected chapters and no agent-
+submitted question. Its 313,346-character collection prepared a 2,955-character
+brief without a provider call in a rolled-back probe. A live neutral 214,336-
+character collection completed with sourced response and accurate unread coverage.
+Live failure/retry and whole-reading pause/resume probes passed. Source ownership
+was checked with real requests. Retest charter:
+`docs/manual-testing/world-sandbox-source-reading.md`.
