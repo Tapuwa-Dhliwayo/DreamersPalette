@@ -200,3 +200,19 @@ INSERT statements match the current source snapshot; all 46 runtime asset files
 match the captured archive. Recovery capture:
 `storage/app/private/anubis-refresh-20261104T112543Z/` (ignored/private).
 No application code or Anubis data was changed.
+
+## Local world sandbox — 2026/11/04
+
+Approved local-only implementation adds Worlds → Sandbox, provider connections,
+conversation/proposal context, naming guidance, visual board/sequence editing and
+reviewed canonisation with guarded Undo. Two additive migrations are applied locally.
+Anubis remains unchanged. See `docs/WORLD_SANDBOX.md` for runtime and verified scope;
+`docs/manual-testing/world-sandbox.md` is the first author review charter.
+
+Local author 1 has My ChatGPT/My Claude connections using existing local CLI logins.
+No API key was configured or paid API verification performed. Provider credentials
+and connection/session state must not travel with future Anubis content refreshes.
+The local app runs as transient user service `dreamers-studio.service`, not at boot.
+Disposable review fixtures were removed; original populated source tables match the
+captured Anubis baseline except the advanced local migration ledger. Original world,
+people and chapter counts remain 1, 5 and 20. No push or deployment performed.
