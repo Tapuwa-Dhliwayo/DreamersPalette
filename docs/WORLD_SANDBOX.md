@@ -161,3 +161,41 @@ character collection completed with sourced response and accurate unread coverag
 Live failure/retry and whole-reading pause/resume probes passed. Source ownership
 was checked with real requests. Retest charter:
 `docs/manual-testing/world-sandbox-source-reading.md`.
+
+## Continuity after author review — 2026/11/04
+
+Saved chapter readings now seed future questions, including across exercises in the
+same author's world. Reuse requires the same chapter revision and identical saved
+prose. Notes/citations are copied into the new turn's scoped source snapshots;
+observations remain interpretations, not canon. Earlier notes may be incomplete for
+a different question, so focused investigation can revisit the prose. Whole-source
+reuse includes a focused follow-up pass for the new question. Existing readings are
+eligible without a destructive conversion or provider request.
+
+Whole-source reading automatically continues between bounded batches by default.
+Authors can choose manual batches instead; pauses explicitly retain a pending
+question and Continue action. Stop, provider errors and usage limits still stop the
+run. No automatic provider/model fallback is enabled. Retrying an old paused request
+uses the current continuation preference while retaining completed reading.
+
+The composer accepts a model override and default/low/medium/high local thinking
+effort. The selected turn model is independent of the connection's saved default;
+preferences are recovered when reopening the exercise. CLI model access/effort vary
+by account/model. API thinking effort remains provider default. Codex effort uses
+`model_reasoning_effort`, per the official configuration reference:
+https://learn.chatgpt.com/docs/config-file/config-reference . Claude's installed
+CLI advertises `--effort`; provider tools/MCP remain disabled.
+
+Source citations open within the current workspace; disclosures retain native
+open state across polling. Details has a matching reopen control. Empty Timeline
+and List views communicate the selected view and next action. Loading indicators
+respect reduced motion. Studio-wide AssistantActivity polls independently and
+persists terminal acknowledgement on the turn; it shows ongoing work, ready answers,
+pauses and failures while authors use other studio pages. This is in-app activity,
+not email or operating-system push. All activity actions are author/permission scoped.
+
+The local-only source/worker migrations were amended rather than growing unused
+pre-deployment migration history. Matching additive column/index changes were
+applied directly to the current local database, retaining all writing and 33 saved
+reading sections. No reset, Anubis change or deployment occurred. Retest:
+`docs/manual-testing/world-sandbox-continuity.md`.

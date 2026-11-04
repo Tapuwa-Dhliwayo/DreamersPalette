@@ -2,6 +2,10 @@
 
 Prepared 2026/11/04. Local only. Timebox: 35–45 minutes.
 
+This first review has been completed. For the resulting continuity fixes, use
+[the follow-up charter](world-sandbox-continuity.md). Preserve the existing question
+and reading; the original first-pass paste instructions below are historical.
+
 ## Goal, risk and stop condition
 
 **High:** private manuscript reading, durable questions and evidence-backed literary

@@ -224,3 +224,12 @@ citations and whole-reading pause/resume are implemented. Conversation summaries
 exclude manuscript reading. Exercise 13 and its selected 15 chapters are preserved;
 its question was not automatically resubmitted. See WORLD_SANDBOX.md and the focused
 world-sandbox-source-reading manual charter. No Anubis refresh/deployment occurred.
+
+2026/11/04 author-review follow-up: local sandbox now reuses versioned novel
+reading across same-world exercises, continues whole-reading batches automatically
+by default, retains disclosure/panel state, opens citations in place, exposes
+per-question model/local effort, and adds persistent studio-wide assistant activity.
+Existing 33 reading sections and original exercise messages were preserved. Local
+source/worker migrations were amended with matching non-destructive local schema
+changes; no reset or Anubis update. See WORLD_SANDBOX.md and
+manual-testing/world-sandbox-continuity.md for review scope and limitations.
