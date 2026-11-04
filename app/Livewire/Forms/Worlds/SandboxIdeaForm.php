@@ -24,6 +24,8 @@ class SandboxIdeaForm extends Form
 
     public string $date_label = '';
 
+    public bool $keep_previous_name = false;
+
     public string $aliases = '';
 
     public string $roles = '';
@@ -40,17 +42,29 @@ class SandboxIdeaForm extends Form
 
     public string $period = '';
 
+    public string $left_label = '';
+
+    public string $right_label = '';
+
+    public string $top_label = '';
+
+    public string $bottom_label = '';
+
+    public string $criteria = '';
+
     public bool $is_dependency = false;
 
     public int $revision = 1;
 
     public function fields(): array
     {
-        $fields = $this->validate(['kind' => ['required', Rule::in(SandboxProposals::KINDS)], 'title' => 'required|string|max:255', 'notes_md' => 'nullable|string|max:50000', 'uncertainty' => 'nullable|string|max:255', 'alternative' => 'nullable|string|max:255', 'lane' => 'nullable|string|max:255', 'position' => 'required|numeric|between:-99999999999,99999999999', 'date_label' => 'nullable|string|max:255', 'aliases' => 'nullable|string|max:10000', 'roles' => 'nullable|string|max:3000', 'domain' => 'nullable|string|max:255', 'type_id' => 'nullable|integer|min:1', 'measure' => 'nullable|string|max:255', 'source_key' => 'nullable|string|max:80', 'target_key' => 'nullable|string|max:80', 'period' => 'nullable|string|max:255', 'is_dependency' => 'boolean']);
-        $additional = collect($fields)->only(['domain', 'type_id', 'measure', 'source_key', 'target_key', 'period', 'is_dependency'])->all();
+        $fields = $this->validate(['kind' => ['required', Rule::in(SandboxProposals::KINDS)], 'title' => 'required|string|max:255', 'notes_md' => 'nullable|string|max:50000', 'uncertainty' => 'nullable|string|max:255', 'alternative' => 'nullable|string|max:255', 'lane' => 'nullable|string|max:255', 'position' => 'required|numeric|between:-99999999999,99999999999', 'date_label' => 'nullable|string|max:255', 'aliases' => 'nullable|string|max:10000', 'roles' => 'nullable|string|max:3000', 'domain' => 'nullable|string|max:255', 'type_id' => 'nullable|integer|min:1', 'measure' => 'nullable|string|max:255', 'source_key' => 'nullable|string|max:80', 'target_key' => 'nullable|string|max:80', 'period' => 'nullable|string|max:255', 'keep_previous_name' => 'boolean', 'is_dependency' => 'boolean', 'left_label' => 'nullable|string|max:255', 'right_label' => 'nullable|string|max:255', 'top_label' => 'nullable|string|max:255', 'bottom_label' => 'nullable|string|max:255', 'criteria' => 'nullable|string|max:5000']);
+        $additional = collect($fields)->only(['domain', 'type_id', 'measure', 'source_key', 'target_key', 'period', 'keep_previous_name', 'is_dependency', 'left_label', 'right_label', 'top_label', 'bottom_label'])->all();
         $additional['aliases'] = array_values(array_filter(array_map('trim', preg_split('/\\r?\\n/', $this->aliases))));
         $additional['roles'] = array_values(array_filter(array_map('trim', explode(',', $this->roles))));
-        $fields = collect($fields)->except(['aliases', 'roles', 'domain', 'type_id', 'measure', 'source_key', 'target_key', 'period', 'is_dependency'])->all();
+        $fields = collect($fields)->except(['aliases', 'roles', 'domain', 'type_id', 'measure', 'source_key', 'target_key', 'period', 'keep_previous_name', 'is_dependency', 'left_label', 'right_label', 'top_label', 'bottom_label'])->all();
+        $additional['criteria'] = array_values(array_filter(array_map('trim', preg_split('/\\r?\\n/', $this->criteria))));
+        unset($fields['criteria']);
         $fields['fields'] = $additional;
 
         return $fields;

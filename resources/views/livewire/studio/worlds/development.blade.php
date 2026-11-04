@@ -33,6 +33,7 @@
             @if($entry)
                 <div class="world-entry-heading"><div><h1>{{ in_array($section, ['people','entries']) ? $entry->name : $entry->title }}</h1>@if($section === 'people')<div class="world-aliases">@foreach($entry->roles as $personRole)<span>{{ $personRole }}</span>@endforeach</div>@endif</div>@can('update', $world)@if(!$entry->trashed())<flux:button icon="pencil-square" size="sm" wire:click="edit('{{ $kinds[$section] }}', {{ $entry->id }})">Edit</flux:button>@endif@endcan</div>
                 @if($entry->trashed())<p class="studio-alert">Archived. Existing links and finished drafts are retained.</p>@endif
+                @if($section === 'people' && !$entry->trashed())<div class="sandbox-actions"><flux:button size="sm" icon="language" :href="route('studio.world.sandbox', ['world' => $world, 'nameFor' => $entry->id])">Explore names</flux:button></div>@endif
                 @can('update', $world)<div class="world-archive-actions"><flux:button size="sm" :icon="$entry->trashed() ? 'arrow-uturn-left' : 'archive-box'" wire:click="archiveRecord({{ $entry->id }}, {{ $entry->revision }}, {{ $entry->trashed() ? 'false' : 'true' }})">{{ $entry->trashed() ? 'Restore' : 'Archive' }}</flux:button></div>@endcan
                 @if($section === 'entries')
                     <p class="world-state">{{ $entry->type->name }}</p>

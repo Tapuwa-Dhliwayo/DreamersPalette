@@ -1,5 +1,5 @@
 @if($selected?->canonised_at)<p class="sandbox-notice">Accepted into canon. Fork this piece to propose further changes.</p>@endif
-<form wire:submit="saveIdea" class="sandbox-form" @input="dirty=true" @submit="dirty=false">
+<form wire:submit="saveIdea" class="sandbox-form" @input="dirty=true">
     <flux:select label="Kind" wire:model.live="ideaForm.kind" :disabled="$selected && !$selected->canEdit()">@foreach($kinds as $kind)<option value="{{ $kind }}">{{ ucfirst($kind) }}</option>@endforeach</flux:select>
     <flux:input label="Name or title" wire:model="ideaForm.title" :disabled="$selected && !$selected->canEdit()" />
     <flux:textarea label="Details and reasoning" wire:model="ideaForm.notes_md" rows="7" :disabled="$selected && !$selected->canEdit()" />
@@ -7,6 +7,7 @@
     <flux:input label="Scenario / alternative" wire:model="ideaForm.alternative" placeholder="For example: Five-cycle version" :disabled="$selected && !$selected->canEdit()" />
     <details><summary>Timeline details</summary><flux:input label="Lane" wire:model="ideaForm.lane" :disabled="$selected && !$selected->canEdit()" /><flux:input label="Sequence position" type="number" step="0.001" wire:model="ideaForm.position" :disabled="$selected && !$selected->canEdit()" /><flux:input label="Fictional date or era" wire:model="ideaForm.date_label" :disabled="$selected && !$selected->canEdit()" /></details>
     @if(in_array($ideaForm->kind,['person','entry','system']))<flux:textarea label="Aliases (one per line)" wire:model="ideaForm.aliases" rows="2" :disabled="$selected && !$selected->canEdit()" />@endif
+    @if($selected?->target_key && $ideaForm->kind==='person')<flux:checkbox label="Keep the previous established name as an alias when accepted" wire:model="ideaForm.keep_previous_name" :disabled="!$selected->canEdit()" />@endif
     @if($ideaForm->kind==='person')<flux:input label="Roles (comma-separated)" wire:model="ideaForm.roles" :disabled="$selected && !$selected->canEdit()" /><flux:input label="Domain / allegiance" wire:model="ideaForm.domain" :disabled="$selected && !$selected->canEdit()" />@endif
     @if($ideaForm->kind==='entry')<flux:select label="Entry type" wire:model="ideaForm.type_id" :disabled="$selected && !$selected->canEdit()"><option value="">Choose type</option>@foreach($entryTypes as $type)<option value="{{ $type->id }}">{{ $type->name }}</option>@endforeach</flux:select>@endif
     @if($ideaForm->kind==='arc')<flux:input label="Arc measure" wire:model="ideaForm.measure" :disabled="$selected && !$selected->canEdit()" />@endif
@@ -15,6 +16,9 @@
         <flux:select label="To established subject" wire:model="ideaForm.target_key" :disabled="$selected && !$selected->canEdit()"><option value="">Choose subject</option>@foreach($catalogue as $record)@if(in_array($record['kind'],['person','entry','system']))<option value="{{ $record['key'] }}">{{ $record['name'] }}</option>@endif @endforeach</flux:select>
         <flux:input label="Fictional period" wire:model="ideaForm.period" :disabled="$selected && !$selected->canEdit()" /><flux:checkbox label="From depends on To" wire:model="ideaForm.is_dependency" :disabled="$selected && !$selected->canEdit()" />
     @endif
+    @if($ideaForm->kind==='alignment')@foreach(['left_label'=>'Left axis','right_label'=>'Right axis','top_label'=>'Top axis','bottom_label'=>'Bottom axis'] as $field=>$label)<flux:input :label="$label" wire:model="ideaForm.{{ $field }}" :disabled="$selected && !$selected->canEdit()" />@endforeach @endif
+    @if($ideaForm->kind==='comparison')<flux:textarea label="Criteria (one per line)" wire:model="ideaForm.criteria" rows="4" :disabled="$selected && !$selected->canEdit()" />@endif
+    @if($ideaForm->kind==='map')<p class="sandbox-help">New map proposals create a blank map with these notes. Add images, pins, scale and journeys in Maps after acceptance. Existing map geometry and images are preserved.</p>@endif
     @if(!$selected || $selected->canEdit())<flux:button type="submit" variant="primary" icon="check">Save sandbox idea</flux:button>@endif
 </form>
 @if($selected)

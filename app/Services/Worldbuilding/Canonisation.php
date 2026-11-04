@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\World;
 use App\Models\WorldEntryType;
 use App\Models\WorldExercise;
+use App\Models\WorldMap;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -17,7 +18,7 @@ use Illuminate\Validation\ValidationException;
 
 class Canonisation
 {
-    private const RELATIONS = ['person' => 'people', 'entry' => 'entries', 'event' => 'events', 'relationship' => 'relationships', 'system' => 'systems', 'arc' => 'arcs', 'knowledge' => 'knowledge', 'investigation' => 'investigations'];
+    private const RELATIONS = ['person' => 'people', 'entry' => 'entries', 'event' => 'events', 'relationship' => 'relationships', 'system' => 'systems', 'arc' => 'arcs', 'knowledge' => 'knowledge', 'investigation' => 'investigations', 'map' => 'maps', 'alignment' => 'alignmentCharts', 'comparison' => 'comparisons'];
 
     public function __construct(private WorldContext $context) {}
 
@@ -63,7 +64,15 @@ class Canonisation
                 }
             }
 
-            return $link->only(['id', 'source_id', 'target_id', 'kind', 'label', 'notes_md', 'revision']);
+            $fields = $link->only(['id', 'source_id', 'target_id', 'kind', 'label', 'notes_md', 'revision']);
+            $fields['endpoints'] = [];
+            foreach ([$link->source_id, $link->target_id] as $id) {
+                $endpoint = $exercise->ideas()->findOrFail($id);
+                $target = $endpoint->target_key ? $this->context->target($exercise->world, $endpoint->target_key) : null;
+                $fields['endpoints'][] = ['id' => $id, 'title' => $endpoint->title, 'revision' => $endpoint->revision, 'target_key' => $endpoint->target_key, 'target_revision' => $target?->revision];
+            }
+
+            return $fields;
         })->all();
         $review = ['exercise_id' => $exercise->id, 'ids' => $ids, 'changes' => $changes, 'links' => $links];
         $review['fingerprint'] = hash('sha256', json_encode($review, JSON_THROW_ON_ERROR));
@@ -90,6 +99,10 @@ class Canonisation
                     $target->newQuery()->whereKey($target->id)->lockForUpdate()->firstOrFail();
                 }
             }
+            foreach ($exercise->ideas()->whereIn('id', array_unique(array_merge($review['ids'] ?? [], array_column($review['links'] ?? [], 'source_id'), array_column($review['links'] ?? [], 'target_id'))))->whereNotNull('target_key')->get() as $reference) {
+                $target = $this->context->target($world, $reference->target_key);
+                $target->newQuery()->whereKey($target->id)->lockForUpdate()->firstOrFail();
+            }
             $current = $this->review($exercise, $review['ids'] ?? []);
             if (! hash_equals($current['fingerprint'], $review['fingerprint'] ?? '')) {
                 $this->conflict('The proposals or their connections changed. Review the latest changes before accepting.');
@@ -110,6 +123,9 @@ class Canonisation
                 } else {
                     $target = $change['kind'] === 'system' ? MagicSystem::start($world, $change['after'], $author) : $world->{self::RELATIONS[$change['kind']]}()->create($change['after']);
                     $target->refresh();
+                }
+                if ($target instanceof WorldMap) {
+                    $target->captureVersion($author->id);
                 }
                 $key = $change['kind'].':'.$target->id;
                 $resolved[$idea->id] = $key;
@@ -157,9 +173,18 @@ class Canonisation
             foreach ($changes as &$change) {
                 if (isset($change['key'])) {
                     $change['after'] = $this->context->snapshot($this->context->target($world, $change['key']));
+                    if ($change['idea_id']) {
+                        $exercise->ideas()->whereKey($change['idea_id'])->update(['target_revision' => $change['after']['revision']]);
+                    }
                 }
             }
             unset($change);
+            foreach ($changes as &$entry) {
+                if (isset($entry['participant'])) {
+                    $entry['after_revision'] = $this->context->target($world, $entry['participant']['event'])->revision;
+                }
+            }
+            unset($entry);
 
             return $exercise->changes()->create(['user_id' => $author->id, 'request_uuid' => $requestUuid, 'changes' => $changes]);
         });
@@ -202,6 +227,9 @@ class Canonisation
                 } else {
                     $target->revise(collect($entry['before'])->only($target->getFillable())->all(), $target->revision);
                 }
+                if ($entry['before'] !== null && $target instanceof WorldMap) {
+                    $target->captureVersion(auth()->id());
+                }
                 if ($entry['idea_id']) {
                     $idea = $exercise->ideas()->findOrFail($entry['idea_id']);
                     $idea->forceFill(['canonised_at' => null, 'target_key' => $entry['before'] ? $entry['key'] : null, 'target_revision' => $entry['before'] ? $target->fresh()->revision : null, 'revision' => $idea->revision + 1])->save();
@@ -222,9 +250,24 @@ class Canonisation
             'arc' => ['title' => $idea->title, 'notes_md' => $idea->notes_md, 'measure' => $custom['measure'] ?? $target?->measure ?? 'Pressure'],
             'knowledge' => ['title' => $idea->title, 'truth_md' => $custom['truth_md'] ?? $idea->notes_md, 'notes_md' => $custom['notes_md'] ?? $target?->notes_md, 'knowers' => $target?->knowers ?? []],
             'investigation' => ['title' => $idea->title, 'question_md' => $idea->notes_md ?? '', 'subjects' => $target?->subjects ?? [], 'evidence' => $target?->evidence ?? [], 'is_resolved' => $target?->is_resolved ?? false],
+            'map' => ['title' => $idea->title, 'notes_md' => $idea->notes_md] + ($target ? [] : ['width_px' => 1200, 'height_px' => 800, 'unit' => 'km', 'pins' => [], 'journey' => []]),
+            'alignment' => ['title' => $idea->title, 'notes_md' => $idea->notes_md, 'left_label' => $custom['left_label'] ?? $target?->left_label, 'right_label' => $custom['right_label'] ?? $target?->right_label, 'top_label' => $custom['top_label'] ?? $target?->top_label, 'bottom_label' => $custom['bottom_label'] ?? $target?->bottom_label],
+            'comparison' => ['title' => $idea->title, 'notes_md' => $idea->notes_md, 'criteria' => $custom['criteria'] ?? $target?->criteria ?? [], 'subjects' => $target?->subjects ?? []],
             'relationship' => ['source_key' => $custom['source_key'] ?? $target?->source_key, 'target_key' => $custom['target_key'] ?? $target?->target_key, 'label' => $idea->title, 'period' => $custom['period'] ?? $target?->period, 'notes_md' => $idea->notes_md, 'is_dependency' => $custom['is_dependency'] ?? $target?->is_dependency ?? false],
         };
+        if ($idea->kind === 'person' && $target && $target->name !== $idea->title && ($custom['keep_previous_name'] ?? false)) {
+            $fields['aliases'] = array_values(array_unique([...$fields['aliases'], $target->name]));
+        }
         Validator::make($fields, ['aliases' => ['sometimes', 'array', 'max:100'], 'aliases.*' => ['string', 'max:255'], 'roles' => ['sometimes', 'array', 'max:30'], 'roles.*' => ['string', 'max:100'], 'domain' => ['nullable', 'string', 'max:255'], 'measure' => ['sometimes', 'string', 'max:255']])->validate();
+        if ($idea->kind === 'alignment') {
+            Validator::make($fields, ['left_label' => 'required|string|max:255', 'right_label' => 'required|string|max:255', 'top_label' => 'required|string|max:255', 'bottom_label' => 'required|string|max:255'])->validate();
+        }
+        if ($idea->kind === 'comparison') {
+            Validator::make($fields, ['criteria' => 'required|array|min:1|max:20', 'criteria.*' => 'required|string|max:255|distinct'])->validate();
+            if ($target && $fields['criteria'] !== $target->criteria) {
+                $this->conflict('Edit comparison criteria in the Compare tool so existing cells remain aligned. Sandbox updates can change its title and notes.');
+            }
+        }
         if ($idea->kind === 'entry' && ! WorldEntryType::whereKey($fields['type_id'])->exists()) {
             $this->conflict('Choose an encyclopedia entry type in the idea details before accepting.');
         }

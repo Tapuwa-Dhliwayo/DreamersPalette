@@ -1,4 +1,4 @@
-<form wire:submit="saveExercise" class="sandbox-form" @input="dirty=true" @submit="dirty=false">
+<form wire:submit="saveExercise" class="sandbox-form" @input="dirty=true">
     <flux:input label="Exercise title" wire:model="exerciseForm.title" placeholder="A question, a scene, a possibility" />
     <flux:textarea label="What are we exploring?" wire:model="exerciseForm.purpose" rows="3" />
     <flux:textarea label="Instructions for this exercise" wire:model="exerciseForm.instructions" rows="3" />

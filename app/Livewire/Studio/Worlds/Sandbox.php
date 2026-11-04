@@ -79,11 +79,13 @@ class Sandbox extends Component
 
     public function mount(World $world): void
     {
-        $this->authorize('view', $world);
+        $this->authorize('update', $world);
         $this->world = $world;
         $this->sendRequest = (string) Str::uuid();
         if ($this->exerciseId) {
             $this->openExercise($this->exerciseId);
+        } elseif (request()->integer('nameFor')) {
+            $this->beginNaming(request()->integer('nameFor'));
         }
     }
 
@@ -103,6 +105,22 @@ class Sandbox extends Component
 
             return $callback($this->exercise(true));
         });
+    }
+
+    private function beginNaming(int $personId): void
+    {
+        $this->authorize('update', $this->world);
+        $person = $this->world->people()->findOrFail($personId);
+        DB::transaction(function () use ($person): void {
+            $world = World::lockForUpdate()->findOrFail($this->world->id);
+            $this->authorize('update', $world);
+            $exercise = $world->exercises()->firstOrCreate(['title' => 'Names for '.$person->name], ['purpose' => 'Explore names for this character without changing their established name.', 'context_keys' => ['person:'.$person->id], 'passages' => []]);
+            $this->openExercise($exercise->id);
+            $this->referenceKey = 'person:'.$person->id;
+            $this->reference(app(WorldContext::class));
+        });
+        $this->conversationForm->mode = 'naming';
+        $this->conversationForm->content = 'Suggest names for '.$person->name.'. Use the reviewed cultural conventions, keep origins honest, and explain how the candidates fit.';
     }
 
     public function newExercise(): void
@@ -151,6 +169,7 @@ class Sandbox extends Component
             }
         });
         $this->openExercise($this->exerciseId);
+        $this->dispatch('sandbox-saved');
         $this->notice = 'Exercise and selected context saved.';
     }
 
@@ -187,8 +206,9 @@ class Sandbox extends Component
             }
             $this->ideaForm->fill($fields);
             $custom = $idea->fields ?? [];
-            $this->ideaForm->fill(collect($custom)->only(['domain', 'type_id', 'measure', 'source_key', 'target_key', 'period', 'is_dependency'])->map(fn ($field, $key) => $field ?? ($key === 'type_id' ? null : ''))->all());
+            $this->ideaForm->fill(collect($custom)->only(['domain', 'type_id', 'measure', 'source_key', 'target_key', 'period', 'keep_previous_name', 'is_dependency', 'left_label', 'right_label', 'top_label', 'bottom_label'])->map(fn ($field, $key) => $field ?? ($key === 'type_id' ? null : ($key === 'is_dependency' || $key === 'keep_previous_name' ? false : '')))->all());
             $this->ideaForm->aliases = implode("\n", $custom['aliases'] ?? []);
+            $this->ideaForm->criteria = implode("\n", $custom['criteria'] ?? []);
             $this->ideaForm->roles = implode(', ', $custom['roles'] ?? []);
         }
         $this->panel = 'idea';
@@ -214,6 +234,7 @@ class Sandbox extends Component
             return $exercise->ideas()->create($fields + ['x' => 40 + ($count % 3) * 260, 'y' => 40 + intdiv($count, 3) * 170])->id;
         });
         $this->editIdea($id);
+        $this->dispatch('sandbox-saved');
         $this->notice = 'Idea saved in the sandbox. Canon is unchanged.';
     }
 
@@ -227,7 +248,7 @@ class Sandbox extends Component
                 return $existing->id;
             }
 
-            return $exercise->ideas()->create(['kind' => in_array($kind, SandboxProposals::KINDS, true) ? $kind : 'thought', 'title' => $record->name ?? $record->title ?? $record->label, 'notes_md' => $record->notes_md ?? $record->truth_md ?? $record->question_md ?? '', 'target_key' => $this->referenceKey, 'target_revision' => $record->revision, 'fields' => collect($record->attributesToArray())->only(['aliases', 'roles', 'domain', 'type_id', 'measure', 'source_key', 'target_key', 'period', 'is_dependency'])->all(), 'position' => $record->position ?? 0, 'date_label' => $record->date_label ?? '', 'x' => 40, 'y' => 40])->id;
+            return $exercise->ideas()->create(['kind' => in_array($kind, SandboxProposals::KINDS, true) ? $kind : 'thought', 'title' => $record->name ?? $record->title ?? $record->label, 'notes_md' => $record->notes_md ?? $record->truth_md ?? $record->question_md ?? '', 'target_key' => $this->referenceKey, 'target_revision' => $record->revision, 'fields' => collect($record->attributesToArray())->only(['aliases', 'roles', 'domain', 'type_id', 'measure', 'source_key', 'target_key', 'period', 'keep_previous_name', 'is_dependency', 'left_label', 'right_label', 'top_label', 'bottom_label', 'criteria'])->all(), 'position' => $record->position ?? 0, 'date_label' => $record->date_label ?? '', 'x' => 40, 'y' => 40])->id;
         });
         $this->editIdea($id);
         $this->notice = 'Established record referenced. Edits here remain proposals until reviewed.';
@@ -274,7 +295,7 @@ class Sandbox extends Component
             // Layout remains editable after canonisation; it never changes the accepted proposal content.
             $idea->revise(['x' => $x, 'y' => $y], $revision);
         });
-        if ($this->ideaId === $id) {
+        if ($this->ideaId === $id && $this->ideaForm->revision === $revision) {
             $this->ideaForm->revision = $revision + 1;
         }
 
@@ -366,7 +387,7 @@ class Sandbox extends Component
 
     public function refreshConversation(): void
     {
-        $exercise = $this->exercise();
+        $exercise = $this->exercise(true);
         $exercise->turns()->whereIn('status', ['queued', 'running'])->where('updated_at', '<', now()->subSeconds(config('worldbuilding.timeout') + 60))->update(['status' => 'failed', 'error' => 'This response was interrupted or timed out. Received writing is retained. Send a new request to continue.', 'finished_at' => now()]);
     }
 
@@ -466,6 +487,7 @@ class Sandbox extends Component
             }
         });
         $this->editConvention();
+        $this->dispatch('sandbox-saved');
         $this->notice = 'Naming guidance saved. Only reviewed conventions are sent to the assistant.';
     }
 
@@ -473,16 +495,25 @@ class Sandbox extends Component
     {
         $this->authorize('update', $this->world);
         $source = 'Pinned ChatGPT chat: Naming Scheme Feedback (6a6f0e2a-6064-83ea-979a-17c59598ea85). Assistant interpretations; not yet verified by the author.';
-        foreach ([['Iravain · draft', 'Proposed Greco-Roman influences with fantasy adaptations. Review whether this describes the culture accurately; do not infer a real-world origin for invented names.', 'Tiberius, Tamarius, Samuelá, Romulús, Darohym'], ['Zivarain · draft', 'Proposed Roman/Latin influences with historical and invented adaptations. Social position may affect titles and lineage; avoid assuming common names must be short. Verify this guidance.', 'Aurelia, Marcus, Horatia, Brutus, Sergius, Vertilius, Titus, Graevitius'], ['Gramite · draft', 'Proposed Southern African/Bantu influences, particularly Shona, Ndebele and Zulu. Distinguish real names from fantasy adaptations; verify claimed language origins and meanings. Mirroring a name can be phonetic or symbolic.', 'Uphanti, Nonsi, Nomphi']] as [$name, $guidance, $examples]) {
-            $this->conventions()->firstOrCreate(['world_id' => $this->world->id, 'name' => $name], ['user_id' => auth()->id(), 'guidance' => $guidance, 'examples' => $examples, 'source' => $source, 'reviewed' => false]);
-        }
+        DB::transaction(function () use ($source): void {
+            $world = World::lockForUpdate()->findOrFail($this->world->id);
+            $this->authorize('update', $world);
+            foreach ([['Iravain · draft', 'Proposed Greco-Roman influences with fantasy adaptations. Review whether this describes the culture accurately; do not infer a real-world origin for invented names.', 'Tiberius, Tamarius, Samuelá, Romulús, Darohym'], ['Zivarain · draft', 'Proposed Roman/Latin influences with historical and invented adaptations. Social position may affect titles and lineage; avoid assuming common names must be short. Verify this guidance.', 'Aurelia, Marcus, Horatia, Brutus, Sergius, Vertilius, Titus, Graevitius'], ['Gramite · draft', 'Proposed Southern African/Bantu influences, particularly Shona, Ndebele and Zulu. Distinguish real names from fantasy adaptations; verify claimed language origins and meanings. Mirroring a name can be phonetic or symbolic.', 'Uphanti, Nonsi, Nomphi']] as [$name, $guidance, $examples]) {
+                if (! $this->conventions()->where('world_id', $this->world->id)->where('name', $name)->exists()) {
+                    $convention = new NamingConvention(['name' => $name, 'guidance' => $guidance, 'examples' => $examples, 'source' => $source, 'reviewed' => false]);
+                    $convention->user_id = auth()->id();
+                    $convention->world_id = $this->world->id;
+                    $convention->save();
+                }
+            }
+        });
         $this->notice = 'Three draft conventions imported from your pinned chat. Review and mark each one before it is used.';
         $this->panel = 'naming';
     }
 
     public function render(WorldContext $context)
     {
-        $this->authorize('view', $this->world);
+        $this->authorize('update', $this->world);
         $exercise = $this->exerciseId ? $this->exercise() : null;
         $ideas = $exercise?->ideas()->when($this->showArchived, fn ($query) => $query->onlyTrashed())->get() ?? collect();
         $activeIds = $ideas->pluck('id');

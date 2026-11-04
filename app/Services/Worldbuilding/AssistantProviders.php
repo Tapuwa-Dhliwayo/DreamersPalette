@@ -72,10 +72,11 @@ class AssistantProviders
             if (! is_file($auth)) {
                 throw new RuntimeException('Codex file-based login was not found. Sign in with Codex locally first.');
             }
+            $authFingerprint = hash_file('sha256', $auth);
             copy($auth, $home.'/auth.json');
             chmod($home.'/auth.json', 0600);
             $environment['CODEX_HOME'] = $home;
-            $command = [$this->binary('codex'), 'exec', '--json', '--ephemeral', '--skip-git-repo-check', '--ignore-rules', '--sandbox', 'read-only', '--disable', 'shell_tool', '--disable', 'apps', '--disable', 'plugins', '-c', 'web_search="disabled"', '-c', 'check_for_update_on_startup=false', '-c', 'notify=[]', '--model', $connection->model, '-'];
+            $command = [$this->binary('codex'), 'exec', '--json', '--ephemeral', '--skip-git-repo-check', '--ignore-rules', '--sandbox', 'read-only', '--disable', 'shell_tool', '--disable', 'apps', '--disable', 'plugins', '--disable', 'view_image', '--disable', 'image_generation', '--disable', 'multi_agent', '--disable', 'in_app_browser', '-c', 'web_search="disabled"', '-c', 'check_for_update_on_startup=false', '-c', 'notify=[]', '--model', $connection->model, '-'];
         }
         if ($connection->model === 'default') {
             $modelIndex = array_search('--model', $command, true);
@@ -140,6 +141,27 @@ class AssistantProviders
         } finally {
             if ($process->isRunning()) {
                 $process->stop(1);
+            }
+            if (isset($auth, $authFingerprint, $home) && is_file($home.'/auth.json') && is_file($auth) && hash_file('sha256', $auth) === $authFingerprint) {
+                // Preserve a provider-issued token refresh only if the source login was not changed elsewhere.
+                $refreshed = file_get_contents($home.'/auth.json');
+                $decoded = json_decode($refreshed, true);
+                if (is_array($decoded) && hash('sha256', $refreshed) !== $authFingerprint) {
+                    $handle = fopen($auth, 'r+');
+                    if ($handle && flock($handle, LOCK_EX)) {
+                        $current = stream_get_contents($handle);
+                        if (hash('sha256', $current) === $authFingerprint) {
+                            rewind($handle);
+                            fwrite($handle, $refreshed);
+                            ftruncate($handle, strlen($refreshed));
+                            fflush($handle);
+                        }
+                        flock($handle, LOCK_UN);
+                    }
+                    if ($handle) {
+                        fclose($handle);
+                    }
+                }
             }
             File::deleteDirectory($directory);
         }

@@ -10,7 +10,6 @@ use App\Models\WorldExercise;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\Process\Process;
 
 class AssistantConversation
 {
@@ -40,9 +39,10 @@ class AssistantConversation
 
             return $turn;
         });
+        $turn->refresh();
         if ($turn->status === 'queued') {
-            $command = 'nohup '.escapeshellarg(PHP_BINARY).' '.escapeshellarg(base_path('artisan')).' studio:assistant-turn '.(int) $turn->id.' > /dev/null 2>&1 < /dev/null &';
-            Process::fromShellCommandline($command, base_path())->run();
+            $command = 'setsid nohup '.escapeshellarg(PHP_BINARY).' '.escapeshellarg(base_path('artisan')).' studio:assistant-turn '.(int) $turn->id.' > '.escapeshellarg(storage_path('logs/assistant-worker.log')).' 2>&1 < /dev/null &';
+            exec($command);
         }
 
         return $turn;

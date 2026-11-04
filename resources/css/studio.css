@@ -1866,3 +1866,14 @@ a.thinking-subject:hover { text-decoration: underline; text-underline-offset: 4p
 .sandbox-timeline-lane li[draggable=true] { cursor:grab; }
 .sandbox-timeline-lane li>button { flex:1; padding:.4rem 0; }
 .sandbox-timeline-move { display:flex; flex-wrap:wrap; gap:.5rem; font-size:.75rem; color:#285e6a; }
+/* Fit all three working areas inside the existing studio frame. */
+.world-sandbox { overflow:hidden; }
+.world-sandbox>.world-tools, .world-sandbox>.sandbox-heading, .world-sandbox>.sandbox-toolbar, .world-sandbox>.sandbox-notice, .world-sandbox>.sandbox-errors { flex-shrink:0; }
+.sandbox-workspace { flex:1; min-height:0; height:auto; }
+.sandbox-board-scroll { min-height:0; }
+.sandbox-start { min-height:0; overflow:auto; }
+.assistant-settings { overflow:auto; }
+@media(max-width:1200px) {
+    .world-sandbox { overflow:auto; }
+    .sandbox-workspace { flex:none; min-height:650px; }
+}
