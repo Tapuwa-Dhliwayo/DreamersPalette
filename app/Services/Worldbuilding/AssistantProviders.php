@@ -3,6 +3,8 @@
 namespace App\Services\Worldbuilding;
 
 use App\Models\AssistantConnection;
+use App\Models\AssistantRequest;
+use App\Models\AssistantTurn;
 use Closure;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
@@ -22,7 +24,7 @@ class AssistantProviders
         if (! $connection->isLocal()) {
             return $connection->credential ? 'API key saved · connection checked when sending' : 'API key required';
         }
-        if (! config('worldbuilding.local_connections') || $connection->user_id !== (int) config('worldbuilding.local_user_id')) {
+        if (! self::allowsLocal($connection->user_id)) {
             return 'Local subscription connection unavailable for this account';
         }
         $process = new Process([$this->binary($connection->provider), ...($connection->provider === 'codex' ? ['login', 'status'] : ['auth', 'status'])]);
@@ -36,17 +38,139 @@ class AssistantProviders
         }
     }
 
-    public function stream(AssistantConnection $connection, string $prompt, Closure $append, Closure $cancelled): void
-    {
-        if (! $connection->enabled) {
-            throw new RuntimeException('This connection is disconnected. Reconnect it before sending.');
+    public function stream(
+        AssistantConnection $connection,
+        string $prompt,
+        Closure $append,
+        Closure $cancelled,
+        AssistantTurn $turn,
+        string $purpose = 'response',
+    ): void {
+        if ($cancelled()) {
+            throw new RuntimeException('Stopped before starting the next request.');
         }
-        if ($connection->isLocal()) {
-            $this->local($connection, $prompt, $append, $cancelled);
+        $request = app(AssistantUsage::class)->begin($connection, $turn, $purpose);
+        try {
+            if ($connection->isLocal()) {
+                $this->local($connection, $prompt, $append, $cancelled, $request);
+            } else {
+                $this->api($connection, $prompt, $append, $cancelled, $request);
+            }
+            $request->finish('completed');
+        } catch (\Throwable $exception) {
+            $request->finish($cancelled() ? 'cancelled' : 'failed');
+            throw $exception;
+        }
+    }
+
+    // Pipes a whole reply into a string. The heartbeat is a guarded update so a worker that was stopped or superseded cannot revive its turn.
+    public function streamText(AssistantConnection $connection, string $prompt, Closure $cancelled, AssistantTurn $turn, string $purpose): string
+    {
+        $text = '';
+        $lastBeat = 0;
+        $this->stream($connection, $prompt, function ($delta) use (&$text, &$lastBeat, $turn): void {
+            $text .= $delta;
+            if (microtime(true) - $lastBeat > 2) {
+                AssistantTurn::whereKey($turn->id)->where('status', 'running')->where('run_uuid', $turn->run_uuid)->update(['updated_at' => now()]);
+                $lastBeat = microtime(true);
+            }
+        }, $cancelled, $turn, $purpose);
+
+        return $text;
+    }
+
+    // Local subscription logins belong to the one configured author and are never offered to anyone else.
+    public static function allowsLocal(int $userId): bool
+    {
+        return config('worldbuilding.local_connections') && $userId === (int) config('worldbuilding.local_user_id');
+    }
+
+    public function availableProviders(int $userId): array
+    {
+        return collect(self::PROVIDERS)
+            ->reject(fn ($label, $provider) => in_array($provider, ['codex', 'claude'], true) && ! self::allowsLocal($userId))
+            ->all();
+    }
+
+    // Models are often wrapped in a markdown fence; the callers decide what an unreadable reply means.
+    public static function decodeJsonReply(string $reply): mixed
+    {
+        return json_decode(preg_replace('/^```(?:json)?\s*|\s*```$/', '', trim($reply)), true, 32, JSON_THROW_ON_ERROR);
+    }
+
+    public static function anthropicHeaders(string $key): array
+    {
+        return ['x-api-key' => $key, 'anthropic-version' => '2023-06-01'];
+    }
+
+    // Provider subprocesses must authenticate with the local login only, never with keys inherited from this app's environment.
+    public static function isolatedEnvironment(): array
+    {
+        return [
+            'CLAUDECODE' => false,
+            'ANTHROPIC_API_KEY' => false,
+            'ANTHROPIC_AUTH_TOKEN' => false,
+            'ANTHROPIC_BASE_URL' => false,
+            'OPENAI_API_KEY' => false,
+        ];
+    }
+
+    public static function codexAuthPath(): string
+    {
+        return (getenv('CODEX_HOME') ?: getenv('HOME').'/.codex').'/auth.json';
+    }
+
+    // Preserve a provider-issued token refresh only if the source login was not changed elsewhere meanwhile.
+    public static function writeBackRefreshedLogin(string $source, string $refreshedFile, string $fingerprint): void
+    {
+        if (! is_file($source) || ! is_file($refreshedFile) || hash_file('sha256', $source) !== $fingerprint) {
+            return;
+        }
+        $refreshed = file_get_contents($refreshedFile);
+        if (! is_array(json_decode($refreshed, true)) || hash('sha256', $refreshed) === $fingerprint) {
+            return;
+        }
+        $handle = fopen($source, 'r+');
+        if (! $handle) {
+            return;
+        }
+        if (flock($handle, LOCK_EX)) {
+            if (hash('sha256', stream_get_contents($handle)) === $fingerprint) {
+                rewind($handle);
+                fwrite($handle, $refreshed);
+                ftruncate($handle, strlen($refreshed));
+                fflush($handle);
+            }
+            flock($handle, LOCK_UN);
+        }
+        fclose($handle);
+    }
+
+    public function refreshAllowance(AssistantConnection $connection): void
+    {
+        if ($connection->provider !== 'openrouter') {
+            $connection->forceFill(['allowance' => ['status' => 'unavailable'], 'allowance_checked_at' => now()])->save();
 
             return;
         }
-        $this->api($connection, $prompt, $append, $cancelled);
+        if (! $connection->enabled || ! $connection->credential) {
+            throw new RuntimeException('Reconnect this account before checking its allowance.');
+        }
+        $response = Http::withToken($connection->credential)->connectTimeout(5)->timeout(10)->get('https://openrouter.ai/api/v1/key');
+        if (! $response->successful()) {
+            $connection->forceFill(['allowance' => ['status' => 'failed'], 'allowance_checked_at' => now()])->save();
+
+            return;
+        }
+        $remaining = $response->json('data.limit_remaining');
+        $connection->forceFill([
+            'allowance' => [
+                'status' => is_numeric($remaining) ? 'reported' : 'unavailable',
+                'remaining_usd' => is_numeric($remaining) ? max(0, (float) $remaining) : null,
+                'reset' => $response->json('data.limit_reset'),
+            ],
+            'allowance_checked_at' => now(),
+        ])->save();
     }
 
     private function binary(string $provider): string
@@ -54,21 +178,21 @@ class AssistantProviders
         return config('worldbuilding.'.$provider.'_binary');
     }
 
-    private function local(AssistantConnection $connection, string $prompt, Closure $append, Closure $cancelled): void
+    private function local(AssistantConnection $connection, string $prompt, Closure $append, Closure $cancelled, AssistantRequest $usage): void
     {
-        if (! config('worldbuilding.local_connections') || $connection->user_id !== (int) config('worldbuilding.local_user_id')) {
+        if (! self::allowsLocal($connection->user_id)) {
             throw new RuntimeException('Local subscription access is only enabled for the configured local author.');
         }
         $directory = sys_get_temp_dir().'/dreamers-assistant-'.Str::uuid();
         File::ensureDirectoryExists($directory, 0700);
-        $environment = ['CLAUDECODE' => false, 'ANTHROPIC_API_KEY' => false, 'ANTHROPIC_AUTH_TOKEN' => false, 'ANTHROPIC_BASE_URL' => false, 'OPENAI_API_KEY' => false];
+        $environment = self::isolatedEnvironment();
         if ($connection->provider === 'claude') {
             $command = [$this->binary('claude'), '--print', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--setting-sources', '', '--settings', '{"disableAllHooks":true}', '--disable-slash-commands', '--permission-mode', 'dontAsk', '--no-session-persistence', '--system-prompt', 'You are a worldbuilding conversation partner. No tools or filesystem access. Follow the supplied exercise instructions.', '--model', $connection->model];
         } else {
             // Isolate configuration/plugins/MCP from the user's coding setup; retain only their existing authentication.
             $home = $directory.'/codex';
             File::ensureDirectoryExists($home, 0700);
-            $auth = (getenv('CODEX_HOME') ?: (getenv('HOME').'/.codex')).'/auth.json';
+            $auth = self::codexAuthPath();
             if (! is_file($auth)) {
                 throw new RuntimeException('Codex file-based login was not found. Sign in with Codex locally first.');
             }
@@ -85,12 +209,16 @@ class AssistantProviders
         if (($connection->getAttribute('effort') ?? 'default') !== 'default') {
             $command = array_merge($command, $connection->provider === 'claude' ? ['--effort', $connection->getAttribute('effort')] : ['-c', 'model_reasoning_effort="'.$connection->getAttribute('effort').'"']);
         }
+        if ($cancelled()) {
+            File::deleteDirectory($directory);
+            throw new RuntimeException('Stopped before contacting the provider.');
+        }
         $process = new Process($command, $directory, $environment, $prompt, config('worldbuilding.timeout'));
         $buffer = '';
         $received = false;
         $providerError = false;
         try {
-            $process->start(function (string $type, string $chunk) use (&$buffer, &$received, &$providerError, $connection, $append): void {
+            $process->start(function (string $type, string $chunk) use (&$buffer, &$received, &$providerError, $connection, $append, $usage): void {
                 if ($type !== Process::OUT) {
                     return;
                 }
@@ -101,6 +229,15 @@ class AssistantProviders
                     $event = json_decode($line, true);
                     if (! is_array($event)) {
                         continue;
+                    }
+                    if (($event['type'] ?? '') === 'turn.completed' && isset($event['usage'])) {
+                        $usage->recordUsage($event['usage'] + ['cache_read_tokens' => $event['usage']['cached_input_tokens'] ?? null]);
+                    }
+                    if (($event['type'] ?? '') === 'result' && isset($event['usage'])) {
+                        $usage->recordUsage($event['usage'] + [
+                            'cache_read_tokens' => $event['usage']['cache_read_input_tokens'] ?? null,
+                            'cache_write_tokens' => $event['usage']['cache_creation_input_tokens'] ?? null,
+                        ]);
                     }
                     if ($connection->provider === 'claude') {
                         $delta = $event['event']['delta'] ?? [];
@@ -145,32 +282,14 @@ class AssistantProviders
             if ($process->isRunning()) {
                 $process->stop(1);
             }
-            if (isset($auth, $authFingerprint, $home) && is_file($home.'/auth.json') && is_file($auth) && hash_file('sha256', $auth) === $authFingerprint) {
-                // Preserve a provider-issued token refresh only if the source login was not changed elsewhere.
-                $refreshed = file_get_contents($home.'/auth.json');
-                $decoded = json_decode($refreshed, true);
-                if (is_array($decoded) && hash('sha256', $refreshed) !== $authFingerprint) {
-                    $handle = fopen($auth, 'r+');
-                    if ($handle && flock($handle, LOCK_EX)) {
-                        $current = stream_get_contents($handle);
-                        if (hash('sha256', $current) === $authFingerprint) {
-                            rewind($handle);
-                            fwrite($handle, $refreshed);
-                            ftruncate($handle, strlen($refreshed));
-                            fflush($handle);
-                        }
-                        flock($handle, LOCK_UN);
-                    }
-                    if ($handle) {
-                        fclose($handle);
-                    }
-                }
+            if (isset($auth, $authFingerprint, $home)) {
+                self::writeBackRefreshedLogin($auth, $home.'/auth.json', $authFingerprint);
             }
             File::deleteDirectory($directory);
         }
     }
 
-    private function api(AssistantConnection $connection, string $prompt, Closure $append, Closure $cancelled): void
+    private function api(AssistantConnection $connection, string $prompt, Closure $append, Closure $cancelled, AssistantRequest $usage): void
     {
         if (! $connection->credential) {
             throw new RuntimeException('Save an API key for this connection first.');
@@ -183,10 +302,14 @@ class AssistantProviders
             default => throw new RuntimeException('Unsupported provider.'),
         };
         $request = Http::connectTimeout(15)->timeout(config('worldbuilding.timeout'))->withOptions(['stream' => true]);
-        $request = $anthropic ? $request->withHeaders(['x-api-key' => $connection->credential, 'anthropic-version' => '2023-06-01']) : $request->withToken($connection->credential);
+        $request = $anthropic ? $request->withHeaders(self::anthropicHeaders($connection->credential)) : $request->withToken($connection->credential);
         $payload = ['model' => $connection->model, 'stream' => true, 'messages' => [['role' => 'user', 'content' => $prompt]]];
-        if ($anthropic) {
-            $payload['max_tokens'] = 8192;
+        $payload[$connection->provider === 'openai' ? 'max_completion_tokens' : 'max_tokens'] = config('worldbuilding.max_output_tokens');
+        if (! $anthropic) {
+            $payload['stream_options'] = ['include_usage' => true];
+        }
+        if ($cancelled()) {
+            throw new RuntimeException('Stopped before contacting the provider.');
         }
         $response = $request->post($endpoint, $payload);
         if (! $response->successful()) {
@@ -219,6 +342,16 @@ class AssistantProviders
                         continue;
                     }
                     $event = json_decode($json, true);
+                    $reported = $event['usage'] ?? $event['message']['usage'] ?? [];
+                    if ($reported) {
+                        $usage->recordUsage([
+                            'input_tokens' => $reported['input_tokens'] ?? $reported['prompt_tokens'] ?? null,
+                            'output_tokens' => $reported['output_tokens'] ?? $reported['completion_tokens'] ?? null,
+                            'cache_read_tokens' => $reported['cache_read_input_tokens'] ?? $reported['prompt_tokens_details']['cached_tokens'] ?? null,
+                            'cache_write_tokens' => $reported['cache_creation_input_tokens'] ?? null,
+                            'reported_cost_usd' => $reported['cost'] ?? null,
+                        ]);
+                    }
                     if (isset($event['error']) || ($event['type'] ?? '') === 'error') {
                         throw new RuntimeException('The provider interrupted the response. Received writing is retained.');
                     }

@@ -199,3 +199,19 @@ pre-deployment migration history. Matching additive column/index changes were
 applied directly to the current local database, retaining all writing and 33 saved
 reading sections. No reset, Anubis change or deployment occurred. Retest:
 `docs/manual-testing/world-sandbox-continuity.md`.
+
+## Encyclopedia conversations and usage — 2026/11/05
+
+Build encyclopedia now supplies the application's entry types, scoped record
+content/revisions and structured create/update/refinement contract. Proposals show
+evidence attribution, preserve omitted existing fields, refine captured board ideas
+and pass through existing reviewed canonisation. History opens resulting records.
+Per-request usage tracks reading and final responses, including reported tokens
+and partial failures. Connections have author-controlled request budgets and
+optional model cost estimates. OpenRouter key-cap lookup is explicit; unsupported
+allowance stays unavailable with provider links. Hosted choices use own API keys;
+local subscriptions remain restricted to their configured owner. No shared login.
+
+See ASSISTANT_ENCYCLOPEDIA_AND_USAGE.md and the assistant-encyclopedia-usage charter.
+Two-author runtime/request checks, a real neutral Codex request and browser workflow
+passed. No automated tests, paid API verification, Anubis update or deployment.

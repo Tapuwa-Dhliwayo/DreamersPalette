@@ -40,9 +40,6 @@ class Canonisation
             if (! $idea->canEdit() || ! isset(self::RELATIONS[$idea->kind])) {
                 $this->conflict('Choose an editable record proposal. Thoughts, questions and name shortlists remain on the board; assign a name to a character before canonising it.');
             }
-            if ($idea->uncertainty) {
-                $this->conflict('Resolve or clear the uncertainty on “'.$idea->title.'” before making it canon.');
-            }
             $target = $idea->target_key ? $this->context->target($exercise->world, $idea->target_key) : null;
             if ($target && (! str_starts_with($idea->target_key, $idea->kind.':') || (int) $target->revision !== $idea->target_revision)) {
                 $this->conflict('An established record changed. Reopen the idea against its current revision before reviewing.');
@@ -52,7 +49,20 @@ class Canonisation
             }
             $targets[$idea->target_key ?? 'idea:'.$idea->id] = true;
             $fields = $this->fields($idea, $exercise, $target);
-            $changes[] = ['idea_id' => $idea->id, 'idea_revision' => $idea->revision, 'kind' => $idea->kind, 'title' => $idea->title, 'target_key' => $idea->target_key, 'before' => $target ? $this->context->snapshot($target) : null, 'after' => $fields];
+            if (filled($idea->uncertainty) && ! str_contains($fields['notes_md'] ?? '', $idea->uncertainty)) {
+                $fields['notes_md'] = trim(($fields['notes_md'] ?? '')."\n\n### Open questions\n\n".$idea->uncertainty);
+            }
+            $changes[] = [
+                'idea_id' => $idea->id,
+                'idea_revision' => $idea->revision,
+                'kind' => $idea->kind,
+                'title' => $idea->title,
+                'target_key' => $idea->target_key,
+                'before' => $target ? $this->context->snapshot($target) : null,
+                'after' => $fields,
+                'provenance' => $idea->provenanceForReview(),
+                'uncertainty' => $idea->uncertainty,
+            ];
         }
         $links = $exercise->links()->where(fn ($query) => $query->whereIn('source_id', $ids)->orWhereIn('target_id', $ids))->orderBy('id')->get()->map(function ($link) use ($exercise, $ids): array {
             if (in_array($link->kind, ['participant', 'relationship', 'depends', 'before'], true)) {
@@ -129,7 +139,13 @@ class Canonisation
                 }
                 $key = $change['kind'].':'.$target->id;
                 $resolved[$idea->id] = $key;
-                $changes[] = ['key' => $key, 'idea_id' => $idea->id, 'before' => $before, 'after' => $this->context->snapshot($target)];
+                $changes[] = [
+                    'key' => $key,
+                    'idea_id' => $idea->id,
+                    'provenance' => $idea->provenanceForReview(),
+                    'before' => $before,
+                    'after' => $this->context->snapshot($target),
+                ];
                 $idea->forceFill(['target_key' => $key, 'target_revision' => $target->revision, 'canonised_at' => now(), 'revision' => $idea->revision + 1])->save();
             }
             foreach ($current['links'] as $link) {
@@ -235,7 +251,7 @@ class Canonisation
                     $idea->forceFill(['canonised_at' => null, 'target_key' => $entry['before'] ? $entry['key'] : null, 'target_revision' => $entry['before'] ? $target->fresh()->revision : null, 'revision' => $idea->revision + 1])->save();
                 }
             }
-            $change->update(['reversed_at' => now()]);
+            $change->markReversed();
         });
     }
 

@@ -16,7 +16,13 @@ class WorldContext
         $records = [];
         foreach (['person' => 'people', 'entry' => 'entries', 'event' => 'events', 'relationship' => 'relationships', 'system' => 'systems', 'arc' => 'arcs', 'knowledge' => 'knowledge', 'investigation' => 'investigations', 'map' => 'maps', 'alignment' => 'alignmentCharts', 'comparison' => 'comparisons'] as $kind => $relation) {
             foreach ($world->{$relation}()->get() as $record) {
-                $records[$kind.':'.$record->id] = ['key' => $kind.':'.$record->id, 'kind' => $kind, 'name' => $record->name ?? $record->title ?? $record->label, 'revision' => $record->revision];
+                $records[$kind.':'.$record->id] = [
+                    'key' => $kind.':'.$record->id,
+                    'kind' => $kind,
+                    'name' => $record->name ?? $record->title ?? $record->label,
+                    'revision' => $record->revision,
+                    'aliases' => $record->aliases ?? [],
+                ];
             }
         }
 

@@ -15,6 +15,9 @@ use App\Models\World;
 use App\Models\WorldEntryType;
 use App\Models\WorldExercise;
 use App\Services\Worldbuilding\AssistantConversation;
+use App\Services\Worldbuilding\AssistantModels;
+use App\Services\Worldbuilding\AssistantProviders;
+use App\Services\Worldbuilding\AssistantUsage;
 use App\Services\Worldbuilding\Canonisation;
 use App\Services\Worldbuilding\SandboxProposals;
 use App\Services\Worldbuilding\WorldContext;
@@ -72,6 +75,8 @@ class Sandbox extends Component
     public array $undoMove = [];
 
     public array $selectedIdeas = [];
+
+    public bool $acknowledgeUncertainty = false;
 
     public string $view = 'board';
 
@@ -132,7 +137,6 @@ class Sandbox extends Component
             $this->referenceKey = 'person:'.$person->id;
             $this->reference(app(WorldContext::class));
         });
-        $this->conversationForm->mode = 'naming';
         $this->conversationForm->content = 'Suggest names for '.$person->name.'. Use the reviewed cultural conventions, keep origins honest, and explain how the candidates fit.';
     }
 
@@ -159,12 +163,16 @@ class Sandbox extends Component
         $this->exerciseForm->passages = $exercise->passages ?? [];
         $this->exerciseForm->context_keys ??= [];
         $this->exerciseForm->passages ??= [];
+        $this->modelCatalogue = ['models' => [], 'status' => 'loading', 'message' => 'Loading models…'];
         $this->conversationForm->connection_id = $exercise->connection_id;
-        $lastTurn = $exercise->turns()->first();
+        // Turns come newest first; the prompt and manifest columns are large and not needed here.
+        $turns = $exercise->turns()->get(['id', 'model', 'mode', 'reading_depth', 'request_context']);
+        $lastTurn = $turns->first();
+        $lastReadingTurn = $turns->first(fn ($turn) => empty($turn->request_context['recovery']) && $turn->mode !== 'summary');
         $this->conversationForm->model = $lastTurn?->model ?? '';
         $this->conversationForm->effort = $lastTurn?->request_context['effort'] ?? 'default';
-        $this->conversationForm->reading_depth = $lastTurn?->reading_depth ?? 'focused';
-        $this->conversationForm->auto_continue = $lastTurn?->request_context['auto_continue'] ?? true;
+        $this->conversationForm->reading_depth = $lastReadingTurn?->reading_depth ?? 'focused';
+        $this->conversationForm->auto_continue = $lastReadingTurn?->request_context['auto_continue'] ?? true;
         $this->reset('ideaId', 'selectedIdeas', 'canonReview', 'undoMove', 'alternativeFilter');
         $this->panel = 'idea';
         $this->resetValidation();
@@ -203,7 +211,7 @@ class Sandbox extends Component
             $exercise = $world->exercises()->withTrashed()->findOrFail($id);
             $exercise->setArchived($archive, auth()->id(), $revision);
             if ($archive) {
-                $exercise->turns()->whereIn('status', ['queued', 'running'])->update(['status' => 'cancelled', 'finished_at' => now()]);
+                $exercise->turns()->active()->update(['status' => 'cancelled', 'finished_at' => now()]);
             }
         });
         if ($archive) {
@@ -216,6 +224,7 @@ class Sandbox extends Component
     {
         $exercise = $this->exercise();
         $this->ideaForm->reset();
+        $this->proposalTarget = '';
         $this->ideaId = $id;
         if ($id) {
             $idea = $exercise->ideas()->withTrashed()->findOrFail($id);
@@ -234,6 +243,23 @@ class Sandbox extends Component
         }
         $this->panel = 'idea';
         $this->resetValidation();
+    }
+
+    public string $proposalTarget = '';
+
+    public function linkProposal(WorldContext $context): void
+    {
+        $this->write(function ($exercise) use ($context): void {
+            $idea = $exercise->ideas()->lockForUpdate()->findOrFail($this->ideaId);
+            abort_unless($idea->canEdit() && ! $idea->target_key, 409);
+            if ($idea->revision !== $this->ideaForm->revision || ! str_starts_with($this->proposalTarget, $idea->kind.':')) {
+                throw ValidationException::withMessages(['proposalTarget' => 'Reopen this proposal and choose a matching current record.']);
+            }
+            $record = $context->target($exercise->world, $this->proposalTarget);
+            $idea->revise(['target_key' => $this->proposalTarget, 'target_revision' => $record->revision], $idea->revision);
+        });
+        $this->editIdea($this->ideaId);
+        $this->notice = 'Proposal linked. Compare all changes in Review canon before accepting.';
     }
 
     public function saveIdea(): void
@@ -269,7 +295,18 @@ class Sandbox extends Component
                 return $existing->id;
             }
 
-            return $exercise->ideas()->create(['kind' => in_array($kind, SandboxProposals::KINDS, true) ? $kind : 'thought', 'title' => $record->name ?? $record->title ?? $record->label, 'notes_md' => $record->notes_md ?? $record->truth_md ?? $record->question_md ?? '', 'target_key' => $this->referenceKey, 'target_revision' => $record->revision, 'fields' => collect($record->attributesToArray())->only(['aliases', 'roles', 'domain', 'type_id', 'measure', 'source_key', 'target_key', 'period', 'keep_previous_name', 'is_dependency', 'left_label', 'right_label', 'top_label', 'bottom_label', 'criteria'])->all(), 'position' => $record->position ?? 0, 'date_label' => $record->date_label ?? '', 'x' => 40, 'y' => 40])->id;
+            return $exercise->ideas()->create([
+                'kind' => in_array($kind, SandboxProposals::KINDS, true) ? $kind : 'thought',
+                'title' => $record->name ?? $record->title ?? $record->label,
+                'notes_md' => $record->notes_md ?? $record->truth_md ?? $record->question_md ?? '',
+                'target_key' => $this->referenceKey,
+                'target_revision' => $record->revision,
+                'fields' => collect($record->attributesToArray())->only(SandboxProposals::FIELDS)->all(),
+                'position' => $record->position ?? 0,
+                'date_label' => $record->date_label ?? '',
+                'x' => 40,
+                'y' => 40,
+            ])->id;
         });
         $this->editIdea($id);
         $this->notice = 'Established record referenced. Edits here remain proposals until reviewed.';
@@ -398,21 +435,77 @@ class Sandbox extends Component
     {
         $fields = $this->conversationForm->fields();
         $connection = AssistantConnection::where('user_id', auth()->id())->findOrFail($fields['connection_id']);
-        $conversation->send($this->exercise(true), $connection, $fields['content'], $fields['mode'], $this->sendRequest, $fields['reading_depth'], $fields);
+        $conversation->send($this->exercise(true), $connection, $fields['content'], 'conversation', $this->sendRequest, $fields['reading_depth'], $fields);
         $this->sendRequest = (string) Str::uuid();
         $this->conversationForm->content = '';
         $this->notice = 'Question saved. Reading continues in the background; Studio activity will show when your answer is ready or needs attention.';
     }
 
+    public function summariseDiscussion(AssistantConversation $conversation): void
+    {
+        $connection = AssistantConnection::where('user_id', auth()->id())->findOrFail($this->conversationForm->connection_id);
+        $conversation->send(
+            $this->exercise(true),
+            $connection,
+            'Prepare a working summary of this discussion for me to review.',
+            'summary',
+            $this->sendRequest,
+            'focused',
+            $this->conversationForm->only(['model', 'effort']),
+        );
+        $this->sendRequest = (string) Str::uuid();
+        $this->notice = 'Preparing a discussion summary. Your message and manuscript are unchanged.';
+    }
+
+    public function prepareMessageUpdates(int $id, AssistantConversation $conversation): void
+    {
+        $this->prepareSavedUpdates($conversation, messageId: $id);
+    }
+
+    public function prepareIdeaUpdates(int $id, AssistantConversation $conversation): void
+    {
+        $this->prepareSavedUpdates($conversation, ideaId: $id);
+    }
+
+    private function prepareSavedUpdates(AssistantConversation $conversation, ?int $messageId = null, ?int $ideaId = null): void
+    {
+        $connection = AssistantConnection::where('user_id', auth()->id())->findOrFail($this->conversationForm->connection_id);
+        $turn = $conversation->recover($this->exercise(true), $connection, $messageId, $ideaId, $this->conversationForm->only(['model', 'effort']));
+        $this->dispatch('sandbox-conversation-focus');
+        $this->notice = match ($turn->status) {
+            'completed' => 'These updates are prepared. Use Review updates beside that response.',
+            'failed', 'paused', 'cancelled' => 'The saved preparation needs attention. Open its response to retry without resending the original question.',
+            'queued', 'running' => 'Preparing linked drafts from the saved answer. The novel will not be reread; nothing is saved to canon without review.',
+            default => throw new \RuntimeException('Unknown preparation state.'),
+        };
+    }
+
+    public function reviewTurn(int $id, SandboxProposals $proposals, Canonisation $canon): void
+    {
+        $exercise = $this->exercise(true);
+        $turn = $exercise->turns()->findOrFail($id);
+        $proposals->collect($turn);
+        $drafts = $exercise->ideas()->whereIn('id', $turn->fresh()->request_context['collected_proposals'] ?? [])->get();
+        $this->selectedIdeas = $drafts
+            ->filter(fn ($idea) => $idea->canEdit() && ! in_array($idea->kind, ['thought', 'question', 'name'], true))
+            ->pluck('id')
+            ->all();
+        if (! $this->selectedIdeas) {
+            $this->panel = 'history';
+            $this->notice = 'There are no pending record updates in this response. Accepted changes remain in History.';
+
+            return;
+        }
+        $this->reviewCanon($canon);
+    }
+
     public function editSavedQuestion(int $id): void
     {
         $turn = $this->exercise()->turns()->findOrFail($id);
-        $message = $this->exercise()->messages()->findOrFail($turn->message_id);
-        $this->conversationForm->content = $message->content;
+        $this->conversationForm->content = $turn->question();
         $this->conversationForm->model = $turn->model;
         $this->conversationForm->effort = $turn->request_context['effort'] ?? 'default';
         $this->conversationForm->auto_continue = $turn->request_context['auto_continue'] ?? true;
-        $this->conversationForm->mode = $turn->mode;
         $this->conversationForm->reading_depth = $turn->reading_depth;
         $this->conversationForm->connection_id = $turn->connection_id;
         $this->dispatch('sandbox-conversation-focus');
@@ -432,10 +525,31 @@ class Sandbox extends Component
         }
     }
 
+    #[Locked]
+    public array $modelCatalogue = ['models' => [], 'status' => 'loading', 'message' => 'Loading models…'];
+
+    public function loadConnectionModels(bool $refresh = false): void
+    {
+        $this->authorize('update', $this->world);
+        if (! $this->conversationForm->connection_id) {
+            $this->modelCatalogue = ['models' => [], 'status' => 'no_connection', 'message' => 'Choose a connection to see its models.'];
+
+            return;
+        }
+        $connection = AssistantConnection::where('user_id', auth()->id())->where('enabled', true)->findOrFail($this->conversationForm->connection_id);
+        $this->modelCatalogue = app(AssistantModels::class)->catalogue($connection, $refresh);
+    }
+
+    public function updatedConversationFormModel(): void
+    {
+        $this->conversationForm->effort = 'default';
+    }
+
     public function updatedConversationFormConnectionId(): void
     {
         $this->conversationForm->model = '';
         $this->conversationForm->effort = 'default';
+        $this->loadConnectionModels();
     }
 
     public function openSource(int $id, int $from = 1, int $to = 12): void
@@ -451,14 +565,18 @@ class Sandbox extends Component
     public function stopTurn(int $id): void
     {
         $exercise = $this->exercise(true);
-        $exercise->turns()->whereKey($id)->whereIn('status', ['queued', 'running'])->update(['status' => 'cancelled', 'finished_at' => now()]);
+        $exercise->turns()->whereKey($id)->active()->update(['status' => 'cancelled', 'finished_at' => now()]);
         $this->notice = 'Stopped. Received writing is retained.';
     }
 
     public function refreshConversation(): void
     {
         $exercise = $this->exercise(true);
-        $exercise->turns()->whereIn('status', ['queued', 'running'])->where('updated_at', '<', now()->subSeconds(config('worldbuilding.timeout') + 60))->update(['status' => 'failed', 'error' => 'This response was interrupted or timed out. Your question and completed reading are saved. Retry this request to continue.', 'finished_at' => now()]);
+        $exercise->turns()->active()->where('updated_at', '<', now()->subSeconds(config('worldbuilding.timeout') + 60))->update([
+            'status' => 'failed',
+            'error' => 'This response was interrupted or timed out. Your question and completed reading are saved. Retry this request to continue.',
+            'finished_at' => now(),
+        ]);
     }
 
     public function acceptSummary(int $id): void
@@ -527,6 +645,7 @@ class Sandbox extends Component
 
     public function reviewCanon(Canonisation $canon): void
     {
+        $this->acknowledgeUncertainty = false;
         $this->canonReview = $canon->review($this->exercise(true), $this->selectedIdeas);
         $this->canonRequest = (string) Str::uuid();
         $this->panel = 'canon';
@@ -535,6 +654,14 @@ class Sandbox extends Component
     public function acceptCanon(Canonisation $canon): void
     {
         abort_unless($this->canonReview && $this->canonRequest, 409);
+        if (
+            collect($this->canonReview['changes'])->contains(fn ($change) => filled($change['uncertainty'] ?? null))
+            && ! $this->acknowledgeUncertainty
+        ) {
+            throw ValidationException::withMessages([
+                'acknowledgeUncertainty' => 'Confirm that open questions should be kept in the saved Notes, or edit those drafts before accepting.',
+            ]);
+        }
         $canon->accept($this->exercise(true), $this->canonReview, $this->canonRequest);
         $this->canonReview = [];
         $this->selectedIdeas = [];
@@ -591,6 +718,7 @@ class Sandbox extends Component
 
     public function importNamingDrafts(): void
     {
+        abort_unless(AssistantProviders::allowsLocal(auth()->id()), 403);
         $this->authorize('update', $this->world);
         $source = 'Pinned ChatGPT chat: Naming Scheme Feedback (6a6f0e2a-6064-83ea-979a-17c59598ea85). Assistant interpretations; not yet verified by the author.';
         DB::transaction(function () use ($source): void {
@@ -613,6 +741,13 @@ class Sandbox extends Component
     {
         $this->authorize('update', $this->world);
         $exercise = $this->exerciseId ? $this->exercise() : null;
+        $turns = $exercise?->turns()->get() ?? collect();
+        $recoveries = $turns->filter(fn ($turn) => $turn->status === 'completed'
+            && ! empty($turn->proposals['ideas'])
+            && ! empty($turn->request_context['recovery']));
+        $recoveredMessages = $recoveries->groupBy(fn ($turn) => $turn->request_context['recovery']['message_id'] ?? 0)
+            ->map(fn ($group) => $group->first());
+        $recoveredIdeas = $recoveries->groupBy(fn ($turn) => $turn->request_context['recovery']['idea_id'] ?? 0)->map(fn ($group) => $group->first());
         $ideas = $exercise?->ideas()->when($this->showArchived, fn ($query) => $query->onlyTrashed())->get() ?? collect();
         $activeIds = $ideas->pluck('id');
         $visible = $ideas->filter(fn ($idea) => $this->alternativeFilter === '' || $idea->alternative === $this->alternativeFilter);
@@ -624,8 +759,38 @@ class Sandbox extends Component
 
         $source = $exercise && $this->readingId ? AssistantSource::whereHas('turn', fn ($query) => $query->where('exercise_id', $exercise->id))->findOrFail($this->readingId) : null;
         $readingSources = $exercise ? AssistantSource::whereHas('turn', fn ($query) => $query->where('exercise_id', $exercise->id))->get()->groupBy('turn_id') : collect();
+        foreach ($turns as $sourceTurn) {
+            if ($sourceTurn->request_context['recovery'] ?? null) {
+                $readingSources->put($sourceTurn->id, $sourceTurn->citationSources());
+            }
+        }
         $sourceRevisions = ManuscriptChapter::whereIn('id', $readingSources->flatten()->pluck('chapter_id'))->pluck('revision', 'id');
 
-        return view('livewire.studio.worlds.sandbox', ['source' => $source, 'readingSources' => $readingSources, 'sourceRevisions' => $sourceRevisions, 'exercise' => $exercise, 'exercises' => $this->world->exercises()->get(), 'archivedExercises' => $this->world->exercises()->onlyTrashed()->get(), 'ideas' => $ideas, 'visibleIdeas' => $visible, 'links' => $links, 'selected' => $selected, 'recordUrl' => $selected?->target_key ? $context->url($this->world, $selected->target_key) : null, 'catalogue' => $catalogue, 'chapters' => $chapters, 'connections' => AssistantConnection::where('user_id', auth()->id())->where('enabled', true)->get(), 'messages' => $exercise?->messages()->get() ?? collect(), 'turns' => $exercise?->turns()->get() ?? collect(), 'changes' => $exercise?->changes()->get() ?? collect(), 'conventions' => $this->conventions()->get(), 'similarNames' => $similar, 'entryTypes' => WorldEntryType::all(), 'kinds' => SandboxProposals::KINDS]);
+        return view('livewire.studio.worlds.sandbox', [
+            'usageTotals' => app(AssistantUsage::class)->summary(auth()->id(), $exercise?->id),
+            'source' => $source,
+            'readingSources' => $readingSources,
+            'sourceRevisions' => $sourceRevisions,
+            'exercise' => $exercise,
+            'exercises' => $this->world->exercises()->get(),
+            'archivedExercises' => $this->world->exercises()->onlyTrashed()->get(),
+            'ideas' => $ideas,
+            'visibleIdeas' => $visible,
+            'links' => $links,
+            'selected' => $selected,
+            'recordUrl' => $selected?->target_key ? $context->url($this->world, $selected->target_key) : null,
+            'catalogue' => $catalogue,
+            'chapters' => $chapters,
+            'connections' => AssistantConnection::where('user_id', auth()->id())->where('enabled', true)->get(),
+            'messages' => $exercise?->messages()->get() ?? collect(),
+            'turns' => $turns,
+            'recoveredMessages' => $recoveredMessages,
+            'recoveredIdeas' => $recoveredIdeas,
+            'changes' => $exercise?->changes()->get() ?? collect(),
+            'conventions' => $this->conventions()->get(),
+            'similarNames' => $similar,
+            'entryTypes' => WorldEntryType::all(),
+            'kinds' => SandboxProposals::KINDS,
+        ]);
     }
 }

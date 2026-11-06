@@ -31,7 +31,7 @@ class AssistantSource extends Model
     public function hasRead(int $start, int $end): bool
     {
         $cursor = $start;
-        foreach (collect($this->reads ?? [])->sortBy('start') as $read) {
+        foreach (collect($this->reads ?? [])->filter(fn ($read) => self::isAnalysis($read))->sortBy('start') as $read) {
             if ($read['end'] < $cursor) {
                 continue;
             }
@@ -47,10 +47,16 @@ class AssistantSource extends Model
         return false;
     }
 
-    public function recordRead(int $start, int $end, string $notes): void
+    // Reads saved before `kind` existed all came from manuscript analysis, so a missing kind means analysed.
+    public static function isAnalysis(array $read): bool
+    {
+        return ($read['kind'] ?? 'analysed') !== 'consulted';
+    }
+
+    public function recordRead(int $start, int $end, string $notes, string $kind = 'analysed'): void
     {
         $reads = $this->reads ?? [];
-        $reads[] = ['start' => $start, 'end' => $end, 'notes' => $notes];
+        $reads[] = ['start' => $start, 'end' => $end, 'notes' => $notes, 'kind' => $kind];
         $this->update(['reads' => $reads]);
     }
 }
