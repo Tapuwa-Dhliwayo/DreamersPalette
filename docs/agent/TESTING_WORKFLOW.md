@@ -54,9 +54,9 @@ not delete or cull them without an explicit request.
 
 ## Verifying without tests
 
-The deliverable is a manual testing charter, not a test file. Follow `MANUAL_TESTING.md`.
+Create a manual testing charter only when Tapuwa explicitly requests one. Implementation, fixes, reviews and verification do not imply a charter request. For an explicitly requested charter, follow `MANUAL_TESTING.md`.
 
-Before the charter, verify the work yourself by running the code: a scratch script outside the repository, the real application, the actual request path. Report what you ran and what it showed.
+Verify the work yourself by running the code: a scratch script outside the repository, the real application, the actual request path. Report what you ran and what it showed.
 
 If a change genuinely cannot be verified without a test, say so plainly and let Tapuwa decide. Do not write one to settle your own doubt.
 

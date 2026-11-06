@@ -56,11 +56,19 @@ Do not create a service for simple model-owned behaviour. Do not create generic 
 
 A large function is always a refactoring review signal. Split by meaningful responsibility, not arbitrary line count.
 
-Avoid clunky `if / elseif / else` chains and deep nesting.
+Avoid deep nesting.
 
-Prefer guard clauses and singular `if` statements.
+### `if` is for exceptions; `switch`/`match` is for behaviour
 
-Use `match` or explicit cases when mutually exclusive state handling is genuinely required.
+Use `if` for genuine exceptions: guard clauses and real special cases that leave the normal path. An `if` tells the reader that something unusual is being handled.
+
+When code chooses between deliberate behaviours, such as modes, kinds or states, use `switch`/`match` and name every case. The set of behaviours is then explicit: it can be read in one place, checked for a missing case, and extended without disturbing the others. Give it a `default` that rejects unknown values, so a new case cannot slip through silently. PHP's `match` already throws `UnhandledMatchError` when nothing matches.
+
+Do not carry behaviour in `if / elseif / else` chains. A chain treats behaviours as exceptions, and its final `else` quietly absorbs whatever is left. Do not hide a case inside a trailing `else` or a ternary either.
+
+A plain two-valued boolean, such as a label or a class name, may use a ternary.
+
+In per-cell, per-pixel or per-row loops, choose the behaviour once outside the loop, for example with a `switch` that picks the loop. Do not call through a handler map inside the loop, because the engine cannot inline it. A 2026/11/04 benchmark in Node over a 655k-cell grid measured a handler map at about 6× slower; `switch` and `if` chains cost the same.
 
 ## Dates are always yyyy/mm/dd
 
@@ -320,18 +328,18 @@ The existence of a `tests` directory, a `phpunit.xml`, a test script in
 having just changed something risky.
 
 Verify by running the code — a scratch script, the real application, the actual
-request path — and by writing a manual testing charter Tapuwa executes. Report what
-you ran and what it showed.
+request path. Report what you ran and what it showed. Create a manual testing
+charter only when Tapuwa explicitly requests one.
 
 Do not add a test to prove your own change works. If a change cannot be verified
 without a test, say that plainly and let Tapuwa decide.
 
 ### Manual testing charters
 
-Everything that would otherwise be a test belongs in a charter: CRUD, validation
-wiring, rendering, navigation, listing and filtering, wording, layout, happy-path
-clicking, and the risky rules above. When Tapuwa asks how to verify a feature,
-produce a charter. Follow `docs/agent/MANUAL_TESTING.md`.
+Do not create a testing charter unless Tapuwa explicitly requests one. A request
+to implement, fix, review or verify work does not authorize a charter. Continue
+verifying the work directly and report the evidence in chat. When a charter is
+explicitly requested, follow `docs/agent/MANUAL_TESTING.md`.
 
 ### If Tapuwa explicitly asks for a test
 

@@ -233,3 +233,49 @@ Existing 33 reading sections and original exercise messages were preserved. Loca
 source/worker migrations were amended with matching non-destructive local schema
 changes; no reset or Anubis update. See WORLD_SANDBOX.md and
 manual-testing/world-sandbox-continuity.md for review scope and limitations.
+
+## Encyclopedia conversations and private usage — 2026/11/05
+
+All six approved local stages implemented: multi-author connection boundaries,
+versioned encyclopedia proposal contract, conversational board refinements and
+reviewed updates, per-provider-request usage ledger, honest allowance visibility
+(OpenRouter key cap where available; provider links otherwise), and two-author
+runtime/request plus desktop/mobile browser verification. Hosted authors bring
+own API keys; local subscription access stays limited to the configured local
+owner. Request budgets and per-author concurrency protect reading loops. Optional
+saved model rates provide explicitly estimated token costs, never subscription bills.
+
+New additive assistant_usage migration applied locally without reset; current
+writing/connections retained. Undo reversal persistence and activity polling locks
+were fixed during review. Neutral provider/runtime/browser fixtures removed.
+No push, deployment or Anubis mutation. Paid API/live key-allowance verification
+needs an author-supplied API connection. See ASSISTANT_ENCYCLOPEDIA_AND_USAGE.md and
+manual-testing/assistant-encyclopedia-usage.md for exact scope, evidence and review.
+
+2026/11/05 model-picker follow-up: Connections and chat now fetch named searchable
+models using the connection's own local client/account or API key. Thinking effort
+follows discovered local model capabilities. Scoped caches, loading/failure states,
+server validation and preserved saved choices replace manual model IDs. Local Codex
+and Claude discovery plus desktop/mobile browser and ownership checks passed without
+sending a generation request or modifying original content/connections. API-key
+branches await an actual configured API key for live verification. See
+manual-testing/assistant-model-selection.md. The author also identified that hidden
+response modes prevented a natural request to fill trio sheets from producing linked
+character updates; that conversation-intent/recovery finding remains unresolved.
+
+2026/11/05 conversational correction: the hidden response-mode selector is removed.
+New ordinary turns use one structured reply protocol and derive discuss/propose/
+refine/clarify from the author's words. Linked drafts stage automatically and have
+reply-local grouped review. Legacy replies/thoughts can prepare linked updates from
+saved content/citations without novel rereading. Actual trio recovery turn 49 holds
+three pending updates to people 2/3/4; response 72, thought 47 and all original people
+remain unchanged. No real trio draft was accepted. Open questions are retained in
+Notes and acknowledged at acceptance; they no longer prevent a combined review.
+Live neutral discussion/build/refinement/acceptance checks passed with rolled-back
+fixtures, alongside ownership/citation checks. No schema reset, tests or deployment.
+See manual-testing/conversational-world-updates.md for the current review workflow.
+
+
+## Author dashboard and world-tool display — 2026/11/06
+
+Local dashboard now includes manuscript word/activity tracking, explicit additions/removals and size charts, chapter counts, optional weekly goals, recent work and review/release attention. Activity starts from a current-size baseline rather than fabricated history. Relationships have a network/inspector and explicit mutual direction; the null optional-field edit failure is fixed. Compare has a full-page matrix/editor; Timeline has an event rail; character dossiers link to connections. Two additive migrations under 2026_11_06 are applied locally. No production deployment or database reset. See `docs/DASHBOARD_WRITING_ACTIVITY.md` and `docs/WORLD_RELATIONSHIPS_AND_COMPARISONS.md`. Testing charters are created only when Tapuwa explicitly requests one.
