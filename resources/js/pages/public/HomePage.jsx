@@ -457,12 +457,7 @@ export default function HomePage() {
                     </div>
                 </div>
 
-                <div className="gallery-rule mt-10 flex flex-col gap-4 border-t pt-8 pb-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                    <nav aria-label="Dreamer’s Palette sites" className="flex flex-wrap gap-x-7 gap-y-2">
-                        <span className="gallery-muted font-serif">All of Dreamer’s Palette</span>
-                        <a href={SITES.blog} className="gallery-nav-link" target="_blank" rel="noopener noreferrer">Journal</a>
-                        <a href={SITES.concepts} className="gallery-nav-link" target="_blank" rel="noopener noreferrer">Concepts</a>
-                    </nav>
+                <div className="gallery-rule mt-10 border-t pt-8 pb-2 text-sm">
                     <p className="gallery-muted">Powered by Alate Digital Systems</p>
                 </div>
             </footer>
