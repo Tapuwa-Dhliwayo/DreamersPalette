@@ -1,6 +1,7 @@
+import { formatDate } from "@/utils/formatDate"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Card } from "@/components/ui/Card"
+import PublishingEmptyState from "@/components/dashboard/PublishingEmptyState"
 import Button from "@/components/ui/Button"
 import Select from "@/components/ui/Select"
 import Pagination from "@/components/ui/Pagination"
@@ -111,6 +112,8 @@ export default function Chapters() {
         }
     }
 
+    const selectedBook = books.find((book) => String(book.id) === String(selectedBookId))
+    const manuscriptUrl = selectedBook?.studio_manuscript_id && !selectedBook.studio_manuscript_archived ? `/studio/manuscripts/${selectedBook.studio_manuscript_id}` : "/studio"
     const selectedItems = chapters.filter((item) => list.selectedIds.includes(item.id))
 
     return (
@@ -121,12 +124,12 @@ export default function Chapters() {
                         <h2 className="text-2xl font-semibold tracking-tight">Chapters</h2>
                         <p className="mt-1 text-sm text-neutral-600">Organize and publish chapters within each novel.</p>
                     </div>
-                    <Button
+                    {selectedBook?.is_studio_managed ? <a className="publishing-managed-link" href={manuscriptUrl}>{selectedBook.studio_manuscript_archived ? "Restore manuscript" : "Open manuscript"} ↗</a> : <Button
                         disabled={!selectedBookId}
                         onClick={() => navigate(`${DASHBOARD_ROUTES.CHAPTER_NEW}?bookId=${selectedBookId}`)}
                     >
                         New Chapter
-                    </Button>
+                    </Button>}
                 </header>
 
                 <ContentListToolbar
@@ -155,19 +158,19 @@ export default function Chapters() {
                 {loading && <DashboardSkeleton />}
 
                 {!loading && books.length === 0 && (
-                    <Card className="p-8 text-center">
+                    <PublishingEmptyState>
                         <h3 className="text-lg font-medium">Create a novel first</h3>
                         <p className="mt-2 text-sm text-neutral-600">Chapters need a novel to belong to.</p>
                         <Button className="mt-5" onClick={() => navigate(DASHBOARD_ROUTES.BOOK_NEW)}>Create Novel</Button>
-                    </Card>
+                    </PublishingEmptyState>
                 )}
 
                 {!loading && books.length > 0 && list.filteredItems.length === 0 && (
-                    <Card className="p-8 text-center">
+                    <PublishingEmptyState>
                         <h3 className="text-lg font-medium">No chapters found</h3>
                         <p className="mt-2 text-sm text-neutral-600">Adjust the search or add the first chapter.</p>
-                        <Button className="mt-5" onClick={() => navigate(`${DASHBOARD_ROUTES.CHAPTER_NEW}?bookId=${selectedBookId}`)}>Create Chapter</Button>
-                    </Card>
+                        {selectedBook?.is_studio_managed ? <a className="publishing-managed-link mt-5" href={manuscriptUrl}>Open manuscript ↗</a> : <Button className="mt-5" onClick={() => navigate(`${DASHBOARD_ROUTES.CHAPTER_NEW}?bookId=${selectedBookId}`)}>Create Chapter</Button>}
+                    </PublishingEmptyState>
                 )}
 
                 {!loading && list.filteredItems.length > 0 && (
@@ -179,12 +182,14 @@ export default function Chapters() {
                                 selected={list.selectedIds.includes(chapter.id)}
                                 onToggle={list.toggleItem}
                                 title={`${chapter.chapter_number}. ${chapter.title}`}
-                                metadata={`${chapter.is_preview ? "Reader preview" : "Full chapter"} · Updated ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(chapter.updated_at || chapter.created_at))}`}
+                                metadata={`${chapter.is_preview ? "Reader preview" : "Full chapter"} · Updated ${formatDate(chapter.updated_at || chapter.created_at)}`}
                                 onEdit={() => navigate(DASHBOARD_ROUTES.CHAPTER_EDIT(chapter.id))}
                                 onArchive={() => setArchiveTargets([chapter])}
                                 onPublish={() => setPublishTargets([chapter])}
                                 pending={pending}
-                            />
+                            >
+                                {selectedBook?.is_studio_managed && <a className="publishing-managed-link" href={manuscriptUrl}>Open manuscript ↗</a>}
+                            </ContentListRow>
                         ))}
                     </ContentList>
                 )}

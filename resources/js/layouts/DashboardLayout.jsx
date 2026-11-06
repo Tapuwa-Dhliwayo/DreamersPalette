@@ -6,7 +6,7 @@ export default function DashboardLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false)
 
     return (
-        <div className="relative flex h-frame overflow-hidden bg-cover bg-[center_right_28%] bg-no-repeat text-neutral-900 transition-colors"
+        <div className="publishing-app relative flex h-frame overflow-hidden bg-cover bg-[center_right_28%] bg-no-repeat text-neutral-900 transition-colors"
              style={{ backgroundImage: "url('/assets/global_atmosphere.png')" }}
         >
             <div
@@ -20,7 +20,8 @@ export default function DashboardLayout() {
             </div>
 
             {/* Main Content */}
-            <main inert={sidebarOpen} className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-6 md:px-10 md:py-12 xl:px-16">
+            <a href="#publishing-content" className="publishing-skip">Skip to content</a>
+            <main id="publishing-content" tabIndex={-1} inert={sidebarOpen} className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden publishing-main px-3 py-4 md:px-6 md:py-6 xl:px-10">
                 {/* Hamburger — mobile only */}
                 <button
                     className="mb-4 min-h-11 min-w-11 shrink-0 rounded-xl bg-white text-xl leading-none shadow-sm md:hidden"
@@ -30,7 +31,7 @@ export default function DashboardLayout() {
                     ☰
                 </button>
 
-                <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col overflow-hidden rounded-2xl border border-white/80 bg-neutral-50 p-4 shadow-[0_4px_8px_rgba(0,0,0,0.12)] md:p-8">
+                <div className="publishing-surface mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col overflow-hidden p-4 md:p-7">
                     <Outlet />
                 </div>
             </main>

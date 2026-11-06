@@ -159,8 +159,8 @@ export default function ChapterEditorPage() {
     )
 
     return (
-        <div className="min-h-0 flex-1 space-y-8 overflow-y-auto">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="publishing-form min-h-0 flex-1 space-y-6 overflow-y-auto">
+            <div className="publishing-form-heading flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h2 className="text-2xl font-semibold tracking-tight">
                         {isEditMode ? "Edit Chapter" : "New Chapter"}
@@ -168,7 +168,7 @@ export default function ChapterEditorPage() {
 
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                     <EditorSaveState
                         saving={saving}
                         isDirty={localDraft.isDirty}
@@ -192,8 +192,11 @@ export default function ChapterEditorPage() {
                 </div>
             </div>
 
-            <div className="space-y-4 max-w-full md:max-w-xl">
-                <StatusMessage tone="error">{validationError || saveError}</StatusMessage>
+            <StatusMessage tone="error">{validationError || saveError}</StatusMessage>
+
+            <details className="publishing-details" open={!isEditMode}>
+                <summary>Chapter details</summary>
+                <div className="publishing-fields">
                 <FormField label="Novel" htmlFor="chapter-book" required>
                     <Select
                         id="chapter-book"
@@ -245,6 +248,7 @@ export default function ChapterEditorPage() {
                     Mark chapter as preview
                 </label>
             </div>
+            </details>
 
             <EditorPanel
                 value={form.content_md}

@@ -1,6 +1,7 @@
+import { formatDate } from "@/utils/formatDate"
 import { useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
-import { Card } from "@/components/ui/Card"
+import PublishingEmptyState from "@/components/dashboard/PublishingEmptyState"
 import Button from "@/components/ui/Button"
 import Badge from "@/components/ui/Badge"
 import Pagination from "@/components/ui/Pagination"
@@ -132,11 +133,11 @@ export default function Collections() {
                 {loading && <DashboardSkeleton />}
 
                 {!loading && list.filteredItems.length === 0 && (
-                    <Card className="p-8 text-center">
+                    <PublishingEmptyState>
                         <h3 className="text-lg font-medium">No collections found</h3>
                         <p className="mt-2 text-sm text-neutral-600">Adjust the search or create your first poetic world.</p>
                         <Button className="mt-5" onClick={() => navigate(DASHBOARD_ROUTES.COLLECTION_NEW)}>Create Collection</Button>
-                    </Card>
+                    </PublishingEmptyState>
                 )}
 
                 {!loading && list.filteredItems.length > 0 && (
@@ -151,7 +152,7 @@ export default function Collections() {
                                     onToggle={list.toggleItem}
                                     title={collection.title}
                                     description={collection.description}
-                                    metadata={`Updated ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(collection.updated_at || collection.created_at))}`}
+                                    metadata={`Updated ${formatDate(collection.updated_at || collection.created_at)}`}
                                     onEdit={() => navigate(DASHBOARD_ROUTES.COLLECTION_EDIT(collection.id))}
                                     onArchive={() => setArchiveTargets([collection])}
                                     onPublish={() => setPublishTargets([collection])}

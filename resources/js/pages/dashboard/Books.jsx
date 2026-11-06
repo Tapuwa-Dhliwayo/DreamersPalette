@@ -1,6 +1,7 @@
+import { formatDate } from "@/utils/formatDate"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Card } from "@/components/ui/Card"
+import PublishingEmptyState from "@/components/dashboard/PublishingEmptyState"
 import Button from "@/components/ui/Button"
 import Pagination from "@/components/ui/Pagination"
 import ConfirmDialog from "@/components/ui/ConfirmDialog"
@@ -103,11 +104,11 @@ export default function Books() {
                 {loading && <DashboardSkeleton />}
 
                 {!loading && list.filteredItems.length === 0 && (
-                    <Card className="p-8 text-center">
+                    <PublishingEmptyState>
                         <h3 className="text-lg font-medium">No novels found</h3>
                         <p className="mt-2 text-sm text-neutral-600">Adjust the search or begin a new novel.</p>
                         <Button className="mt-5" onClick={() => navigate(DASHBOARD_ROUTES.BOOK_NEW)}>Create Novel</Button>
-                    </Card>
+                    </PublishingEmptyState>
                 )}
 
                 {!loading && list.filteredItems.length > 0 && (
@@ -120,12 +121,14 @@ export default function Books() {
                                 onToggle={list.toggleItem}
                                 title={book.title}
                                 description={book.synopsis}
-                                metadata={`Updated ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(book.updated_at || book.created_at))}`}
+                                metadata={`Updated ${formatDate(book.updated_at || book.created_at)}`}
                                 onEdit={() => navigate(DASHBOARD_ROUTES.BOOK_EDIT(book.id))}
                                 onArchive={() => setArchiveTargets([book])}
                                 onPublish={() => setPublishTargets([book])}
                                 pending={pending}
-                            />
+                            >
+                                {book.is_studio_managed && <a className="publishing-managed-link" href={book.studio_manuscript_id && !book.studio_manuscript_archived ? `/studio/manuscripts/${book.studio_manuscript_id}` : "/studio"}>{book.studio_manuscript_archived ? "Restore manuscript" : "Open manuscript"} <span aria-hidden="true">↗</span></a>}
+                            </ContentListRow>
                         ))}
                     </ContentList>
                 )}

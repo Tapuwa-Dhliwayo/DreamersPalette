@@ -286,16 +286,14 @@ export default function CollectionEditorPage() {
     }
 
     return (
-        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto">
-            <header className="flex flex-col gap-4 border-b border-neutral-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
+        <div className="publishing-form min-h-0 flex-1 space-y-6 overflow-y-auto">
+            <header className="publishing-form-heading flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <p className="m-0 text-sm text-neutral-600">Collections</p>
                     <h2 className="mt-1 text-2xl font-semibold tracking-tight">
                         {isEditMode ? "Edit collection" : "New collection"}
                     </h2>
-                    <p className="mt-1 text-sm text-neutral-600">
-                        Build the atmosphere while keeping the reader experience visible.
-                    </p>
+
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <EditorSaveState

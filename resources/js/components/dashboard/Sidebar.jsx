@@ -79,7 +79,7 @@ export default function Sidebar({ isOpen, onClose }) {
     const activeClass = ({ isActive }) => `${navigationClass} ${isActive ? "bg-neutral-200/60 font-semibold text-neutral-950" : ""}`
 
     const sidebarContent = (
-        <aside className="flex h-full w-64 flex-col justify-between overflow-y-auto border-r border-neutral-200 bg-white/95">
+        <aside data-publishing-sidebar className="flex h-full w-64 flex-col justify-between overflow-y-auto border-r border-neutral-200 bg-white/95">
 
             {/* Top */}
             <div className="p-5 space-y-7">

@@ -1,6 +1,7 @@
+import { formatDate } from "@/utils/formatDate"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Card } from "@/components/ui/Card"
+import PublishingEmptyState from "@/components/dashboard/PublishingEmptyState"
 import Button from "@/components/ui/Button"
 import Select from "@/components/ui/Select"
 import Pagination from "@/components/ui/Pagination"
@@ -146,11 +147,11 @@ export default function Poems() {
                 {loading && <DashboardSkeleton />}
 
                 {!loading && list.filteredItems.length === 0 && (
-                    <Card className="p-8 text-center">
+                    <PublishingEmptyState>
                         <h3 className="text-lg font-medium">No poems found</h3>
                         <p className="mt-2 text-sm text-neutral-600">Adjust the filters or begin a new poem.</p>
                         <Button className="mt-5" onClick={() => navigate(DASHBOARD_ROUTES.POEM_NEW)}>Write a Poem</Button>
-                    </Card>
+                    </PublishingEmptyState>
                 )}
 
                 {!loading && list.filteredItems.length > 0 && (
@@ -163,7 +164,7 @@ export default function Poems() {
                                 onToggle={list.toggleItem}
                                 title={poem.title}
                                 description={poem.excerpt}
-                                metadata={`Updated ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(poem.updated_at || poem.created_at))}`}
+                                metadata={`Updated ${formatDate(poem.updated_at || poem.created_at)}`}
                                 onEdit={() => navigate(DASHBOARD_ROUTES.POEM_EDIT(poem.id))}
                                 onArchive={() => setArchiveTargets([poem])}
                                 onPublish={() => setPublishTargets([poem])}

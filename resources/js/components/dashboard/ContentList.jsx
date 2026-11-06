@@ -94,7 +94,7 @@ export function ContentListRow({
     children
 }) {
     return (
-        <article className="flex flex-col gap-4 py-5 md:flex-row md:items-center">
+        <article data-content-row data-selected={selected} className="flex flex-col gap-4 py-5 md:flex-row md:items-center">
             <input
                 type="checkbox"
                 checked={selected}
@@ -103,7 +103,7 @@ export function ContentListRow({
             />
             <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="truncate text-lg font-medium">{title}</h3>
+                    <h3 className="break-words text-lg font-medium">{title}</h3>
                     <Badge variant={item.is_published ? "success" : "default"}>
                         {item.is_published ? "Published" : "Draft"}
                     </Badge>

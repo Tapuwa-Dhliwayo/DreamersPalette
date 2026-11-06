@@ -186,8 +186,8 @@ export default function BookEditorPage() {
     }
 
     return (
-        <div className="min-h-0 flex-1 space-y-8 overflow-y-auto">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="publishing-form min-h-0 flex-1 space-y-6 overflow-y-auto">
+            <div className="publishing-form-heading flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h2 className="text-2xl font-semibold tracking-tight">
                         {isEditMode ? "Edit Novel" : "New Novel"}
@@ -195,7 +195,7 @@ export default function BookEditorPage() {
 
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                     <EditorSaveState
                         saving={saving}
                         isDirty={localDraft.isDirty}
@@ -215,7 +215,8 @@ export default function BookEditorPage() {
                 </div>
             </div>
 
-            <div className="space-y-4 max-w-full md:max-w-2xl">
+            <div className="publishing-book-fields">
+                <section className="space-y-4"><h3>Novel details</h3>
                 {studioBook && <p className="text-sm text-neutral-700">Writing is managed in the manuscript studio. <a className="underline" href={studioBook.studio_manuscript_id && !studioBook.studio_manuscript_archived ? `/studio/manuscripts/${studioBook.studio_manuscript_id}` : "/studio"}>Open manuscript</a>. Cover changes remain available here.</p>}
                 <StatusMessage tone="error">{validationError || saveError}</StatusMessage>
                 <FormField label="Novel title" htmlFor="book-title" required>
@@ -244,6 +245,8 @@ export default function BookEditorPage() {
                     />
                 </FormField>
 
+                </section>
+                <section className="space-y-4"><h3>Cover artwork</h3>
                 <div className="space-y-4">
                     <label className="block text-sm text-neutral-600">
                         Cover Image
@@ -317,15 +320,19 @@ export default function BookEditorPage() {
                     )}
                 </FormField>
 
+                </section>
+                <aside className="publishing-cover-preview"><h3>Cover preview</h3>
                 {form.cover_image_url && (
                     <div className="space-y-2">
                         <img
                             src={form.cover_image_url}
                             alt="Cover preview"
-                            className="w-full h-56 object-cover rounded-lg border border-neutral-200"
+                            className="w-full max-h-[32rem] object-contain rounded-lg"
                         />
                     </div>
                 )}
+                {!form.cover_image_url && <p className="text-sm text-neutral-600">Upload or generate a cover to preview it here.</p>}
+                </aside>
             </div>
 
             <ConfirmDialog

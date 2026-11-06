@@ -146,22 +146,18 @@ export default function PoemEditorPage() {
     }
 
     return (
-        <div className="min-h-0 flex-1 space-y-8 overflow-y-auto">
+        <div className="publishing-form min-h-0 flex-1 space-y-6 overflow-y-auto">
 
             {/* Header */}
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="publishing-form-heading flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h2 className="text-2xl font-semibold tracking-tight">
                         {isEditMode ? "Edit Poem" : "New Poem"}
                     </h2>
-                    <p className="text-sm text-neutral-500 mt-1">
-                        {isEditMode
-                            ? "Refine your verse."
-                            : "Begin something luminous."}
-                    </p>
+
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                     <EditorSaveState
                         saving={saving}
                         isDirty={localDraft.isDirty}
@@ -186,14 +182,17 @@ export default function PoemEditorPage() {
             </div>
 
             {/* Metadata */}
-            <div className="space-y-4 max-w-full md:max-w-xl">
+            <StatusMessage tone="error">{validationError || saveError}</StatusMessage>
+
+            <details className="publishing-details" open={!isEditMode}>
+                <summary>Poem details</summary>
+                <div className="publishing-fields">
                 {collections.length === 0 && (
                     <p className="text-sm text-neutral-500">
                         Create a collection before saving a poem.
                     </p>
                 )}
 
-                <StatusMessage tone="error">{validationError || saveError}</StatusMessage>
 
                 <FormField label="Poem title" htmlFor="poem-title" required>
                     <Input
@@ -225,9 +224,11 @@ export default function PoemEditorPage() {
                 </FormField>
 
             </div>
+            </details>
 
             {/* Editor */}
             <EditorPanel
+                selectionTools
                 value={form.content_md}
                 onChange={(value) =>
                     setForm({ ...form, content_md: value })

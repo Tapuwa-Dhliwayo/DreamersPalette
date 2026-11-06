@@ -1,18 +1,24 @@
 import { useCallback, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import ReactMarkdown from "react-markdown"
 import Button from "@/components/ui/Button"
 import WritingAssistant from "@/components/editor/WritingAssistant"
+import { useSelectionToolbar } from "@/hooks/useSelectionToolbar"
 import { useTextSelection } from "@/hooks/useTextSelection"
 
 export default function EditorPanel({
                                          value,
                                          onChange,
-                                         placeholder = "Begin writing..."
+                                         placeholder = "Begin writing...",
+                                         selectionTools = false
                                      }) {
     const previewContent = useMemo(() => value || "", [value])
     const textareaRef = useRef(null)
     const [assistantOpen, setAssistantOpen] = useState(false)
+    const [mode, setMode] = useState("write")
     const { selection, captureSelection, clearSelection, hasSelection } = useTextSelection(value)
+
+    const { toolbarRef, capture: captureToolbar, close: closeToolbar, position: toolbarPosition, visible: toolbarVisible } = useSelectionToolbar(selectionTools && mode !== "preview" && !assistantOpen)
 
     function updateValue(nextValue, selectionStart, selectionEnd = selectionStart) {
         onChange(nextValue)
@@ -155,76 +161,56 @@ export default function EditorPanel({
     }
 
     const toolbarActions = [
-        {
-            label: "H1",
-            description: "Heading",
-            onClick: () => prefixLines("# ", "Heading")
-        },
-        {
-            label: "Bold",
-            description: "Bold text",
-            onClick: () => wrapSelection("**", "**", "bold text")
-        },
-        {
-            label: "Italic",
-            description: "Italic text",
-            onClick: () => wrapSelection("*", "*", "italic text")
-        },
-        {
-            label: "Quote",
-            description: "Block quote",
-            onClick: () => prefixLines("> ", "Quoted text")
-        },
-        {
-            label: "List",
-            description: "Bulleted list",
-            onClick: () => prefixLines("- ")
-        },
-        {
-            label: "1.",
-            description: "Numbered list",
-            onClick: () => transformSelectedLines(
-                (selectedBlock) => selectedBlock
-                    .split("\n")
-                    .map((line, index) => {
-                        if (!line.trim()) return line
-                        return line.match(/^\s*\d+\.\s+/) ? line : `${index + 1}. ${line}`
-                    })
-                    .join("\n"),
-                "List item"
-            )
-        },
-        {
-            label: "Link",
-            description: "Insert link",
-            onClick: () => wrapSelection("[", "](https://example.com)", "link text")
-        },
-        {
-            label: "Rule",
-            description: "Horizontal rule",
-            onClick: () => insertAtCursor("\n\n---\n\n")
-        },
-        {
-            label: "Break",
-            description: "Line break",
-            onClick: () => insertAtCursor("  \n", 3)
-        }
+        { id: "heading", label: "H1", description: "Heading" },
+        { id: "bold", label: "Bold", description: "Bold text" },
+        { id: "italic", label: "Italic", description: "Italic text" },
+        { id: "quote", label: "Quote", description: "Block quote" },
+        { id: "bullets", label: "List", description: "Bulleted list" },
+        { id: "numbers", label: "1.", description: "Numbered list" },
+        { id: "link", label: "Link", description: "Insert link" },
+        { id: "rule", label: "Rule", description: "Horizontal rule" },
+        { id: "break", label: "Break", description: "Line break" }
     ]
 
+    function formatSelection(actionId) {
+        switch (actionId) {
+            case "heading": return prefixLines("# ", "Heading")
+            case "bold": return wrapSelection("**", "**", "bold text")
+            case "italic": return wrapSelection("*", "*", "italic text")
+            case "quote": return prefixLines("> ", "Quoted text")
+            case "bullets": return prefixLines("- ")
+            case "numbers": return transformSelectedLines(
+                (block) => block.split("\n").map((line, index) => !line.trim() || /^\s*\d+\.\s+/.test(line) ? line : `${index + 1}. ${line}`).join("\n"),
+                "List item"
+            )
+            case "link": return wrapSelection("[", "](https://example.com)", "link text")
+            case "rule": return insertAtCursor("\n\n---\n\n")
+            case "break": return insertAtCursor("  \n", 3)
+            default: throw new Error("Unknown formatting action")
+        }
+    }
+
     return (
-        <div className="w-full rounded-2xl shadow-sm border border-neutral-200 bg-white overflow-hidden">
-            <div className="border-b border-neutral-200 bg-neutral-50/90 px-3 py-2 md:px-4">
-                <div className="flex gap-2 overflow-x-auto pb-1">
+        <section className="publishing-editor" aria-label="Writing workspace">
+            <div className="publishing-editor-modes" role="group" aria-label="Writing mode">
+                {["write", "preview", "split"].map((writingMode) => (
+                    <button key={writingMode} type="button" aria-pressed={mode === writingMode} onClick={() => setMode(writingMode)}>
+                        {writingMode.charAt(0).toUpperCase() + writingMode.slice(1)}
+                    </button>
+                ))}
+            </div>
+            <div hidden={mode === "preview"} className="publishing-formatting border-b border-neutral-200 px-3 py-2 md:px-4">
+                <div className="flex flex-wrap gap-1">
                     {toolbarActions.map((action) => (
                         <Button
-                            key={action.label}
+                            key={action.id}
                             type="button"
                             variant="subtle"
                             size="sm"
                             className="shrink-0"
                             aria-label={action.description}
                             title={action.description}
-                            onClick={action.onClick}
+                            onClick={() => formatSelection(action.id)}
                         >
                             {action.label}
                         </Button>
@@ -245,6 +231,33 @@ export default function EditorPanel({
                 </div>
             </div>
 
+            {toolbarVisible && hasSelection && createPortal(
+                <div
+                    ref={toolbarRef}
+                    className="publishing-selection-toolbar"
+                    role="group"
+                    aria-label="Selected text formatting"
+                    style={toolbarPosition}
+                    onPointerDown={(event) => event.preventDefault()}
+                    onKeyDown={(event) => {
+                        if (event.key === "Escape") {
+                            closeToolbar()
+                            textareaRef.current?.focus()
+                        }
+                    }}
+                >
+                    {toolbarActions.filter((action) => ["bold", "italic", "break"].includes(action.id)).map((action) => (
+                        <Button key={action.id} type="button" variant="subtle" size="sm" aria-label={action.description} title={action.description} onClick={() => formatSelection(action.id)}>
+                            {action.label}
+                        </Button>
+                    ))}
+                    <Button type="button" size="sm" aria-label="Assist with selected text" onClick={() => {
+                        closeToolbar()
+                        openAssistant()
+                    }}>Assist</Button>
+                </div>, document.body
+            )}
+
             <WritingAssistant
                 open={assistantOpen}
                 selection={selection}
@@ -253,25 +266,35 @@ export default function EditorPanel({
                 onReplaceRange={replaceRange}
             />
 
-            <div className="flex flex-col md:flex-row min-h-[280px] md:min-h-[500px]">
+            <div className={`publishing-editor-panes publishing-editor-${mode}`}>
 
                 {/* Editor */}
-                <div className="flex-1 p-4 md:p-6 min-h-[220px]">
+                <div hidden={mode === "preview"} className="publishing-writing-pane">
 
                     <textarea
                         ref={textareaRef}
                         value={value ?? ""}
                         onChange={(event) => {
                             onChange(event.target.value)
+                            closeToolbar()
                             if (assistantOpen) setAssistantOpen(false)
                         }}
-                        onSelect={(event) => captureSelection(event.currentTarget)}
+                        onSelect={(event) => {
+                            captureSelection(event.currentTarget)
+                            captureToolbar(event.currentTarget)
+                        }}
+                        onBlur={(event) => {
+                            if (!toolbarRef.current?.contains(event.relatedTarget)) closeToolbar()
+                        }}
+                        onKeyDown={(event) => {
+                            if (event.key === "Escape") closeToolbar()
+                        }}
                         placeholder={placeholder}
                         aria-label="Markdown editor"
                         className="
                             w-full min-h-[260px] md:min-h-[420px] resize-none
                             bg-transparent
-                            outline-none
+                            focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-neutral-500
                             text-sm md:text-base leading-relaxed
                             text-neutral-800
                             placeholder:text-neutral-400
@@ -280,12 +303,10 @@ export default function EditorPanel({
 
                 </div>
 
-                {/* Divider */}
-                <div className="hidden md:block w-px bg-neutral-200" />
-                <div className="block md:hidden h-px bg-neutral-200" />
 
                 {/* Preview */}
-                <div className="flex-1 p-4 md:p-6 bg-neutral-50 min-h-[220px]" aria-label="Rendered preview">
+                <div hidden={mode === "write"} className="publishing-preview-pane" aria-label="Rendered preview">
+                    {!previewContent && <p className="text-sm text-neutral-500">Your formatted writing will appear here.</p>}
 
                     <div className="max-w-3xl mx-auto prose-reading">
 
@@ -327,6 +348,6 @@ export default function EditorPanel({
 
             </div>
 
-        </div>
+        </section>
     )
 }
