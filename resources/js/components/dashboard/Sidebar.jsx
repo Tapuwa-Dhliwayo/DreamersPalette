@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom"
+import { Link, NavLink, useNavigate } from "react-router-dom"
 import { useEffect, useRef, useState } from "react"
 import Button from "@/components/ui/Button"
 import { can, signOut } from "@/services/authService"
@@ -88,7 +88,14 @@ export default function Sidebar({ isOpen, onClose }) {
                 <div className="flex items-start justify-between">
                     <div>
                         <h1 className="text-xl font-semibold tracking-tight">
-                            Dreamer's Palette
+                            <Link
+                                to={PUBLIC_ROUTES.HOME}
+                                onClick={onClose}
+                                aria-label="Dreamer's Palette public site"
+                                className="rounded hover:text-neutral-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-700"
+                            >
+                                Dreamer's Palette
+                            </Link>
                         </h1>
 
                     </div>
