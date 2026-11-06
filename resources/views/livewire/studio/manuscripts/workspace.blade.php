@@ -10,25 +10,22 @@
         <button type="button" @click="wrap('*')" aria-label="Italicise selected text" title="Italic"><em>I</em></button>
         <button type="button" @click="selectionTools = false; $refs.writing.focus()" aria-label="Dismiss selected text actions" title="Dismiss (Escape)"><flux:icon.x-mark variant="micro" /></button>
     </div>
-    <header class="studio-header">
-        <a href="{{ route('studio.index') }}" class="studio-brand" @click="guardLink($event)">Dreamer’s Palette</a>
-        <nav class="studio-header-links" aria-label="Application">@can('worlds.view')<a href="{{ $manuscript->world ? route('studio.world', ['world' => $manuscript->world_id, 'manuscript' => $manuscript->id]) : route('studio.worlds') }}" @click="guardLink($event)">World</a>
-@endcan
-<a href="/dashboard/books" @click="guardLink($event)">Publishing</a><span>{{ auth()->user()->name }}</span></nav>
-    </header>
+    <x-studio.header active="write" :guard="true">
+        <x-slot:context>@can('worlds.view')<a href="{{ $manuscript->world ? route('studio.world', ['world' => $manuscript->world_id, 'manuscript' => $manuscript->id]) : route('studio.worlds') }}" @click="guardLink($event)">World</a>@endcan</x-slot:context>
+    </x-studio.header>
     <div class="studio-manuscript-bar">
         <div class="studio-tabs" aria-label="Manuscript views">
             <button @click="showTab('write')" @class(['active' => $tab === 'write'])><flux:icon.pencil-square variant="micro" /> Write</button>
             <button @click="showTab('drafts')" @class(['active' => $tab === 'drafts'])><flux:icon.rectangle-stack variant="micro" /> Drafts <span>{{ $drafts->count() }}</span></button>
         </div>
-        @can('export', $manuscript)<flux:button size="sm" icon="arrow-down-tray" href="{{ route('studio.compile', $manuscript) }}" @click="guardLink($event)">Compile</flux:button>
+        @can('export', $manuscript)<flux:button size="sm" icon="arrow-down-tray" href="{{ route('studio.compile', $manuscript) }}" aria-label="Compile" @click="guardLink($event)"><span class="studio-bar-label">Compile</span></flux:button>
 @endcan
 
-        @can('update', $manuscript)<flux:button size="sm" icon="cog-6-tooth" href="{{ route('studio.manuscript.details', $manuscript) }}" @click="guardLink($event)">Details</flux:button>
+        @can('update', $manuscript)<flux:button size="sm" icon="cog-6-tooth" href="{{ route('studio.manuscript.details', $manuscript) }}" aria-label="Details" @click="guardLink($event)"><span class="studio-bar-label">Details</span></flux:button>
 
 @endcan
 
-<div class="studio-working"><span class="status-dot"></span> Draft {{ $manuscript->working_draft_number }} <span class="studio-muted">In progress</span></div>
+<div class="studio-working"><span class="status-dot"></span> Draft {{ $manuscript->working_draft_number }} <span class="studio-muted studio-bar-label">In progress</span></div>
         @can('finish', $manuscript)<flux:button size="sm" icon="check" @click="finish()" x-bind:disabled="busy || conflict">Finish draft</flux:button>
 @endcan
 
@@ -43,7 +40,7 @@
                 <button class="studio-archive-toggle" wire:click="$toggle('archivedChapters')">{{ $archivedChapters ? 'Active chapters' : 'Archived chapters' }} @if(!$archivedChapters)({{ $archivedChapterRows->count() }})
 @endif
 </button>
-                @if($archivedChapters)<div class="chapter-list">@forelse($archivedChapterRows as $archivedChapter)<div class="chapter-list-row"><span>{{ $archivedChapter->title }}</span>@can('update', $manuscript)<flux:button size="sm" icon="arrow-uturn-left" @click="archiveChapter({{ $archivedChapter->id }}, false)">Restore</flux:button>
+                @if($archivedChapters)<div class="chapter-list">@forelse($archivedChapterRows as $archivedChapter)<div class="chapter-list-row chapter-list-row-archived"><span>{{ $archivedChapter->title }}</span>@can('update', $manuscript)<flux:button size="sm" icon="arrow-uturn-left" @click="archiveChapter({{ $archivedChapter->id }}, false)">Restore</flux:button>
 @endcan
 </div>
 @empty
@@ -85,7 +82,7 @@
                 @if($chapterId)
                     <div class="writing-document" wire:ignore>
                         <div class="writing-document-heading"><span class="studio-eyebrow">Chapter <span x-text="chapterNumber"></span></span><label for="chapter-title" class="sr-only">Chapter title</label><input id="chapter-title" class="writing-title" x-bind:readonly="!canWrite || !!recovery || conflict" x-model="title" @input="changed()" maxlength="255" aria-label="Chapter title" /></div>
-                        <div class="markdown-toolbar" aria-label="Markdown tools"><button x-bind:disabled="!canWrite" @mousedown.prevent @click="wrap('**')" title="Bold (Ctrl or Cmd B)"><strong>B</strong><span class="sr-only">Bold</span></button><button x-bind:disabled="!canWrite" @mousedown.prevent @click="wrap('*')" title="Italic (Ctrl or Cmd I)"><em>I</em><span class="sr-only">Italic</span></button><button x-bind:disabled="!canWrite" @mousedown.prevent @click="prefix('## ')" title="Heading">H2</button><button x-bind:disabled="!canWrite" @mousedown.prevent @click="prefix('> ')" title="Quotation"><flux:icon.chat-bubble-bottom-center-text variant="micro" /><span class="sr-only">Quote</span></button><button x-bind:disabled="!canWrite" @mousedown.prevent @click="prefix('- ')" title="List"><flux:icon.list-bullet variant="micro" /><span class="sr-only">List</span></button><span></span><button @mousedown.prevent @click="openAssist()" :disabled="!selection || !canWrite" class="assist-trigger"><flux:icon.language variant="micro" /> Assist</button>@if($canBrowseWorld)<button @mousedown.prevent @click="referenceBrowser(true)" :disabled="!selection || !canWrite"><flux:icon.link variant="micro" /> Link to world</button>
+                        <div class="markdown-toolbar" aria-label="Markdown tools"><button x-bind:disabled="!canWrite" @mousedown.prevent @click="wrap('**')" title="Bold (Ctrl or Cmd B)"><strong>B</strong><span class="sr-only">Bold</span></button><button x-bind:disabled="!canWrite" @mousedown.prevent @click="wrap('*')" title="Italic (Ctrl or Cmd I)"><em>I</em><span class="sr-only">Italic</span></button><button x-bind:disabled="!canWrite" @mousedown.prevent @click="prefix('## ')" title="Heading">H2</button><button x-bind:disabled="!canWrite" @mousedown.prevent @click="prefix('> ')" title="Quotation"><flux:icon.chat-bubble-bottom-center-text variant="micro" /><span class="sr-only">Quote</span></button><button x-bind:disabled="!canWrite" @mousedown.prevent @click="prefix('- ')" title="List"><flux:icon.list-bullet variant="micro" /><span class="sr-only">List</span></button><span></span><button @mousedown.prevent @click="openAssist()" :disabled="!selection || !canWrite" class="assist-trigger" aria-label="Assist"><flux:icon.language variant="micro" /> <span class="studio-toolbar-label">Assist</span></button>@if($canBrowseWorld)<button @mousedown.prevent @click="referenceBrowser(true)" :disabled="!selection || !canWrite" aria-label="Link to world"><flux:icon.link variant="micro" /> <span class="studio-toolbar-label">Link to world</span></button>
 @endif
 </div>
                         <div class="markdown-panes" :class="{ split: mode === 'split' }">
@@ -98,7 +95,7 @@
                 
 @else
 
-                    <div class="studio-empty"><h2>No chapters</h2><flux:button @click="newChapter()" x-bind:disabled="!canWrite" icon="plus">Add a chapter</flux:button></div>
+                    <x-studio.empty-state icon="document-text" title="No chapters">Chapters hold your writing in Markdown. Add one to begin.<x-slot:action><flux:button variant="primary" @click="newChapter()" x-bind:disabled="!canWrite" icon="plus">Add a chapter</flux:button></x-slot:action></x-studio.empty-state>
                 
 @endif
 
@@ -178,7 +175,7 @@
  
 @endif
 
-            <div class="reference-browser">
+            <div @class(['reference-browser', 'has-reading' => $inspectedTarget])>
                 <div class="reference-results">@forelse($referenceMatches as $match)<div class="reference-result" wire:key="reference-{{ $match['key'] }}"><button wire:click="inspectReference('{{ $match['key'] }}')"><strong>{{ $match['name'] }}</strong><span>{{ $match['type'] }}</span></button>@if($referenceForm->wording)@can('update', $manuscript)<flux:button size="sm" icon="link" wire:click="linkReference('{{ $match['key'] }}')">Link</flux:button>@can('update', $manuscript->world)<flux:button size="sm" wire:click="linkReference('{{ $match['key'] }}', true)">Add as alias</flux:button>
 @endcan
  

@@ -1,6 +1,7 @@
 <div x-data="{ browse: false }">
-    <header class="studio-header"><a class="studio-brand" href="{{ route('studio.reviews') }}">Dreamer’s Palette</a>@can('manage', $grant)<a href="{{ route('studio.manuscript.review-access', $grant->manuscript_id) }}">Review access</a>
-    @endcan</header>
+    <x-studio.header active="reviews">
+        <x-slot:context>@can('manage', $grant)<a href="{{ route('studio.manuscript.review-access', $grant->manuscript_id) }}">Review access</a>@endcan</x-slot:context>
+    </x-studio.header>
     <div class="compile-heading"><div><h1>{{ $grant->draft->manuscript_title }}</h1><p>{{ $grant->draft->name }} · Locked review copy</p></div></div>
     <div class="world-development" :class="{ 'browse-open': browse }"><aside class="world-browser" aria-label="Review chapters"><div class="world-section-heading"><h2>Chapters</h2><button class="development-browse-toggle" @click="browse = false" aria-label="Close chapter browse"><flux:icon.x-mark /></button></div><div class="development-entries">@foreach($chapters as $listed)<button wire:click="selectChapter({{ $listed->id }})" @click="browse = false" @class(['active' => $listed->id === $chapterId])>{{ $listed->title }}</button>
     @endforeach</div></aside>

@@ -1,5 +1,7 @@
 <div>
-    <header class="studio-header"><a href="{{ route('studio.index') }}" class="studio-brand">Dreamer’s Palette</a><nav class="studio-header-links" aria-label="Studio"><a href="{{ route('studio.manuscript', $manuscript) }}">Back to writing</a><a href="{{ route('studio.worlds') }}">Worlds</a><a href="/dashboard">Dashboard</a></nav></header>
+    <x-studio.header active="write">
+        <x-slot:context><a href="{{ route('studio.manuscript', $manuscript) }}">← {{ $manuscript->title }}</a></x-slot:context>
+    </x-studio.header>
     <div class="compile-heading"><div><h1>Compile</h1><p>{{ $manuscript->title }}</p></div><span>{{ count($form->chapters) }} of {{ $chapters->count() }} chapters</span></div>
     <form wire:submit="prepare" class="compile-workspace">
         <aside class="compile-options" aria-label="Compile options">
