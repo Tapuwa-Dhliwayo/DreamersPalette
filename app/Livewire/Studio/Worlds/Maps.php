@@ -177,7 +177,11 @@ class Maps extends Component
     public function render()
     {
         $this->authorize('view', $this->world);
-        $map = $this->selected ? $this->world->maps()->withTrashed()->findOrFail($this->selected) : null;
+        $maps = $this->world->maps()->when($this->archived, fn ($query) => $query->onlyTrashed())->get();
+        $map = $this->selected ? $this->world->maps()->withTrashed()->findOrFail($this->selected) : $maps->first();
+        if ($map && ! $this->selected) {
+            $this->selected = $map->id;
+        }
         $viewMap = $map;
         if ($map && $this->version) {
             $snapshot = $map->versions()->findOrFail($this->version);
@@ -186,6 +190,6 @@ class Maps extends Component
         $retained = $this->editingId ? collect($this->world->maps()->find($this->editingId)?->pins ?? [])->pluck('entry_id')->filter()->all() : [];
         $locations = $this->world->entries()->withTrashed()->whereHas('type', fn ($query) => $query->where('key', 'location'))->where(fn ($query) => $query->whereNull('deleted_at')->orWhereIn('id', $retained))->get();
 
-        return view('livewire.studio.worlds.maps', ['maps' => $this->world->maps()->when($this->archived, fn ($query) => $query->onlyTrashed())->get(), 'map' => $map, 'viewMap' => $viewMap, 'locations' => $locations]);
+        return view('livewire.studio.worlds.maps', ['maps' => $maps, 'map' => $map, 'viewMap' => $viewMap, 'locations' => $locations]);
     }
 }

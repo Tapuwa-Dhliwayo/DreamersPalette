@@ -46,8 +46,9 @@ class Calendars extends Component
     {
         $this->authorize('view', $world);
         $this->world = $world;
-        if ($this->selected) {
-            $this->select($this->selected);
+        $selected = $this->selected ?? $this->world->calendars()->value('id');
+        if ($selected) {
+            $this->select($selected);
         }
     }
 

@@ -1,40 +1,28 @@
-<div x-data="{ dirty: false, systemsOpen: false }" @input="if ($event.target.closest('form')) dirty = true" @world-saved.window="dirty = false" @world-rule-opened.window="$nextTick(() => { const rule = document.getElementById('magic-rule-' + $event.detail.id); rule?.scrollIntoView({ block: 'start' }); rule?.focus(); })" @beforeunload.window="if (dirty) { $event.preventDefault(); $event.returnValue = ''; }">
-    <header class="studio-header world-header">
-        <a href="{{ route('studio.index') }}" class="studio-brand">Dreamer’s Palette</a>
-        <nav class="studio-header-links" aria-label="Studio"><a href="{{ route('studio.index') }}">Write</a><a href="{{ route('studio.worlds') }}" aria-current="page">Worlds</a><a href="/dashboard">Dashboard</a><span>{{ auth()->user()->name }}</span></nav>
-    </header>
+<div x-data="{ dirty: false, browse: false }" @input="if ($event.target.closest('form')) dirty = true" @world-saved.window="dirty = false" @world-rule-opened.window="$nextTick(() => { const rule = document.getElementById('magic-rule-' + $event.detail.id); rule?.scrollIntoView({ block: 'start' }); rule?.focus(); })" @beforeunload.window="if (dirty) { $event.preventDefault(); $event.returnValue = ''; }">
+    <x-studio.header active="worlds" />
     <x-studio.world-tools :world="$world" />
-    <div class="world-mobile-bar"><button @click="systemsOpen = !systemsOpen"><flux:icon.bars-3 variant="micro" /> Systems</button><span>{{ $world->name }}</span></div>
-    <div class="world-workbench" :class="{ 'world-list-open': systemsOpen }">
-        <aside class="world-navigation" aria-label="Worlds"><h2>Worlds</h2>@foreach($worlds as $listedWorld)<a href="{{ route('studio.world', $listedWorld) }}" @class(['active' => $listedWorld->id === $world->id])><flux:icon.globe-alt variant="micro" />{{ $listedWorld->name }}</a>
-@endforeach
-<a class="world-all" href="{{ route('studio.worlds') }}">All worlds</a></aside>
-        <aside class="world-system-list" aria-label="Magic systems">
-            <div class="world-list-title"><h2>Magic systems</h2><button class="world-mobile-close" @click="systemsOpen = false" aria-label="Close systems"><flux:icon.x-mark /></button></div>
-            <flux:input label="Search systems" class="world-search" wire:model.live.debounce.250ms="search" icon="magnifying-glass" />
-            @can('update', $world)<flux:button icon="plus" variant="primary" wire:click="editSystem(true)">New system</flux:button>
-@endcan
-
-            <flux:select label="Show systems" wire:model.live.boolean="archivedSystems"><flux:select.option value="false">Active</flux:select.option><flux:select.option value="true">Archived</flux:select.option></flux:select>
-            <div class="world-system-rows">@forelse($systems as $listedSystem)@if($listedSystem->trashed())<div class="world-archive-actions"><span>{{ $listedSystem->name }}</span>@can('update', $world)<flux:button size="sm" icon="arrow-uturn-left" wire:click="archiveSystem({{ $listedSystem->id }}, {{ $listedSystem->revision }}, false)">Restore</flux:button>
-@endcan
-</div>@else<button @class(['active' => $listedSystem->id === $systemId]) @click="systemsOpen = false; $wire.selectSystem({{ $listedSystem->id }})"><flux:icon.sparkles variant="micro" /><span>{{ $listedSystem->name }}</span></button>
-@endif
- @empty<p class="world-empty">{{ $search ? 'No matching systems' : 'No systems' }}</p>
-@endforelse
-</div>
+    <div class="world-development" :class="{ 'browse-open': browse }">
+        <aside class="world-browser" aria-label="Magic systems">
+            <div class="world-section-heading"><h2>Magic systems</h2><button class="development-browse-toggle" x-ref="closeBrowse" @click="browse = false; $nextTick(() => $refs.openBrowse.focus())" aria-label="Close browse"><flux:icon.x-mark /></button></div>
+            <flux:input wire:model.live.debounce.250ms="search" label="Search" icon="magnifying-glass" />
+            <flux:select label="Show" wire:model.live.boolean="archivedSystems"><flux:select.option value="false">Active</flux:select.option><flux:select.option value="true">Archived</flux:select.option></flux:select>
+            @can('update', $world)<flux:button icon="plus" variant="primary" wire:click="editSystem(true)">New system</flux:button>@endcan
+            <div class="development-entries">
+                @forelse($systems as $listedSystem)
+                    @if($listedSystem->trashed())
+                        <div class="world-archive-actions" wire:key="system-{{ $listedSystem->id }}"><span>{{ $listedSystem->name }}</span>@can('update', $world)<flux:button size="sm" icon="arrow-uturn-left" wire:click="archiveSystem({{ $listedSystem->id }}, {{ $listedSystem->revision }}, false)">Restore</flux:button>@endcan</div>
+                    @else
+                        <button wire:key="system-{{ $listedSystem->id }}" @class(['active' => $listedSystem->id === $systemId]) @click="browse = false; $wire.selectSystem({{ $listedSystem->id }})"><span>{{ $listedSystem->name }}</span></button>
+                    @endif
+                @empty<p class="world-empty">{{ $search ? 'No matches' : 'No systems yet' }}</p>@endforelse
+            </div>
         </aside>
-        <main id="studio-main" class="world-document">
+        <main id="studio-main" class="world-document development-document" :inert="browse">
+            <button class="development-browse-toggle" x-ref="openBrowse" @click="browse = true; $nextTick(() => $refs.closeBrowse.focus())"><flux:icon.bars-3 variant="micro" />Browse systems</button>
             @if($system)
                 <div class="world-entry-heading"><div><h1>{{ $system->name }}</h1><div class="world-aliases">@foreach($system->aliases as $alias)<span>{{ $alias }}</span>
 @endforeach
-</div></div>@if(!$system->trashed())@can('update', $world)<flux:button size="sm" icon="pencil-square" wire:click="editSystem">Edit world system</flux:button>@if(!$manuscript)<flux:button size="sm" icon="archive-box" wire:click="archiveSystem({{ $system->id }}, {{ $system->revision }}, true)">Archive world system</flux:button>
-@endif
-
-@endcan
-
-@endif
-</div>
+</div></div>@if(!$system->trashed())@can('update', $world)<div class="studio-heading-actions"><flux:button size="sm" icon="pencil-square" wire:click="editSystem">Edit world system</flux:button>@if(!$manuscript)<flux:button size="sm" icon="archive-box" wire:click="archiveSystem({{ $system->id }}, {{ $system->revision }}, true)">Archive world system</flux:button>@endif</div>@endcan @endif</div>
                 <div class="world-scope"><label for="world-scope">Scope</label><select id="world-scope" wire:model.live="manuscriptId"><option value="">{{ $world->name }} · World</option>@foreach($linkedManuscripts as $linked)<option value="{{ $linked->id }}">{{ $linked->title }} · Manuscript</option>
 @endforeach
 </select>@can('update', $world)<flux:button size="sm" icon="link" wire:click="beginLink">Link manuscript</flux:button>
@@ -134,7 +122,7 @@
                             </details>
                         </article>
                     @empty
-                        <p class="world-empty">No rules</p>
+                        <p class="world-empty">No rules yet</p>
                     
 @endforelse
 
@@ -198,9 +186,7 @@
 @endif
 
             @else
-                <div class="studio-empty"><h1>{{ $world->name }}</h1><p>No magic systems</p>@can('update', $world)<flux:button variant="primary" icon="plus" wire:click="editSystem(true)">New system</flux:button>
-@endcan
-</div>
+                <x-studio.empty-state icon="sparkles" title="Magic systems" as="h1">Magic systems record the rules, cases and history of how magic works in this world.<x-slot:action>@can('update', $world)<flux:button variant="primary" icon="plus" wire:click="editSystem(true)">New system</flux:button>@endcan</x-slot:action></x-studio.empty-state>
             
 @endif
 

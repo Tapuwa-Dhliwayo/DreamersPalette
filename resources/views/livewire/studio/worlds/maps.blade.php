@@ -1,5 +1,5 @@
 <div x-data="{ browse: false }">
-    <header class="studio-header world-header"><a href="{{ route('studio.index') }}" class="studio-brand">Dreamer’s Palette</a><nav class="studio-header-links" aria-label="Studio"><a href="{{ route('studio.index') }}">Write</a><a href="{{ route('studio.worlds') }}">Worlds</a></nav></header>
+    <x-studio.header active="worlds" />
     <x-studio.world-tools :world="$world" active="maps" />
     <div class="world-development" :class="{ 'browse-open': browse }">
         <aside class="world-browser" aria-label="Maps"><div class="world-section-heading"><h2>Maps</h2><button class="development-browse-toggle" @click="browse = false" aria-label="Close browse"><flux:icon.x-mark /></button></div>
@@ -11,7 +11,7 @@
             <div class="development-entries">@forelse($maps as $listed)<button wire:click="select({{ $listed->id }})" @click="browse = false" @class(['active' => $selected === $listed->id])>{{ $listed->title }}</button>
             
 @empty
-<p>No maps here</p>
+<p class="world-empty">No maps yet</p>
             @endforelse</div>
         </aside>
         <main id="studio-main" class="world-document development-document" :inert="browse">
@@ -19,7 +19,7 @@
             @error('conflict')<p class="studio-alert">{{ $message }}</p>
             @enderror
             @if($map)
-            <div class="world-entry-heading"><h1>{{ $viewMap->title }}</h1><div class="thinking-actions">@can('update', $world)@if(!$map->trashed())<flux:button icon="pencil-square" wire:click="edit({{ $map->id }})">Edit map</flux:button>
+            <div class="world-entry-heading"><h1>{{ $viewMap->title }}</h1><div class="studio-heading-actions">@can('update', $world)@if(!$map->trashed())<flux:button icon="pencil-square" wire:click="edit({{ $map->id }})">Edit map</flux:button>
             
 @endif
 
@@ -67,10 +67,7 @@
             <x-studio.markdown :text="$viewMap->notes_md ?? ''" />
             
 @else
-<div class="thinking-empty"><flux:icon.map /><h1>Maps</h1><p>Start with a blank canvas or an image. Place your locations and trace a journey.</p>@can('update', $world)<flux:button icon="plus" variant="primary" wire:click="edit">New map</flux:button>
-            
-@endcan
-</div>
+<x-studio.empty-state icon="map" title="Maps" as="h1">Start with a blank canvas or an image. Place your locations and trace a journey.<x-slot:action>@can('update', $world)<flux:button icon="plus" variant="primary" wire:click="edit">New map</flux:button>@endcan</x-slot:action></x-studio.empty-state>
             
 @endif
 

@@ -129,7 +129,7 @@ class Development extends Component
         return match ($this->section) {
             'entries' => $this->world->entries()->with('type'),
             'people' => $this->world->people(),
-            'timeline' => $this->world->events(),
+            'timeline' => $this->world->events()->with('calendar'),
             'arcs' => $this->world->arcs(),
             'alignments' => $this->world->alignmentCharts(),
             default => abort(404),
@@ -313,6 +313,11 @@ class Development extends Component
             'editingCalendarEvent' => $this->editingKind === 'event' && $this->editingId ? $this->world->events()->find($this->editingId) : null,
             'types' => WorldEntryType::orderBy('name')->get(),
             'entries' => $entries, 'entry' => $entry,
+            'subjectConnections' => $this->section === 'people' && $entry
+                ? $this->world->relationships()
+                    ->where(fn ($query) => $query->where('source_key', 'person:'.$entry->id)->orWhere('target_key', 'person:'.$entry->id))
+                    ->get()
+                : collect(),
             'people' => $this->world->people()->withTrashed()->where(fn ($query) => $query->whereNull('deleted_at')->orWhereIn('id', match ($this->editingKind) {
                 'event' => $this->eventForm->person_ids, 'arc' => [$this->arcForm->person_id], 'placement' => [$this->placementForm->person_id], default => []
             }))->get(),

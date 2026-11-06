@@ -1,12 +1,12 @@
 <div x-data="{ browse: false }">
-<header class="studio-header world-header"><a class="studio-brand" href="{{ route('studio.index') }}">Dreamer’s Palette</a><a href="{{ route('studio.worlds') }}">Worlds</a></header><x-studio.world-tools :world="$world" active="calendars" />
+<x-studio.header active="worlds" /><x-studio.world-tools :world="$world" active="calendars" />
 <div class="world-development" :class="{ 'browse-open': browse }"><aside class="world-browser" aria-label="Calendars"><div class="world-section-heading"><h2>Calendars</h2><button class="development-browse-toggle" @click="browse = false" aria-label="Close browse"><flux:icon.x-mark /></button></div><flux:select label="Show" wire:model.live.boolean="archived"><option value="false">Active</option><option value="true">Archived</option></flux:select>@can('update',$world)<flux:button icon="plus" variant="primary" wire:click="edit">New calendar</flux:button>
 @endcan<div class="development-entries">@forelse($calendars as $listed)<button wire:click="select({{ $listed->id }})" @click="browse = false">{{ $listed->name }}</button>
-@empty<p>No calendars here.</p>
+@empty<p class="world-empty">No calendars yet</p>
 @endforelse</div></aside>
 <main id="studio-main" class="world-document development-document" :inert="browse"><button class="development-browse-toggle" @click="browse = true"><flux:icon.bars-3 variant="micro" />Browse calendars</button><p role="status">{{ $notice }}</p>@error('conflict')<p class="studio-alert">{{ $message }}</p>
 @enderror
-@if($calendar)<div class="world-entry-heading"><h1>{{ $calendar->name }}</h1>@can('update',$world)<div class="thinking-actions">@if(!$calendar->trashed())<flux:button icon="pencil-square" wire:click="edit({{ $calendar->id }})">Edit calendar</flux:button>
+@if($calendar)<div class="world-entry-heading"><h1>{{ $calendar->name }}</h1>@can('update',$world)<div class="studio-heading-actions">@if(!$calendar->trashed())<flux:button icon="pencil-square" wire:click="edit({{ $calendar->id }})">Edit calendar</flux:button>
 @endif<flux:button :icon="$calendar->trashed() ? 'arrow-uturn-left' : 'archive-box'" wire:click="archiveRecord({{ $calendar->id }}, {{ $calendar->revision }}, {{ $calendar->trashed() ? 'false' : 'true' }})">{{ $calendar->trashed() ? 'Restore' : 'Archive' }}</flux:button></div>
 @endcan</div><div class="calendar-months">@foreach($calendar->months as $index=>$month)<div><span>{{ str_pad((string)($index+1),2,'0',STR_PAD_LEFT) }}</span><strong>{{ $month['name'] }}</strong><span>{{ $month['days'] }} days</span></div>
 @endforeach</div>
@@ -27,8 +27,7 @@
 <section class="compile-recent"><h2>Chronology in this calendar</h2>@forelse($datedEvents as $event)<a class="compile-export-row" href="{{ route('studio.world.develop',['world'=>$world,'section'=>'timeline','selected'=>$event->id]) }}"><span>{{ $event->calendarLabel() }}</span><strong>{{ $event->title }}</strong></a>
 @empty<p>No dated events yet.</p>
 @endforelse</section><x-studio.markdown :text="$calendar->notes_md ?? ''" />
-@else<div class="thinking-empty"><flux:icon.calendar-days /><h1>Calendars</h1><p>Define your world's months, week and leap cycle, then date its events.</p>@can('update',$world)<flux:button icon="plus" variant="primary" wire:click="edit">New calendar</flux:button>
-@endcan</div>
+@else<x-studio.empty-state icon="calendar-days" title="Calendars" as="h1">Define your world's months, week and leap cycle, then date its events.<x-slot:action>@can('update',$world)<flux:button icon="plus" variant="primary" wire:click="edit">New calendar</flux:button>@endcan</x-slot:action></x-studio.empty-state>
 @endif</main></div>
 <flux:modal wire:model="editing" class="thinking-modal" :dismissible="false" :closable="false"><form wire:submit="save" class="thinking-form"><h2>{{ $editingId ? 'Edit calendar' : 'New calendar' }}</h2>@error('conflict')<p class="studio-alert">{{ $message }}</p>
 @enderror<flux:input label="Name" wire:model="form.name" /><section><h3>Months, in order</h3>@foreach($form->months as $index=>$month)<div class="calendar-month-input" wire:key="calendar-month-{{ $index }}"><flux:input label="Month {{ $index+1 }}" wire:model="form.months.{{ $index }}.name" /><flux:input label="Days" type="number" wire:model="form.months.{{ $index }}.days" /><flux:button icon="trash" wire:click="removeMonth({{ $index }})" aria-label="Remove month {{ $index+1 }}" /></div>

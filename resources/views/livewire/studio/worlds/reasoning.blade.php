@@ -1,5 +1,5 @@
 <div x-data="{ browse: false, dirty: false }" @input="if ($event.target.closest('form')) dirty = true" @world-saved.window="dirty = false" @beforeunload.window="if (dirty) { $event.preventDefault(); $event.returnValue = ''; }">
-    <header class="studio-header"><a href="{{ route('studio.index') }}" class="studio-brand">Dreamer’s Palette</a><nav class="studio-header-links" aria-label="Studio"><a href="{{ route('studio.index') }}">Write</a><a href="{{ route('studio.worlds') }}">Worlds</a><a href="/dashboard">Dashboard</a></nav></header>
+    <x-studio.header active="worlds" />
     <x-studio.world-tools :world="$world" :active="$section" />
     <div class="world-development" :class="{ 'browse-open': browse }">
         <aside class="world-browser" aria-label="{{ ucfirst($section) }}">
@@ -18,7 +18,7 @@
                 @forelse($records as $listed)
                 <button wire:key="reasoning-{{ $section }}-{{ $listed->id }}" wire:click="select({{ $listed->id }})" @click="browse = false" @class(['active' => $selected === $listed->id])><span>{{ $listed->title }}</span><small>{{ $section === 'investigations' ? ($listed->is_resolved ? 'Resolved' : 'Open') : count($listed->knowers).' perspectives' }}</small></button>
                 @empty
-                <p class="world-empty">{{ $search ? 'No matches' : 'Nothing added yet' }}</p>
+                <p class="world-empty">{{ $search || $knowerFilter ? 'No matches' : ($section === 'investigations' ? 'No investigations yet' : 'No knowledge records yet') }}</p>
                 @endforelse
             </div>
         </aside>
@@ -28,7 +28,7 @@
             <flux:error name="conflict" />
             @if($record)
             <div class="world-entry-heading"><h1>{{ $record->title }}</h1>
-                @can('update', $world)<div class="thinking-actions">
+                @can('update', $world)<div class="studio-heading-actions">
                     @if(!$record->trashed())<flux:button icon="pencil-square" size="sm" wire:click="edit({{ $record->id }})">Edit</flux:button>
                     @endif
                     <flux:button size="sm" :icon="$record->trashed() ? 'arrow-uturn-left' : 'archive-box'" wire:click="archiveRecord({{ $record->id }}, {{ $record->revision }}, {{ $record->trashed() ? 'false' : 'true' }})">{{ $record->trashed() ? 'Restore' : 'Archive' }}</flux:button>
@@ -74,8 +74,7 @@
                 <x-studio.markdown :text="$record->notes_md ?? ''" />
             @endif
             @else
-                <h1>{{ ucfirst($section) }}</h1>
-                <p>{{ $section === 'investigations' ? 'Follow a question through evidence, objections and a decision.' : 'Separate what is true, what each character believes, and when the reader learns it.' }}</p>
+                <x-studio.empty-state :icon="$section === 'investigations' ? 'magnifying-glass' : 'eye'" :title="ucfirst($section)" as="h1">{{ $section === 'investigations' ? 'Follow a question through evidence, objections and a decision.' : 'Separate what is true, what each character believes, and when the reader learns it.' }}<x-slot:action>@can('update', $world)<flux:button variant="primary" icon="plus" wire:click="edit">{{ $section === 'investigations' ? 'New investigation' : 'Track knowledge' }}</flux:button>@endcan</x-slot:action></x-studio.empty-state>
             @endif
             @if($section === 'knowledge' && $revealOrder->isNotEmpty())
             <section class="reasoning-reveals"><h2>Reveal order</h2><ol>

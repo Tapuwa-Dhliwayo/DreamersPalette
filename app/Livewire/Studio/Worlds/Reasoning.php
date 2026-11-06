@@ -181,14 +181,21 @@ class Reasoning extends Component
         if ($this->section === 'knowledge' && $this->knowerFilter) {
             $records = $records->filter(fn ($record) => in_array($this->knowerFilter, array_column($record->knowers, 'key'), true));
         }
-        $record = $this->selected ? $this->records()->withTrashed()->findOrFail($this->selected) : null;
+        $record = $this->selected ? $this->records()->withTrashed()->findOrFail($this->selected) : $records->first();
+        if ($record && ! $this->selected) {
+            $this->selected = $record->id;
+        }
         $choices = $this->world->referenceCatalogue()->keyBy('key')->all();
         $original = $this->editingId ? $this->records($this->editingSection)->find($this->editingId) : null;
         foreach (($this->editingSection === 'investigations' ? $original?->subjects : $original?->knowers) ?? [] as $subject) {
             $choices[$subject['key']] ??= ['key' => $subject['key'], 'name' => $subject['name'], 'type' => 'Archived'];
         }
         $manuscripts = $this->world->manuscripts()->with('chapters')->get();
-        $revealOrder = $this->world->knowledge()->whereNotNull('reveal_chapter_id')->with(['manuscript', 'revealChapter'])->get()->sortBy(fn ($fact) => sprintf('%020d:%020d', $fact->manuscript_id, $fact->revealChapter?->position ?? PHP_INT_MAX));
+        $revealOrder = $this->world->knowledge()
+            ->whereNotNull('reveal_chapter_id')
+            ->with(['manuscript', 'revealChapter'])
+            ->get()
+            ->sortBy(fn ($fact) => sprintf('%020d:%020d', $fact->manuscript_id, $fact->revealChapter?->position ?? PHP_INT_MAX));
 
         return view('livewire.studio.worlds.reasoning', ['records' => $records, 'record' => $record, 'choices' => $choices, 'events' => $this->world->events()->withTrashed()->get(), 'manuscripts' => $manuscripts, 'revealOrder' => $revealOrder]);
     }

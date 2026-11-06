@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Forms\Worlds;
 
+use App\Models\WorldComparison;
 use Livewire\Form;
 
 class ComparisonForm extends Form
@@ -15,6 +16,17 @@ class ComparisonForm extends Form
     public array $subjects = [];
 
     public int $revision = 1;
+
+    public function setComparison(WorldComparison $comparison): void
+    {
+        $this->fill([
+            'title' => $comparison->title,
+            'notes_md' => $comparison->notes_md ?? '',
+            'criteria' => $comparison->criteria,
+            'subjects' => $comparison->subjects,
+            'revision' => $comparison->revision,
+        ]);
+    }
 
     public function fields(): array
     {
