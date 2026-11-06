@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\SecurityController;
 use App\Http\Controllers\Auth\SessionController;
 use App\Http\Controllers\Content\AssetController;
 use App\Http\Controllers\Content\ContentController;
+use App\Http\Controllers\Content\DashboardController;
 use App\Http\Controllers\Content\ReaderController;
 use App\Http\Controllers\Content\WritingAssistantController;
 use App\Http\Middleware\PreventAuthenticationCaching;
@@ -23,6 +24,8 @@ Route::prefix('reader')->group(function (): void {
 });
 
 Route::prefix('studio')->middleware([PreventAuthenticationCaching::class, 'auth:sanctum', 'verified', 'can:dashboard.access'])->group(function (): void {
+    Route::get('/dashboard', [DashboardController::class, 'show']);
+    Route::patch('/dashboard/manuscripts/{manuscript}/goal', [DashboardController::class, 'goal'])->middleware('can:manuscripts.update')->whereNumber('manuscript');
     Route::post('/uploads', [AssetController::class, 'upload'])->middleware(['can:assets.upload', 'throttle:30,1']);
     Route::post('/generated-assets', [AssetController::class, 'generate'])->middleware(['can:generated-assets.create', 'throttle:5,1']);
     Route::post('/writing-assist', WritingAssistantController::class)->middleware('throttle:30,1');

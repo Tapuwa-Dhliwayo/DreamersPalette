@@ -48,6 +48,7 @@ class ReviewComment extends Model
             }
             $chapter->forceFill(['content_md' => $comment->suggested_md, 'updated_by' => $author->id, 'revision' => $chapter->revision + 1, 'last_save_uuid' => null])->save();
             $manuscript->increment('revision');
+            $manuscript->recordWritingActivity('editorial', $author->id);
             $comment->update(['accepted_at' => now(), 'accepted_by' => $author->id]);
         });
     }

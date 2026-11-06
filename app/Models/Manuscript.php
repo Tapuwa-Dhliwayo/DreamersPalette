@@ -19,7 +19,15 @@ class Manuscript extends Model
 
     protected function casts(): array
     {
-        return ['author_id' => 'integer', 'world_id' => 'integer', 'working_draft_number' => 'integer', 'revision' => 'integer', 'based_on_draft_id' => 'integer', 'compile_preferences' => 'array'];
+        return [
+            'author_id' => 'integer',
+            'world_id' => 'integer',
+            'working_draft_number' => 'integer',
+            'revision' => 'integer',
+            'based_on_draft_id' => 'integer',
+            'compile_preferences' => 'array',
+            'weekly_word_goal' => 'integer',
+        ];
     }
 
     protected function afterArchiveChange(int $authorId): void
@@ -58,6 +66,29 @@ class Manuscript extends Model
             $manuscript->revision++;
             $manuscript->save();
         });
+    }
+
+    public function recordWritingActivity(string $kind, int $authorId, ?int $chapterId = null, array $changes = []): void
+    {
+        if (! WritingActivity::where('manuscript_id', $this->id)->exists()) {
+            $baseline = (int) $this->chapters()->sum('word_count') - ($changes['words_added'] ?? 0) + ($changes['words_removed'] ?? 0);
+            WritingActivity::create([
+                'manuscript_id' => $this->id,
+                'author_id' => $this->author_id,
+                'kind' => 'baseline',
+                'manuscript_words' => max(0, $baseline),
+                'recorded_at' => now(),
+            ]);
+        }
+        WritingActivity::create([
+            'manuscript_id' => $this->id,
+            'chapter_id' => $chapterId,
+            'author_id' => $authorId,
+            'kind' => $kind,
+            ...$changes,
+            'manuscript_words' => (int) $this->chapters()->sum('word_count'),
+            'recorded_at' => now(),
+        ]);
     }
 
     public function author(): BelongsTo
@@ -109,6 +140,7 @@ class Manuscript extends Model
             }
             $chapter->forceFill(['deleted_at' => $archive ? now() : null, 'archived_by' => $archive ? $author->id : null, 'revision' => $chapter->revision + 1, 'last_save_uuid' => null])->save();
             $manuscript->increment('revision');
+            $manuscript->recordWritingActivity('structure', $author->id);
         });
     }
 

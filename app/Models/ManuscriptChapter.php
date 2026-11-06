@@ -20,6 +20,15 @@ class ManuscriptChapter extends Model
         return ['manuscript_id' => 'integer', 'revision' => 'integer', 'position' => 'integer'];
     }
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $chapter): void {
+            if ($chapter->isDirty('content_md')) {
+                $chapter->word_count = WritingActivity::wordCount($chapter->content_md ?? '');
+            }
+        });
+    }
+
     public function readingPassages(): array
     {
         $paragraphs = preg_split('/\\R\\s*\\R/u', trim($this->content_md ?? ''), -1, PREG_SPLIT_NO_EMPTY);
@@ -63,12 +72,16 @@ class ManuscriptChapter extends Model
             if ($chapter->revision !== $writing['revision']) {
                 throw ValidationException::withMessages(['conflict' => 'This chapter has newer server writing. Your local copy is retained. Reload to compare both versions.']);
             }
+            $before = $chapter->content_md ?? '';
             $chapter->fill(collect($writing)->only(['title', 'content_md', 'summary_md'])->all());
             $chapter->revision++;
             $chapter->last_save_uuid = $writing['request_uuid'];
             $chapter->updated_by = $author->id;
             $chapter->save();
             $manuscript->increment('revision');
+            if ($before !== $chapter->content_md) {
+                $manuscript->recordWritingActivity('writing', $author->id, $chapter->id, WritingActivity::changes($before, $chapter->content_md));
+            }
 
             return $chapter;
         });
