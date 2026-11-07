@@ -18,7 +18,7 @@ export default function VerifyEmailPage() {
                 to={
                     can(user, "dashboard.access")
                         ? "/dashboard"
-                        : "/dashboard/security"
+                        : "/account/security"
                 }
                 replace
             />

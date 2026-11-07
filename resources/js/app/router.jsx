@@ -4,6 +4,7 @@ import { lazy } from "react";
 import ReaderLayout from "@/layouts/ReaderLayout";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import ProtectedRoute from "./ProtectedRoute";
+import FullPageRedirect from "@/components/FullPageRedirect";
 
 /* ---------- Public Pages ---------- */
 const HomePage = lazy(() => import("@/pages/public/HomePage"));
@@ -17,7 +18,6 @@ const BookDetailPage = lazy(() => import("@/pages/public/BookDetailPage"));
 const ChapterPage = lazy(() => import("@/pages/public/ChapterPage"));
 const LoginPage = lazy(() => import("@/pages/public/LoginPage"));
 const VerifyEmailPage = lazy(() => import("@/pages/public/VerifyEmailPage"));
-const SecurityPage = lazy(() => import("@/pages/dashboard/SecurityPage"));
 
 /* ---------- Dashboard Pages ---------- */
 const DashboardHome = lazy(() => import("@/pages/dashboard/DashboardHome"));
@@ -68,24 +68,10 @@ export const router = createBrowserRouter([
         ],
     },
 
-    {
-        path: "/dashboard/security",
-        element: (
-            <ProtectedRoute permission="account.security.manage">
-                <DashboardLayout />
-            </ProtectedRoute>
-        ),
-        children: [{ index: true, element: <SecurityPage /> }],
-    },
-    {
-        path: "/user/confirm-password",
-        element: (
-            <ProtectedRoute permission="account.security.manage">
-                <DashboardLayout />
-            </ProtectedRoute>
-        ),
-        children: [{ index: true, element: <SecurityPage /> }],
-    },
+    /* Account settings live in the studio shell; these paths load it from the server. */
+    { path: "/account/*", element: <FullPageRedirect /> },
+    { path: "/dashboard/security", element: <FullPageRedirect to="/account/security" /> },
+    { path: "/user/confirm-password", element: <FullPageRedirect to="/account/security" /> },
     /* ---------- DASHBOARD (PROTECTED) ---------- */
     {
         path: "/dashboard",

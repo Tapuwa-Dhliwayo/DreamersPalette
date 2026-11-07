@@ -4,7 +4,7 @@ import ConfirmIdentity from "@/components/auth/ConfirmIdentity";
 import AuthenticatorSettings from "@/components/auth/AuthenticatorSettings";
 import PasskeySettings from "@/components/auth/PasskeySettings";
 
-export default function SecurityPage() {
+export default function SecuritySettings() {
     const [settings, setSettings] = useState(null);
     const [busy, setBusy] = useState("");
     const [error, setError] = useState("");
@@ -48,16 +48,11 @@ export default function SecurityPage() {
     }
 
     return (
-        <section className="mx-auto min-h-0 w-full max-w-3xl space-y-6 overflow-y-auto p-1 md:p-4">
-            <header className="space-y-2">
-                <h1 className="font-serif text-2xl">Account</h1>
-                <nav aria-label="Account settings" className="flex gap-6 border-b border-neutral-200 text-sm"><a href="/account" className="py-3 text-neutral-600 hover:text-neutral-950">Profile</a><span aria-current="page" className="border-b-2 border-teal-700 py-3 font-medium">Security</span></nav>
-                <p className="text-sm text-neutral-600">
-                    Password sign-in is always available. Two-factor
-                    authentication and passkeys are optional.
-                </p>
-            </header>
-            <h2 className="text-lg font-semibold">Security</h2>
+        <section className="space-y-6">
+            <p className="text-sm text-neutral-600">
+                Password sign-in is always available. Two-factor
+                authentication and passkeys are optional.
+            </p>
             {error && (
                 <p
                     role="alert"

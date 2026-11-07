@@ -6,6 +6,7 @@ use App\Http\Controllers\Studio\ExportDraftController;
 use App\Http\Controllers\Studio\MapImageController;
 use App\Http\Middleware\PreventAuthenticationCaching;
 use App\Livewire\Studio\Account\Profile;
+use App\Livewire\Studio\Account\Security;
 use App\Livewire\Studio\AssistantConnections;
 use App\Livewire\Studio\Manuscripts\Compile;
 use App\Livewire\Studio\Manuscripts\Details;
@@ -26,6 +27,7 @@ use Spatie\Permission\Middleware\PermissionMiddleware;
 Route::middleware(PreventAuthenticationCaching::class)->group(__DIR__.'/auth.php');
 
 Route::get('/account', Profile::class)->middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.session', 'verified', 'can:account.view'])->name('account.profile');
+Route::get('/account/security', Security::class)->middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.session', 'verified', 'can:account.security.manage'])->name('account.security');
 
 Route::prefix('studio')->name('studio.')->middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.session', 'verified', 'can:dashboard.access'])->group(function (): void {
     Route::get('/', Index::class)->middleware('can:manuscripts.view')->name('index');
@@ -63,7 +65,8 @@ Route::middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.sessio
     Route::view('/dashboard/poems/{id}/analysis', 'app')->whereNumber('id')->middleware('can:poems.update');
     Route::view('/dashboard/trash', 'app')->middleware('can:trash.view');
 });
-Route::view('/dashboard/security', 'app')->middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.session', 'verified', 'can:account.security.manage']);
+// Account settings live in the studio shell; keep the earlier publishing URL working.
+Route::redirect('/dashboard/security', '/account/security');
 Route::view('/preview/collections/{slug}', 'app')->middleware(['auth:web', 'auth.session', 'verified', 'can:collections.preview']);
 
 // Reserved server paths must never turn into a successful SPA response by accident.

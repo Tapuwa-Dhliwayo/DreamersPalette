@@ -2,10 +2,7 @@
     <x-studio.header active="account" />
     <main id="studio-main" class="manuscript-library account-settings">
         <h1 class="studio-page-title">Account</h1>
-        <flux:navbar aria-label="Account settings" class="mb-6 border-b border-neutral-200">
-            <flux:navbar.item href="/account" current icon="user-circle">Profile</flux:navbar.item>
-            @can('account.security.manage')<flux:navbar.item href="/dashboard/security" icon="shield-check">Security</flux:navbar.item>@endcan
-        </flux:navbar>
+        <x-studio.account-nav current="profile" />
         <form wire:submit="save" class="studio-form">
             <flux:heading size="lg">Profile</flux:heading>
             @if($notice)<flux:callout variant="success" icon="check-circle" role="status" wire:dirty.remove>{{ $notice }}</flux:callout>@endif
@@ -22,7 +19,12 @@
             @if($profile?->avatar_url)<flux:checkbox wire:model.live="form.remove_avatar" label="Remove current profile image" />@endif
             <flux:input wire:model="form.display_name" label="Display name" autocomplete="nickname" maxlength="100" required />
             <flux:textarea wire:model="form.bio" label="Bio" rows="6" maxlength="5000" />
-            <flux:input :value="auth()->user()->email" label="Sign-in email" readonly description="Email changes affect the shared sign-in account and are managed separately." />
+            {{-- Shown, never an input: the sign-in email cannot be changed from the account page. --}}
+            <flux:field>
+                <flux:label>Sign-in email</flux:label>
+                <flux:text class="text-neutral-900">{{ auth()->user()->email }}</flux:text>
+                <flux:description>Your sign-in email can’t be changed.</flux:description>
+            </flux:field>
             <div class="studio-form-actions">
                 <flux:button type="submit" variant="primary" icon="check" wire:loading.attr="disabled" wire:target="save,form.avatar">Save profile</flux:button>
                 <flux:text wire:dirty wire:loading.remove wire:target="save">Unsaved changes</flux:text>

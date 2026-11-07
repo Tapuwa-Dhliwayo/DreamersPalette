@@ -6,6 +6,8 @@
 @source '../views/livewire/studio';
 @source '../../vendor/livewire/flux/stubs';
 @source '../../vendor/livewire/flux-pro/stubs';
+@source '../js/components/auth';
+@source '../js/components/ui';
 :root {
     --studio-canvas:#fafafa;
     --studio-surface:var(--author-surface);

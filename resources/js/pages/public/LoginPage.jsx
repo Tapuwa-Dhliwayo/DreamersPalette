@@ -44,7 +44,7 @@ export default function LoginPage() {
                 ? "/verify-email"
                 : can(user, "dashboard.access")
                   ? "/dashboard"
-                  : "/dashboard/security";
+                  : "/account/security";
             navigate(destination, { replace: true });
         }
     }, [navigate, sessionLoading, user]);

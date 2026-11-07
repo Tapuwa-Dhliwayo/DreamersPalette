@@ -39,7 +39,8 @@ Route::middleware(['auth:web', 'auth.session', 'can:account.view'])->group(funct
 
 Route::middleware(['auth:web', 'auth.session', 'verified', 'can:account.security.manage', AuthorizeAccountSecurity::class, 'throttle:security'])->group(function (): void {
     Route::post('/user/confirm-password', [SecurityController::class, 'confirmPassword'])->name('password.confirm.store');
-    Route::view('/user/confirm-password', 'app')->name('password.confirm');
+    // GET only: a catch-all redirect here would replace the POST that confirms the password.
+    Route::get('/user/confirm-password', fn () => redirect()->route('account.security'))->name('password.confirm');
 
     if (Features::enabled(Features::passkeys())) {
         Route::get('/passkeys/confirm/options', [PasskeyConfirmationController::class, 'index'])->name('passkey.confirm-options');

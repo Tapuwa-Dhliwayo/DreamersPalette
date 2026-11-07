@@ -319,8 +319,11 @@ provider, normal database fixtures, deployment or commit.
 
 `/account` is a shared Livewire/Flux profile destination from the React dashboard
 and studio/world header. Authors can edit display name/bio and upload or remove a
-JPG/PNG/WebP avatar (2 MB limit). Profile/Security navigation connects the existing
-security screen; the sidebar shows the saved avatar and studio uses display name.
+JPG/PNG/WebP avatar (2 MB limit). Account lives entirely in the studio shell:
+`/account/security` mounts the existing React 2FA/passkey settings as an island
+(`resources/js/account-security.jsx`), and `/dashboard/security` plus the GET of
+`/user/confirm-password` redirect there. The sidebar shows the saved avatar and
+studio uses display name.
 Own-account policy and account.view protect route, render and actions. Shared user
 name/email/password are unchanged. Missing publishing profiles are created on save;
 existing ones update in place. No migration is required. Failed database saves
