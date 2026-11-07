@@ -494,6 +494,10 @@ When asked to copy an implementation pattern from another project, inspect it re
 
 Before final handoff, summarize what was changed and what was verified.
 
+Run `composer verify` before handing off code changes, then exercise the changed user
+actions and inspect fresh logs as described in `docs/agent/TESTING_WORKFLOW.md`.
+A successful static/build gate alone is not runtime verification.
+
 Preferred checks:
 
 - `npm run lint` for most source changes.

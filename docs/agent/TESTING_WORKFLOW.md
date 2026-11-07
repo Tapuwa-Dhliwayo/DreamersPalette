@@ -212,3 +212,25 @@ Use Tapuwa's global style to choose between equally reasonable options, but pres
 A strong local project convention may override the reusable default.
 
 A bad or dangerous convention should be surfaced rather than blindly copied.
+
+## DreamersPalette verification gate
+
+Run `composer verify` before handing off code changes. It fails on unresolved PHP
+class references (including missing imports), PHP syntax errors, Pint, ESLint,
+Laravel route boot, Blade compilation, frontend build or whitespace errors.
+Compilation outputs use a disposable directory; the command does not overwrite
+served assets, migrate data or call model providers. It uses the installed PHP
+parser supplied by the locked Composer dependencies.
+
+A green command is the static/build gate, not proof that a user action works.
+For each changed workflow, run the actual entry point: a Livewire action or HTTP
+request plus its policy, form, model and serialization path. For polling, exercise
+the refresh action, rather than merely opening the page. For retries, exercise
+failure followed by retry. Use disposable data/transactions and a non-network
+provider substitute where needed. Keep these rehearsals outside the repository.
+
+Also open affected screens and perform the changed interactions when browser access
+is available. Inspect only fresh log entries produced during that verification.
+Record which paths ran, which checks passed and any environment/provider gaps.
+Do not describe unexercised database/provider/browser behavior as verified. A missing
+runtime check stays an explicit handoff limitation; it cannot be replaced by lint.

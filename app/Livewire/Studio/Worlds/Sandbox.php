@@ -9,6 +9,7 @@ use App\Livewire\Forms\Worlds\SandboxIdeaForm;
 use App\Livewire\Forms\Worlds\SandboxLinkForm;
 use App\Models\AssistantConnection;
 use App\Models\AssistantSource;
+use App\Models\AssistantTurn;
 use App\Models\ManuscriptChapter;
 use App\Models\NamingConvention;
 use App\Models\World;
