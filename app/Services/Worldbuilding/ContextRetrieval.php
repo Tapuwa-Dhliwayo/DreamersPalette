@@ -289,7 +289,7 @@ class ContextRetrieval
             'record' => [
                 'key' => 'required|string|max:80',
                 'fields' => 'sometimes|array|min:1|max:10',
-                'fields.*' => 'string|in:name,title,label,notes_md,aliases,roles,domain,source_key,target_key,period,is_mutual,is_dependency',
+                'fields.*' => 'string|in:'.implode(',', array_unique(array_merge(['name', 'title', 'label', 'notes_md'], ...array_map(fn ($kind) => ProposalTypes::fieldNames($kind), array_keys(ProposalTypes::definitions()))))),
             ],
             'discussion' => ['query' => 'required|string|min:2|max:100'],
             'message' => [

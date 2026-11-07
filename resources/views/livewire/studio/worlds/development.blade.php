@@ -15,7 +15,7 @@
             'alignments' => 'Alignment charts place characters and concepts on two axes to show where each stands.',
         ];
     @endphp
-    <div class="world-development tool-{{ $section }}" :class="{ 'browse-open': browse }">
+    <div class="world-development tool-{{ $section }} {{ $section === 'timeline' && $timelineView === 'lanes' ? 'timeline-lanes-open' : '' }}" :class="{ 'browse-open': browse }">
         <aside class="world-browser" aria-label="{{ $titles[$section] }}">
             <div class="world-section-heading"><h2>{{ $titles[$section] }}</h2><button class="development-browse-toggle" x-ref="closeBrowse" @click="browse = false; $nextTick(() => $refs.openBrowse.focus())" aria-label="Close browse"><flux:icon.x-mark /></button></div>
             <flux:input wire:model.live.debounce.250ms="search" label="Search" icon="magnifying-glass" />
@@ -24,11 +24,20 @@
             @if($section === 'people')<flux:select label="Role" wire:model.live="role"><flux:select.option value="">All roles</flux:select.option>@foreach($roles as $listedRole)<flux:select.option :value="$listedRole">{{ $listedRole }}</flux:select.option>@endforeach</flux:select>@endif
             @can('update', $world)<flux:button variant="primary" icon="plus" wire:click="edit('{{ $kinds[$section] }}')">{{ $addLabels[$section] }}</flux:button>@endcan
             @if($section === 'timeline')
-                <ol class="world-event-rail">
+                <div class="timeline-controls">
+                    <flux:select label="Character" wire:model.live.number="character"><flux:select.option value="0">All characters</flux:select.option>@foreach($timelineCharacters as $person)<flux:select.option :value="$person->id">{{ $person->name }}{{ $person->trashed() ? ' · Archived' : '' }}</flux:select.option>@endforeach</flux:select>
+                    <flux:select label="View" wire:model.live="timelineView"><flux:select.option value="sequence">Shared timeline</flux:select.option><flux:select.option value="lanes">Character lanes</flux:select.option></flux:select>
+                </div>
+                @if($timelineView === 'lanes')
+                    @include('livewire.studio.worlds.timeline-lanes')
+                @else
+                <p class="chronology-scale">Earlier <span aria-hidden="true">↓</span> Later · ordered sequence, not elapsed time</p>
+                <ol class="world-event-rail" aria-label="World chronology">
                     @forelse($entries as $event)
-                        <li wire:key="chronology-{{ $event->id }}" @class(['active' => $selected === $event->id])><button wire:click="select({{ $event->id }})" @click="browse = false" aria-pressed="{{ $selected === $event->id ? 'true' : 'false' }}"><span class="chronology-order">{{ $loop->iteration }}</span><span><time>{{ $event->calendarLabel() ?: ($event->date_label ?: 'Undated') }}</time><strong>{{ $event->title }}</strong>@if(filled($event->notes_md))<small>{{ Str::limit(strip_tags($event->notes_md), 100) }}</small>@endif</span></button></li>
+                        <li wire:key="chronology-{{ $event->id }}" @class(['active' => $selected === $event->id])><button x-on:click="browse = false; $wire.select({{ $event->id }}).then(() => { if (window.matchMedia('(max-width: 760px)').matches) document.getElementById('studio-main').scrollIntoView({ behavior: 'smooth', block: 'start' }); })" aria-pressed="{{ $selected === $event->id ? 'true' : 'false' }}"><span class="chronology-date">{{ $event->calendarLabel() ?: ($event->date_label ?: 'Undated') }}</span><span class="chronology-marker" aria-hidden="true"></span><span class="chronology-event"><strong>{{ $event->title }}</strong>@if(filled($event->notes_md))<small>{{ Str::limit(strip_tags($event->notes_md), 160) }}</small>@endif<span class="chronology-order">Sequence {{ $event->position + 0 }}</span></span></button></li>
                     @empty<li class="world-empty">{{ $search ? 'No matching events' : 'No events yet' }}</li>@endforelse
                 </ol>
+                @endif
             @else
             <div class="development-entries">
                 @forelse($entries as $listed)
@@ -50,10 +59,13 @@
                 @if($section === 'entries')
                     <p class="world-state">{{ $entry->type->name }}</p>
                     @if(count($entry->aliases))<div class="development-fact"><h2>Also known as</h2><p>{{ implode(' · ', $entry->aliases) }}</p></div>@endif
-                    <x-studio.markdown :text="$entry->notes_md ?? ''" />
+                <x-studio.markdown :text="$entry->notes_md ?? ''" />
                 @elseif($section === 'people')
                     @if(count($entry->aliases))<div class="development-fact"><h2>Also known as</h2><p>{{ implode(' · ', $entry->aliases) }}</p></div>@endif
                     @if($entry->domain)<div class="development-fact"><h2>Domains & allegiances</h2><p>{{ $entry->domain }}</p></div>@endif
+                    @if($entry instanceof \App\Models\WorldPerson)
+                    @foreach($entry->profile ?? [] as $profileSection => $content)@if(filled($content))<section><h3>{{ ucfirst($profileSection) }}</h3><x-studio.markdown :text="$content" /></section>@endif @endforeach
+                @endif
                     <x-studio.markdown :text="$entry->notes_md ?? ''" />
                     <section class="character-connections"><div class="world-section-heading"><h2>Relationships</h2><a href="{{ route('studio.world.thinking', ['world' => $world, 'section' => 'relationships', 'subjectFilter' => 'person:'.$entry->id]) }}">Open connection map →</a></div>
                         @forelse($subjectConnections as $connection)<a href="{{ route('studio.world.thinking', ['world' => $world, 'section' => 'relationships', 'selected' => $connection->id]) }}"><strong>{{ $connection->source_name }} {{ $connection->is_mutual ? '↔' : '→' }} {{ $connection->target_name }}</strong><span>{{ $connection->displayLabel() }}</span></a>@empty<p>No recorded relationships.</p>@endforelse
@@ -70,7 +82,7 @@
                     @if(filled($entry->notes_md))<details class="world-tool-notes"><summary>Arc notes</summary><x-studio.markdown :text="$entry->notes_md" /></details>@endif
                     <div class="world-section-heading"><h2>{{ $entry->measure }}</h2>@can('update', $world)@if(!$entry->trashed() && !$archivedChildren)<flux:button icon="plus" size="sm" wire:click="edit('beat')">Add beat</flux:button>@endif@endcan</div>
                     @if($beats->isNotEmpty())
-                        @if($beats->count() > 1)
+                        @if(count($arcSeries) > 1)
                         <div class="development-arc-chart" wire:key="arc-chart-{{ $entry->id }}-{{ $beats->max('updated_at')?->timestamp }}-{{ $beats->sum('revision') }}" role="img" aria-label="{{ $entry->measure }} across {{ $beats->count() }} beats. Values are listed below.">
                             <flux:chart :value="$arcSeries" class="h-64">
                                 <flux:chart.svg><flux:chart.line field="intensity" style="color:var(--studio-accent)" /><flux:chart.point field="intensity" style="color:var(--studio-accent)" /><flux:chart.axis axis="x" field="step"><flux:chart.axis.tick /><flux:chart.axis.line /></flux:chart.axis><flux:chart.axis axis="y" :tick-values="[0,25,50,75,100]"><flux:chart.axis.grid /><flux:chart.axis.tick /></flux:chart.axis></flux:chart.svg>
@@ -78,7 +90,7 @@
                             </flux:chart>
                         </div>
                         @endif
-                        <ol class="development-beats">@foreach($beats as $beat)<li wire:key="beat-{{ $beat->id }}"><div class="world-rule-heading"><h3>{{ $loop->iteration }}. {{ $beat->title }}</h3>@can('update', $world)@if(!$entry->trashed())<flux:button size="sm" :icon="$beat->trashed() ? 'arrow-uturn-left' : 'archive-box'" wire:click="archiveChild('beat', {{ $beat->id }}, {{ $beat->revision }}, {{ $beat->trashed() ? 'false' : 'true' }})">{{ $beat->trashed() ? 'Restore' : 'Archive' }}</flux:button>@endif@endcan<span>{{ $beat->intensity }}/100</span>@can('update', $world)@if(!$archivedChildren && !$entry->trashed())<flux:button icon="pencil-square" size="sm" wire:click="edit('beat', {{ $beat->id }})">Edit beat</flux:button>@endif@endcan</div>@if($beat->event)<a class="development-event-link" href="{{ route('studio.world.develop', ['world' => $world, 'section' => 'timeline', 'selected' => $beat->event_id]) }}">{{ $beat->event->calendarLabel() ?: $beat->event->date_label }} · {{ $beat->event->title }}</a>@endif<x-studio.markdown :text="$beat->notes_md ?? ''" /></li>@endforeach</ol>
+                        <ol class="development-beats">@foreach($beats as $beat)<li wire:key="beat-{{ $beat->id }}"><div class="world-rule-heading"><h3>{{ $loop->iteration }}. {{ $beat->title }}</h3>@can('update', $world)@if(!$entry->trashed())<flux:button size="sm" :icon="$beat->trashed() ? 'arrow-uturn-left' : 'archive-box'" wire:click="archiveChild('beat', {{ $beat->id }}, {{ $beat->revision }}, {{ $beat->trashed() ? 'false' : 'true' }})">{{ $beat->trashed() ? 'Restore' : 'Archive' }}</flux:button>@endif@endcan<span>{{ $beat->intensity === null ? 'Unrated' : $beat->intensity.'/100' }}</span>@can('update', $world)@if(!$archivedChildren && !$entry->trashed())<flux:button icon="pencil-square" size="sm" wire:click="edit('beat', {{ $beat->id }})">Edit beat</flux:button>@endif@endcan</div>@if($beat->event)<a class="development-event-link" href="{{ route('studio.world.develop', ['world' => $world, 'section' => 'timeline', 'selected' => $beat->event_id]) }}">{{ $beat->event->calendarLabel() ?: $beat->event->date_label }} · {{ $beat->event->title }}</a>@endif<x-studio.markdown :text="$beat->notes_md ?? ''" /></li>@endforeach</ol>
                     @else<p class="world-empty">No beats yet</p>@endif
                 @else
                     @if(filled($entry->notes_md))<details class="world-tool-notes"><summary>What these axes mean</summary><x-studio.markdown :text="$entry->notes_md" /></details>@endif
@@ -109,6 +121,7 @@
                 <flux:input label="Roles · comma separated" description="For example: Character, God, Herald. A person can have several roles." wire:model="personForm.roles" />
                 <flux:textarea label="Aliases · one per line" wire:model="personForm.aliases" rows="2" />
                 <flux:textarea label="Domains & allegiances" wire:model="personForm.domain" rows="2" />
+                @foreach(\App\Services\Worldbuilding\ProposalTypes::PROFILE as $profileSection)<flux:textarea :label="ucfirst($profileSection)" wire:model="personForm.profile.{{ $profileSection }}" rows="3" />@endforeach
                 <flux:textarea label="Notes · Markdown" wire:model="personForm.notes_md" rows="10" />
             @elseif($editingKind === 'event')
                 <flux:input label="Title" wire:model="eventForm.title" />

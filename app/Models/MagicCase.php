@@ -14,6 +14,11 @@ class MagicCase extends Model
 
     protected $fillable = ['title', 'situation_md', 'outcome_md', 'reasoning_md'];
 
+    protected function casts(): array
+    {
+        return ['system_id' => 'integer', 'revision' => 'integer'];
+    }
+
     public function rules(): BelongsToMany
     {
         return $this->belongsToMany(MagicRule::class, 'studio_magic_case_rules', 'case_id', 'rule_id')->withTrashed();

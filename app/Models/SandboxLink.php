@@ -8,7 +8,7 @@ class SandboxLink extends Model
 {
     protected $table = 'studio_sandbox_links';
 
-    protected $fillable = ['source_id', 'target_id', 'kind', 'label', 'notes_md'];
+    protected $fillable = ['source_id', 'target_id', 'source_key', 'target_key', 'kind', 'label', 'notes_md'];
 
     protected function casts(): array
     {

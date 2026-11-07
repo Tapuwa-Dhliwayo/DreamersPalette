@@ -1990,16 +1990,37 @@ a.thinking-subject:hover { text-decoration: underline; text-underline-offset: 4p
     .comparison-mobile dt { font-size:13px; font-weight:600; }
     .comparison-mobile dd { margin:8px 0 0; font-size:14px; }
 }
-/* Chronology is an ordered event rail; characters remain connected dossiers. */
-.tool-timeline { grid-template-columns:minmax(300px, .8fr) minmax(0,1.4fr); }
+/* Event positions define sequence; free-form dates do not define elapsed time. */
+.tool-timeline { grid-template-columns:minmax(0, 1.4fr) minmax(300px, .9fr); }
+.tool-timeline .world-browser { min-width:0; }
+.chronology-scale { font-size:12px; color:var(--studio-body); }
+.chronology-scale > span { margin-inline:6px; color:var(--studio-accent); }
 .world-event-rail { list-style:none; padding:0; margin:8px 0 0; }
-.world-event-rail li { border-top:1px solid var(--studio-line); }
-.world-event-rail button { display:flex; align-items:flex-start; gap:12px; padding:20px 12px; width:100%; text-align:left; }
-.world-event-rail li.active { background:var(--studio-selected-fill); border-radius:8px; }
-.chronology-order { flex:none; width:24px; height:24px; display:flex; justify-content:center; align-items:center; border-radius:50%; background:var(--studio-white); font-size:11px; color:var(--studio-body); }
-.world-event-rail time { display:block; font-size:12px; color:var(--studio-body); margin-bottom:6px; }
+.world-event-rail li { position:relative; }
+.world-event-rail button { display:grid; grid-template-columns:110px 20px minmax(0,1fr); align-items:start; gap:14px; padding:0; width:100%; text-align:left; }
+.chronology-date { padding-block:22px; font-size:12px; line-height:1.6; color:var(--studio-body); overflow-wrap:anywhere; text-align:right; }
+.chronology-marker { position:relative; align-self:stretch; }
+.chronology-marker::before { content:""; position:absolute; top:0; bottom:0; left:9px; width:2px; background:var(--studio-border); }
+.world-event-rail li:first-child .chronology-marker::before { top:28px; }
+.world-event-rail li:last-child .chronology-marker::before { bottom:calc(100% - 28px); }
+.chronology-marker::after { content:""; position:absolute; top:24px; left:4px; width:12px; height:12px; border:2px solid var(--studio-accent); border-radius:50%; background:var(--studio-white); }
+.chronology-event { min-width:0; display:block; padding:18px; margin:4px 0 16px; border:1px solid var(--studio-line); border-radius:8px; background:var(--studio-white); }
+.world-event-rail button:hover .chronology-event { background:var(--studio-surface); }
+.world-event-rail button:focus-visible { outline:2px solid var(--studio-accent); outline-offset:3px; }
+.world-event-rail li.active .chronology-event { border-color:var(--studio-accent); background:var(--studio-selected-fill); }
+.world-event-rail li.active .chronology-marker::after { background:var(--studio-accent); }
 .world-event-rail strong { display:block; font-size:15px; font-weight:600; overflow-wrap:anywhere; }
-.world-event-rail small { display:block; font-size:12px; color:var(--studio-body); margin-top:8px; line-height:1.6; overflow-wrap:anywhere; }
+.world-event-rail small { display:block; font-size:13px; color:var(--studio-body); margin-top:8px; line-height:1.6; overflow-wrap:anywhere; }
+.chronology-order { display:block; margin-top:12px; font-size:11px; color:var(--studio-body); }
+@media(max-width:760px) {
+    .tool-timeline > .world-document { flex:none; overflow:visible; }
+    .tool-timeline .world-browser { display:flex; overflow:visible; border-right:0; border-bottom:1px solid var(--studio-line); padding:20px var(--studio-page-x); }
+    .tool-timeline .development-browse-toggle { display:none; }
+    .tool-timeline .world-event-rail button { grid-template-columns:70px 16px minmax(0,1fr); gap:8px; }
+    .tool-timeline .chronology-marker::before { left:7px; }
+    .tool-timeline .chronology-marker::after { left:2px; }
+    .tool-timeline .chronology-event { padding:12px; }
+}
 .tool-timeline .development-date { background:var(--studio-surface); display:inline-block; padding:8px 12px; border-radius:6px; font:500 14px ui-sans-serif,system-ui; margin-bottom:24px; }
 .character-connections { margin:32px 0; border-top:1px solid var(--studio-line); padding-top:24px; }
 .character-connections .world-section-heading { margin-bottom:8px; }
@@ -2011,3 +2032,26 @@ a.thinking-subject:hover { text-decoration: underline; text-underline-offset: 4p
 .world-tool-notes > summary { cursor:pointer; font-size:13px; color:var(--studio-body); padding:8px 0; }
 @media(min-width:761px) { .tool-alignments { grid-template-columns:220px minmax(0,1fr); } .tool-arcs { grid-template-columns:240px minmax(0,1fr); } }
 .relationship-form-hint { font-size:12px; color:var(--studio-body); margin:-8px 0 0; }
+
+.timeline-controls { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.timeline-lanes-open { grid-template-columns:minmax(0, 2fr) minmax(280px, .8fr); }
+.character-timeline { overflow:auto; }
+.character-timeline-heading,.character-timeline-row { display:grid; grid-template-columns:100px repeat(var(--timeline-lanes),minmax(180px,1fr)); min-width:max-content; }
+.character-timeline-heading { position:sticky; top:0; z-index:1; background:var(--studio-white); border-bottom:1px solid var(--studio-border); }
+.character-timeline-heading > * { padding:14px 12px; font-size:13px; }
+.character-timeline-row { border-bottom:1px solid var(--studio-line); }
+.character-timeline-date { padding:18px 8px; font-size:12px; color:var(--studio-body); }
+.character-timeline-date span { display:block; margin-bottom:8px; }
+.character-timeline-cell { padding:14px 8px; border-left:2px solid var(--studio-border); }
+.character-timeline-event[data-flux-button] { width:100%; height:auto; white-space:normal; text-align:left; justify-content:flex-start; padding:12px; }
+.character-timeline-event small { display:block; font-size:11px; font-weight:400; margin-bottom:6px; }
+.character-timeline-event strong { display:block; font-size:13px; line-height:1.5; overflow-wrap:anywhere; }
+@media(max-width:760px) {
+    .character-timeline { overflow:visible; }
+    .character-timeline-heading { display:none; }
+    .character-timeline-row { display:block; min-width:0; padding:12px 0 12px 16px; border-left:2px solid var(--studio-border); }
+    .character-timeline-cell { border:0; padding:4px 0; }
+    .character-timeline-cell.is-empty { display:none; }
+    .character-timeline-date { padding:8px 0; }
+}
+

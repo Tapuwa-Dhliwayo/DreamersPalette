@@ -15,29 +15,9 @@ use Illuminate\Validation\ValidationException;
 
 class SandboxProposals
 {
-    public const FIELDS = [
-        'aliases',
-        'roles',
-        'keep_previous_name',
-        'domain',
-        'type_id',
-        'measure',
-        'source_key',
-        'target_key',
-        'period',
-        'is_dependency',
-        'left_label',
-        'right_label',
-        'top_label',
-        'bottom_label',
-        'criteria',
-    ];
-
-    public const KINDS = ['thought', 'question', 'person', 'event', 'relationship', 'entry', 'system', 'arc', 'knowledge', 'investigation', 'name', 'map', 'alignment', 'comparison'];
-
     public function __construct(private WorldContext $worldContext, private SourceReading $reading) {}
 
-    public function decode(string $content): array
+    public function decode(string $content, bool $structured = false): array
     {
         try {
             $proposal = AssistantProviders::decodeJsonReply($content);
@@ -45,10 +25,10 @@ class SandboxProposals
             throw ValidationException::withMessages(['proposals' => 'The response was not valid proposal JSON. The full response is retained; ask the assistant to try again.']);
         }
         $validated = Validator::make(is_array($proposal) ? $proposal : [], [
-            'intent' => ['sometimes', Rule::in(['discuss', 'propose', 'refine', 'clarify'])],
+            'intent' => [$structured ? 'required' : 'sometimes', Rule::in(['discuss', 'propose', 'refine', 'clarify'])],
             'reply' => ['required', 'string', 'max:30000'],
             'ideas' => ['present', 'array', 'max:20'],
-            'ideas.*.kind' => ['required', Rule::in(self::KINDS)],
+            'ideas.*.kind' => ['required', Rule::in(ProposalTypes::kinds())],
             'ideas.*.title' => ['required', 'string', 'max:255'],
             'ideas.*.target_key' => ['sometimes', 'nullable', 'string', 'max:80'],
             'ideas.*.proposal_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
@@ -60,28 +40,16 @@ class SandboxProposals
             'ideas.*.alternative' => ['nullable', 'string', 'max:255'],
             'ideas.*.lane' => ['nullable', 'string', 'max:255'],
             'ideas.*.date_label' => ['nullable', 'string', 'max:255'],
-            'ideas.*.fields' => ['nullable', 'array:'.implode(',', self::FIELDS)],
-            'ideas.*.fields.domain' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'ideas.*.fields.measure' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'ideas.*.fields.type_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
-            'ideas.*.fields.source_key' => ['sometimes', 'nullable', 'string', 'max:80'],
-            'ideas.*.fields.target_key' => ['sometimes', 'nullable', 'string', 'max:80'],
-            'ideas.*.fields.period' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'ideas.*.fields.is_dependency' => ['sometimes', 'boolean'],
-            'ideas.*.fields.keep_previous_name' => ['sometimes', 'boolean'],
-            'ideas.*.fields.left_label' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'ideas.*.fields.right_label' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'ideas.*.fields.top_label' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'ideas.*.fields.bottom_label' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'ideas.*.fields.aliases' => ['sometimes', 'array', 'max:100'],
-            'ideas.*.fields.aliases.*' => ['string', 'max:255'],
-            'ideas.*.fields.roles' => ['sometimes', 'array', 'max:30'],
-            'ideas.*.fields.roles.*' => ['string', 'max:100'],
-            'ideas.*.fields.criteria' => ['sometimes', 'array', 'max:20'],
-            'ideas.*.fields.criteria.*' => ['string', 'max:255'],
+            'schema_version' => ($structured ? 'required' : 'sometimes').'|integer|in:3',
+            'deliverable' => [$structured ? 'required' : 'sometimes', 'in:discussion,records,timeline,arc,character,comparison,alignment,system,knowledge,investigation,map,calendar,naming,mixed'],
+            'continuation' => 'sometimes|array:has_more,completed_scope,next_scope',
+            'continuation.has_more' => 'required_with:continuation|boolean', 'continuation.completed_scope' => 'required_with:continuation|string|max:2000', 'continuation.next_scope' => 'nullable|string|max:2000',
+            'ideas.*.fields' => 'sometimes|array', 'ideas.*.position' => 'sometimes|numeric|between:-99999999999,99999999999',
+            'ideas.*.completeness' => [$structured ? 'required' : 'sometimes', 'in:complete,partial,unsupported'],
+            'ideas.*.missing' => 'sometimes|array|list|max:30', 'ideas.*.missing.*' => 'string|max:500',
             'links' => ['sometimes', 'array', 'max:40'],
-            'links.*.source' => ['required', 'integer', 'min:0'],
-            'links.*.target' => ['required', 'integer', 'min:0'],
+            'links.*.source' => ['required'],
+            'links.*.target' => ['required'],
             'links.*.kind' => ['required', Rule::in(['connection', 'before', 'participant', 'relationship', 'depends'])],
             'links.*.label' => ['required', 'string', 'max:255'],
         ])->validate();
@@ -95,9 +63,51 @@ class SandboxProposals
                 'proposals' => 'The assistant did not return the promised updates. Your question is saved; retry to prepare them.',
             ]);
         }
+        foreach ($validated['ideas'] as &$idea) {
+            $idea['fields'] = ProposalTypes::validateFields($idea['kind'], $idea['fields'] ?? []);
+            if (in_array($idea['completeness'] ?? '', ['partial', 'unsupported'], true) && empty($idea['missing'])) {
+                ProposalTypes::invalid('Partial or unsupported proposals must state what is missing.');
+            }
+            if (($idea['completeness'] ?? '') === 'complete' && ! empty($idea['missing'])) {
+                ProposalTypes::invalid('A complete proposal cannot list missing work.');
+            }
+            if (empty($idea['target_key']) && ($idea['completeness'] ?? '') === 'complete' && ProposalTypes::structureProblems($idea['kind'], $idea['fields'])) {
+                ProposalTypes::invalid('A complete '.$idea['kind'].' needs its actual structure, not only Notes.');
+            }
+        }
+        unset($idea);
+        if (($validated['deliverable'] ?? '') === 'character') {
+            foreach ($validated['ideas'] as $draft) {
+                if ($draft['kind'] === 'person' && ($draft['completeness'] ?? '') === 'complete' && empty($draft['fields'])) {
+                    ProposalTypes::invalid('A character-sheet deliverable needs explicit sheet fields or profile sections. Notes alone do not complete it.');
+                }
+            }
+        }
+        $expected = match ($validated['deliverable'] ?? '') {
+            'timeline' => 'event','arc' => 'arc','character' => 'person','comparison' => 'comparison','alignment' => 'alignment','system' => 'system','knowledge' => 'knowledge','investigation' => 'investigation','map' => 'map','calendar' => 'calendar','naming' => 'name',default => null
+        };
+        if ($expected && in_array($validated['intent'] ?? '', ['propose', 'refine'], true) && ! collect($validated['ideas'])->contains('kind', $expected)) {
+            ProposalTypes::invalid('The declared '.$validated['deliverable'].' deliverable requires actual '.$expected.' proposals, not a substitute record kind.');
+        }
+        if (! empty($validated['continuation']['has_more']) && empty($validated['continuation']['next_scope'])) {
+            ProposalTypes::invalid('A continued deliverable must state the next scope.');
+        }
         foreach ($validated['links'] ?? [] as $link) {
-            if ($link['source'] === $link['target'] || ! isset($validated['ideas'][$link['source']], $validated['ideas'][$link['target']])) {
-                throw ValidationException::withMessages(['proposals' => 'A proposed connection had an invalid endpoint. The original response is retained.']);
+            if (is_string($link['source']) && is_string($link['target'])) {
+                ProposalTypes::invalid('A link needs at least one proposed board endpoint; use a relationship proposal for two existing subjects.');
+            }
+            if ($link['source'] === $link['target']) {
+                ProposalTypes::invalid('A connection needs two distinct endpoints.');
+            }
+            foreach (['source', 'target'] as $side) {
+                $endpoint = $link[$side];
+                if (is_int($endpoint) && isset($validated['ideas'][$endpoint])) {
+                    continue;
+                }
+                if (is_string($endpoint) && preg_match('/^(person|event|entry|system):[1-9][0-9]*$/', $endpoint)) {
+                    continue;
+                }
+                ProposalTypes::invalid('A connection endpoint must be a proposal index or an existing scoped record key.');
             }
         }
 
@@ -138,10 +148,45 @@ class SandboxProposals
                     $this->worldContext->target($turn->exercise->world, $idea['fields'][$endpoint]);
                 }
             }
+            $target = ! empty($idea['target_key']) ? $this->worldContext->target($turn->exercise->world, $idea['target_key']) : null;
+            ProposalTypes::validateScope($turn->exercise->world, $idea['kind'], $idea['fields'] ?? [], $target);
+            if (($idea['completeness'] ?? '') === 'complete' && ProposalTypes::structureProblems($idea['kind'], $idea['fields'] ?? [], $target)) {
+                ProposalTypes::invalid('The requested '.$idea['kind'].' is structurally incomplete.');
+            }
+            foreach ($idea['fields']['beats'] ?? [] as $beat) {
+                if (str_starts_with($beat['event_ref'] ?? '', 'board:')) {
+                    $eventDraft = $turn->exercise->ideas()->findOrFail((int) substr($beat['event_ref'], 6));
+                    if ($eventDraft->kind !== 'event') {
+                        ProposalTypes::invalid('A beat must link to an event draft.');
+                    }
+                }
+                if (str_starts_with($beat['event_ref'] ?? '', 'idea:')) {
+                    $index = (int) substr($beat['event_ref'], 5);
+                    if (($proposal['ideas'][$index]['kind'] ?? null) !== 'event') {
+                        ProposalTypes::invalid('A beat must reference an event proposal.');
+                    }
+                }
+            }
+            array_walk_recursive($idea['fields'], function (&$content) use ($turn): void {
+                if (is_string($content)) {
+                    $content = $this->reading->citations($turn, $content);
+                }
+            });
             $idea['basis'] ??= 'interpretation';
             $idea['evidence'] = $this->reading->citations($turn, $idea['evidence'] ?? 'No supporting evidence supplied. Review before accepting.');
         }
         unset($idea);
+        foreach ($proposal['links'] ?? [] as $link) {
+            $kinds = [];
+            foreach (['source', 'target'] as $side) {
+                $endpoint = $link[$side];
+                if (is_string($endpoint)) {
+                    $this->worldContext->target($turn->exercise->world, $endpoint, true);
+                }
+                $kinds[] = is_string($endpoint) ? explode(':', $endpoint)[0] : $proposal['ideas'][$endpoint]['kind'];
+            }
+            ProposalTypes::validateLinkKinds($link['kind'], $kinds);
+        }
 
         return $proposal;
     }
@@ -182,7 +227,7 @@ class SandboxProposals
                 if ($board && (! $board->canEdit() || $board->revision !== (int) $fields['proposal_revision'])) {
                     throw ValidationException::withMessages(['proposals' => 'A board proposal changed before collection. Ask for a fresh refinement.']);
                 }
-                $custom = collect($fields['fields'] ?? [])->only(self::FIELDS)->all();
+                $custom = ProposalTypes::validateFields($fields['kind'], $fields['fields'] ?? []);
                 $attributes = collect($fields)->only([
                     'kind',
                     'title',
@@ -191,15 +236,16 @@ class SandboxProposals
                     'alternative',
                     'lane',
                     'date_label',
+                    'position',
                     'target_key',
                     'target_revision',
                 ])->all();
-                $attributes['notes_md'] = $fields['notes_md'] ?? $board?->notes_md ?? $base['notes_md'] ?? null;
-                $attributes['fields'] = array_replace(
-                    collect($base)->only(['aliases', 'roles', 'domain', 'type_id', 'source_key', 'target_key', 'period', 'is_dependency'])->all(),
-                    $board?->fields ?? [],
-                    $custom,
-                );
+                if ($fields['kind'] === 'event') {
+                    $attributes['position'] = $fields['fields']['position'] ?? $fields['position'] ?? $board?->position ?? $base['position'] ?? $index;
+                }
+                $attributes['notes_md'] = array_key_exists('notes_md', $fields) ? $fields['notes_md'] : ($board?->notes_md ?? $base['notes_md'] ?? null);
+                // Omitted fields are unchanged. Target values are resolved at review, not copied as accidental edits.
+                $attributes['fields'] = array_replace($board?->fields ?? [], $custom);
                 $coverage = $turn->evidenceLimitations();
                 $previousCoverage = ($board?->provenanceForReview() ?? [])['coverage_status'] ?? [];
                 if (($previousCoverage['recorded'] ?? null) === false) {
@@ -213,6 +259,8 @@ class SandboxProposals
                 }
                 $attributes['provenance'] = [
                     'coverage_status' => $coverage,
+                    'notes_provided' => array_key_exists('notes_md', $fields),
+                    'structure' => ['version' => 3, 'deliverable' => $turn->proposals['deliverable'] ?? 'records', 'completeness' => $fields['completeness'] ?? 'unassessed', 'missing' => $fields['missing'] ?? []],
                     'basis' => $fields['basis'] ?? 'interpretation',
                     'evidence' => $fields['evidence'] ?? '',
                     'turn_id' => $turn->id,
@@ -233,8 +281,35 @@ class SandboxProposals
             $settings = $turn->request_context ?? [];
             $settings['collected_proposals'] = array_map(fn ($idea) => $idea->id, $ideas);
             $turn->update(['request_context' => $settings]);
+            foreach ($ideas as $idea) {
+                $custom = $idea->fields ?? [];
+                foreach ($custom['beats'] ?? [] as $index => $beat) {
+                    if (str_starts_with($beat['event_ref'] ?? '', 'board:')) {
+                        $eventDraft = $turn->exercise->ideas()->findOrFail((int) substr($beat['event_ref'], 6));
+                        if ($eventDraft->kind !== 'event') {
+                            ProposalTypes::invalid('A beat must link to an event draft.');
+                        }
+                    }
+                    if (str_starts_with($beat['event_ref'] ?? '', 'idea:')) {
+                        $proposalIndex = (int) substr($beat['event_ref'], 5);
+                        if (! isset($ideas[$proposalIndex])) {
+                            ProposalTypes::invalid('A beat references an unavailable proposal.');
+                        }
+                        $custom['beats'][$index]['event_ref'] = 'board:'.$ideas[$proposalIndex]->id;
+                    }
+                }
+                if ($custom !== $idea->fields) {
+                    $idea->update(['fields' => $custom]);
+                }
+            }
             foreach ($turn->proposals['links'] ?? [] as $link) {
-                $exercise->links()->firstOrCreate(['source_id' => $ideas[$link['source']]->id, 'target_id' => $ideas[$link['target']]->id, 'kind' => $link['kind'], 'label' => $link['label']]);
+                $endpoints = [];
+                foreach (['source', 'target'] as $side) {
+                    $endpoint = $link[$side];
+                    $endpoints[$side.'_id'] = is_int($endpoint) ? $ideas[$endpoint]->id : null;
+                    $endpoints[$side.'_key'] = is_string($endpoint) ? $endpoint : null;
+                }
+                $exercise->links()->firstOrCreate($endpoints + ['kind' => $link['kind'], 'label' => $link['label']]);
             }
         });
     }

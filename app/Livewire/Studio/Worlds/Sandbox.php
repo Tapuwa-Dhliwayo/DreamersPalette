@@ -19,6 +19,7 @@ use App\Services\Worldbuilding\AssistantModels;
 use App\Services\Worldbuilding\AssistantProviders;
 use App\Services\Worldbuilding\AssistantUsage;
 use App\Services\Worldbuilding\Canonisation;
+use App\Services\Worldbuilding\ProposalTypes;
 use App\Services\Worldbuilding\SandboxProposals;
 use App\Services\Worldbuilding\WorldContext;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +29,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Ramsey\Uuid\Uuid;
 
 #[Layout('layouts.studio')]
 class Sandbox extends Component
@@ -235,7 +237,12 @@ class Sandbox extends Component
                 }
             }
             $this->ideaForm->fill($fields);
-            $custom = $idea->fields ?? [];
+            $target = $idea->target_key ? app(WorldContext::class)->target($this->world, $idea->target_key) : null;
+            $custom = array_replace($target ? ProposalTypes::referenceFields($idea->kind, $target) : [], $idea->fields ?? []);
+            $this->ideaForm->structured = $custom;
+            $structure = $idea->provenance['structure'] ?? [];
+            $this->ideaForm->completeness = $structure['completeness'] ?? 'partial';
+            $this->ideaForm->missing = implode("\n", $structure['missing'] ?? ['Structure was not assessed for this earlier proposal.']);
             $this->ideaForm->fill(collect($custom)->only(['domain', 'type_id', 'measure', 'source_key', 'target_key', 'period', 'keep_previous_name', 'is_dependency', 'left_label', 'right_label', 'top_label', 'bottom_label'])->map(fn ($field, $key) => $field ?? ($key === 'type_id' ? null : ($key === 'is_dependency' || $key === 'keep_previous_name' ? false : '')))->all());
             $this->ideaForm->aliases = implode("\n", $custom['aliases'] ?? []);
             $this->ideaForm->criteria = implode("\n", $custom['criteria'] ?? []);
@@ -262,23 +269,38 @@ class Sandbox extends Component
         $this->notice = 'Proposal linked. Compare all changes in Review canon before accepting.';
     }
 
+    public function addStructureRow(string $collection): void
+    {
+        $this->exercise(true);
+        $this->ideaForm->addStructureRow($collection);
+    }
+
+    public function removeStructureRow(string $collection, int $index): void
+    {
+        $this->exercise(true);
+        $this->ideaForm->removeStructureRow($collection, $index);
+    }
+
     public function saveIdea(): void
     {
         $fields = $this->ideaForm->fields();
-        $id = $this->write(function ($exercise) use ($fields): int {
+        $structure = $fields['structure'];
+        unset($fields['structure']);
+        $id = $this->write(function ($exercise) use ($fields, $structure): int {
             if ($this->ideaId) {
                 $idea = $exercise->ideas()->findOrFail($this->ideaId);
                 abort_unless($idea->canEdit(), 409);
                 if ($idea->target_key && ! str_starts_with($idea->target_key, $fields['kind'].':')) {
                     throw ValidationException::withMessages(['ideaForm.kind' => 'A linked record must keep its original kind. Fork it for a different kind.']);
                 }
+                $fields['provenance'] = array_replace($idea->provenance ?? [], ['structure' => $structure]);
                 $idea->revise($fields, $this->ideaForm->revision);
 
                 return $idea->id;
             }
             $count = $exercise->ideas()->count();
 
-            return $exercise->ideas()->create($fields + ['x' => 40 + ($count % 3) * 260, 'y' => 40 + intdiv($count, 3) * 170])->id;
+            return $exercise->ideas()->create($fields + ['provenance' => ['structure' => $structure]] + ['x' => 40 + ($count % 3) * 260, 'y' => 40 + intdiv($count, 3) * 170])->id;
         });
         $this->editIdea($id);
         $this->dispatch('sandbox-saved');
@@ -296,12 +318,12 @@ class Sandbox extends Component
             }
 
             return $exercise->ideas()->create([
-                'kind' => in_array($kind, SandboxProposals::KINDS, true) ? $kind : 'thought',
+                'kind' => in_array($kind, ProposalTypes::kinds(), true) ? $kind : 'thought',
                 'title' => $record->name ?? $record->title ?? $record->label,
-                'notes_md' => $record->notes_md ?? $record->truth_md ?? $record->question_md ?? '',
+                'notes_md' => array_key_exists('notes_md', $record->getAttributes()) ? $record->notes_md : '',
                 'target_key' => $this->referenceKey,
                 'target_revision' => $record->revision,
-                'fields' => collect($record->attributesToArray())->only(SandboxProposals::FIELDS)->all(),
+                'fields' => ProposalTypes::referenceFields($kind, $record),
                 'position' => $record->position ?? 0,
                 'date_label' => $record->date_label ?? '',
                 'x' => 40,
@@ -414,7 +436,11 @@ class Sandbox extends Component
         $fields = $this->linkForm->fields();
         $this->write(function ($exercise) use ($fields): void {
             foreach (['source_id', 'target_id'] as $key) {
-                $exercise->ideas()->findOrFail($fields[$key]);
+                if ($fields[$key]) {
+                    $exercise->ideas()->findOrFail($fields[$key]);
+                } else {
+                    app(WorldContext::class)->target($this->world, $fields[str_replace('_id', '_key', $key)]);
+                }
             }
             $exercise->links()->firstOrCreate(collect($fields)->except('notes_md')->all(), ['notes_md' => $fields['notes_md']]);
         });
@@ -478,6 +504,32 @@ class Sandbox extends Component
             'queued', 'running' => 'Preparing linked drafts from the saved answer. The novel will not be reread; nothing is saved to canon without review.',
             default => throw new \RuntimeException('Unknown preparation state.'),
         };
+    }
+
+    public function restructureSavedTurn(int $id, AssistantConversation $conversation): void
+    {
+        $exercise = $this->exercise(true);
+        $source = $exercise->turns()->findOrFail($id);
+        abort_unless($source->status === 'completed' && $source->response_id, 409);
+        $connection = AssistantConnection::where('user_id', $this->world->author_id)->findOrFail($source->connection_id);
+        if (! $connection->enabled) {
+            throw ValidationException::withMessages(['conversationForm.connection_id' => 'Enable the original connection before restructuring this saved output.']);
+        }
+        $conversation->recover($exercise, $connection, $source->response_id, null, ['model' => $source->model, 'effort' => $source->request_context['effort'] ?? 'default']);
+        $this->notice = 'Preparing a structured revision from the saved output. Existing accepted records and Notes stay unchanged until you review new proposals.';
+    }
+
+    public function continueStructuredTurn(int $id, AssistantConversation $conversation): void
+    {
+        $exercise = $this->exercise(true);
+        $turn = $exercise->turns()->findOrFail($id);
+        abort_unless($turn->status === 'completed' && ($turn->proposals['continuation']['has_more'] ?? false), 409);
+        $connection = AssistantConnection::where('user_id', $this->world->author_id)->findOrFail($turn->connection_id);
+        $scope = $turn->proposals['continuation'];
+        $content = 'Continue the '.($turn->proposals['deliverable'] ?? 'structured').' draft for this original request: '.$turn->question()."\nCompleted scope: ".$scope['completed_scope']."\nNext scope: ".$scope['next_scope']."\nReuse existing and staged records; do not duplicate previous items. Mark remaining work explicitly.";
+        $uuid = (string) Uuid::uuid5(Uuid::NAMESPACE_URL, 'dreamers:structured-continuation:'.$turn->id);
+        $conversation->send($exercise, $connection, $content, 'conversation', $uuid, $turn->reading_depth, ['model' => $turn->model, 'effort' => $turn->request_context['effort'] ?? 'default']);
+        $this->notice = 'Continuation saved. Existing drafts are retained; review each batch before acceptance.';
     }
 
     public function reviewTurn(int $id, SandboxProposals $proposals, Canonisation $canon): void
@@ -565,18 +617,14 @@ class Sandbox extends Component
     public function stopTurn(int $id): void
     {
         $exercise = $this->exercise(true);
-        $exercise->turns()->whereKey($id)->active()->update(['status' => 'cancelled', 'finished_at' => now()]);
+        $exercise->turns()->find($id)?->stop();
         $this->notice = 'Stopped. Received writing is retained.';
     }
 
     public function refreshConversation(): void
     {
         $exercise = $this->exercise(true);
-        $exercise->turns()->active()->where('updated_at', '<', now()->subSeconds(config('worldbuilding.timeout') + 60))->update([
-            'status' => 'failed',
-            'error' => 'This response was interrupted or timed out. Your question and completed reading are saved. Retry this request to continue.',
-            'finished_at' => now(),
-        ]);
+        AssistantTurn::expireStalled($exercise->turns()->getQuery());
     }
 
     public function acceptSummary(int $id): void
@@ -748,11 +796,15 @@ class Sandbox extends Component
         $recoveredMessages = $recoveries->groupBy(fn ($turn) => $turn->request_context['recovery']['message_id'] ?? 0)
             ->map(fn ($group) => $group->first());
         $recoveredIdeas = $recoveries->groupBy(fn ($turn) => $turn->request_context['recovery']['idea_id'] ?? 0)->map(fn ($group) => $group->first());
-        $ideas = $exercise?->ideas()->when($this->showArchived, fn ($query) => $query->onlyTrashed())->get() ?? collect();
+        $allIdeas = $exercise?->ideas()->withTrashed()->get() ?? collect();
+        $ideas = $allIdeas->filter(fn ($idea) => $idea->trashed() === $this->showArchived);
         $activeIds = $ideas->pluck('id');
         $visible = $ideas->filter(fn ($idea) => $this->alternativeFilter === '' || $idea->alternative === $this->alternativeFilter);
-        $links = $exercise?->links()->whereIn('source_id', $activeIds)->whereIn('target_id', $activeIds)->get() ?? collect();
-        $catalogue = $context->catalogue($this->world);
+        $links = $exercise?->links()
+            ->where(fn ($query) => $query->whereIn('source_id', $activeIds)->orWhereNotNull('source_key'))
+            ->where(fn ($query) => $query->whereIn('target_id', $activeIds)->orWhereNotNull('target_key'))
+            ->get() ?? collect();
+        $catalogue = $context->catalogue($this->world, true);
         $chapters = ManuscriptChapter::whereHas('manuscript', fn ($query) => $query->where('world_id', $this->world->id)->where('author_id', auth()->id()))->with('manuscript:id,title')->orderBy('manuscript_id')->orderBy('position')->get(['id', 'manuscript_id', 'position', 'title']);
         $selected = $this->ideaId ? $exercise?->ideas()->withTrashed()->find($this->ideaId) : null;
         $similar = $selected ? $this->world->referenceCatalogue()->filter(fn ($entry) => mb_strtolower($entry['name']) === mb_strtolower($selected->title) || levenshtein(mb_strtolower($entry['name']), mb_strtolower($selected->title)) <= 2)->pluck('name')->unique() : collect();
@@ -775,6 +827,7 @@ class Sandbox extends Component
             'exercises' => $this->world->exercises()->get(),
             'archivedExercises' => $this->world->exercises()->onlyTrashed()->get(),
             'ideas' => $ideas,
+            'allIdeas' => $allIdeas,
             'visibleIdeas' => $visible,
             'links' => $links,
             'selected' => $selected,
@@ -790,7 +843,12 @@ class Sandbox extends Component
             'conventions' => $this->conventions()->get(),
             'similarNames' => $similar,
             'entryTypes' => WorldEntryType::all(),
-            'kinds' => SandboxProposals::KINDS,
+            'kinds' => ProposalTypes::kinds(),
+            'structureEvents' => $exercise?->ideas()->where('kind', 'event')->get() ?? collect(),
+            'structureManuscripts' => $this->world->manuscripts()->get(['id', 'title']),
+            'structureCalendars' => $this->world->calendars()->get(['id', 'name']),
+            'structureChapters' => ManuscriptChapter::whereHas('manuscript', fn ($query) => $query->where('world_id', $this->world->id)->where('author_id', $this->world->author_id))->get(['id', 'title']),
+            'existingRules' => $selected?->kind === 'system' && $selected?->target_key ? $context->target($this->world, $selected->target_key)->rules()->get() : collect(),
         ]);
     }
 }

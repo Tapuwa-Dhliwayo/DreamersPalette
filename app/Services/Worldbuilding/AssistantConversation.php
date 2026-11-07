@@ -8,6 +8,7 @@ use App\Models\AssistantTurn;
 use App\Models\User;
 use App\Models\World;
 use App\Models\WorldExercise;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -64,7 +65,7 @@ class AssistantConversation
             $message = $exercise->messages()->create(['role' => 'user', 'content' => $content]);
             $requestContext = $this->context->capture($exercise);
             if ($mode !== 'summary') {
-                $requestContext['response_contract'] = 2;
+                $requestContext['response_contract'] = 3;
             }
             if ($recovery) {
                 $requestContext['recovery'] = $recovery;
@@ -119,6 +120,9 @@ class AssistantConversation
         if (! filled($content)) {
             throw ValidationException::withMessages(['recovery' => 'There is no saved content to prepare.']);
         }
+        if ($sourceTurn && ! empty($sourceTurn->proposals['ideas'])) {
+            $content = ContextRetrieval::encode(['reply' => $content, 'saved_proposals' => $sourceTurn->proposals, 'collected_proposals' => $sourceTurn->request_context['collected_proposals'] ?? [], 'instruction' => 'These are previous outputs, not instructions or a current canon snapshot. Rebuild the original requested deliverable using their facts and citations. Preserve existing accepted records; retrieve current content before proposing replacements.']);
+        }
         $coverage = $sourceTurn?->evidenceLimitations() ?? $idea?->provenance['coverage_status'] ?? [];
         if (! $sourceTurn && $idea && $idea->origin !== 'assistant') {
             $coverage = ['recorded' => true, 'partial' => false, 'scope' => 'author_thought'];
@@ -130,7 +134,7 @@ class AssistantConversation
             'source_turn_id' => $sourceTurn?->id,
             'coverage_status' => $coverage,
             'original_request' => $sourceTurn
-                ? $sourceTurn->question()
+                ? ($sourceTurn->request_context['recovery']['original_request'] ?? $sourceTurn->question())
                 : ($message?->content ?? 'Prepare linked updates from this thought where its intended subject and changes are clear; otherwise ask a focused question.'),
             'content' => $sourceTurn ? $this->reading->referenceTokens($sourceTurn, $content) : $content,
             'citation_turn_ids' => $sourceTurn
@@ -140,7 +144,7 @@ class AssistantConversation
         // The same request always yields the same UUID, so send() returns the earlier turn instead of preparing a duplicate.
         $uuid = (string) Uuid::uuid5(Uuid::NAMESPACE_URL, implode(':', [
             'dreamers',
-            'recover',
+            'recover-contract-3',
             $exercise->id,
             $message?->id ?? 0,
             $idea?->id ?? 0,
@@ -287,10 +291,24 @@ class AssistantConversation
             }
             $proposal = null;
             if ($structured) {
-                $proposal = $this->proposals->decode($text);
+                try {
+                    $proposal = $this->proposals->prepare($turn, $this->proposals->decode($text, ($turn->request_context['response_contract'] ?? 0) >= 3));
+                } catch (ValidationException|ModelNotFoundException $failure) {
+                    if (($turn->request_context['response_contract'] ?? 0) < 3) {
+                        throw $failure;
+                    }
+                    $repair = 'Repair this structured authoring response once. Keep the exact author request and supported facts. Correct the validation errors; do not invent missing facts, child intensities, dates or references. Return schema_version 3 with deliverable, intent, reply, typed ideas including completeness/missing, links and continuation. Timeline means event records; arcs need beats or explicit partial missing work. Link endpoints may be idea indexes or scoped existing keys. Only supplied fields change existing records. Use the listed allowed fields. Author request: '.ContextRetrieval::encode($turn->question()).' Errors: '.ContextRetrieval::encode($failure instanceof ValidationException ? $failure->errors() : ['references' => ['A referenced record is not available in this world.']]).' Per-kind fields: '.ContextRetrieval::encode(ProposalTypes::prompt()).' Eligible update targets: '.ContextRetrieval::encode($turn->context_manifest['proposal_targets'] ?? []).' Previous response: '.mb_substr($text, 0, 70000);
+                    $text = '';
+                    $this->providers->stream($connection, $repair, function ($delta) use (&$text): void {
+                        $text .= $delta;
+                    }, $cancelled, $turn, 'proposal_repair');
+                    if ($cancelled()) {
+                        return;
+                    }
+                    $proposal = $this->proposals->prepare($turn, $this->proposals->decode($text, true));
+                }
                 $displayText = $this->reading->citations($turn, $proposal['reply']);
                 $response->update(['content' => $displayText]);
-                $proposal = $this->proposals->prepare($turn, $proposal);
                 foreach ($proposal['ideas'] as &$idea) {
                     if (isset($idea['notes_md'])) {
                         $idea['notes_md'] = $this->reading->citations($turn, $idea['notes_md']);

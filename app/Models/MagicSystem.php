@@ -76,7 +76,9 @@ class MagicSystem extends Model
     {
         $this->reviseWorld($expectedRevision, $author, function ($system) use ($id, $fields): void {
             $case = $id ? $system->cases()->whereKey($id)->firstOrFail() : $system->cases()->make();
-            $case->fill(collect($fields)->except('rule_ids')->all())->save();
+            $case->fill(collect($fields)->except('rule_ids')->all());
+            $case->revision = $case->exists ? $case->revision + 1 : 1;
+            $case->save();
             $case->rules()->sync($fields['rule_ids']);
         });
     }

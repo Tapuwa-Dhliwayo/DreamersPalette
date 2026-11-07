@@ -15,13 +15,15 @@
         <flux:button size="sm" icon="document-text" wire:click="acceptSummary({{ $turn->id }})">Use as working summary</flux:button>
     @elseif(!empty($turn->proposals['ideas']))
         @php($recordProposals = collect($turn->proposals['ideas'])->reject(fn($proposal) => in_array($proposal['kind'], ['thought','question','name'], true)))
+        @php($turnRecords=$allIdeas->whereIn('id',array_values($turn->request_context['collected_proposals'] ?? []))->reject(fn($draft)=>in_array($draft->kind,['thought','question','name'])))
+        @php($acceptedCount=$turnRecords->whereNotNull('canonised_at')->count())
         @if($recordProposals->isNotEmpty())
             <div class="sandbox-proposed-actions">
-                <p><strong>{{ $recordProposals->count() }} {{ $recordProposals->count() === 1 ? 'proposed update' : 'proposed updates' }}</strong> · Not yet canon</p>
+                <p><strong>{{ $recordProposals->count() }} {{ $recordProposals->count() === 1 ? 'record draft' : 'record drafts' }}</strong> · {{ $acceptedCount }} accepted · {{ max(0,$recordProposals->count()-$acceptedCount) }} pending</p>
                 <ul>@foreach($recordProposals as $proposal)
-                    <li>{{ ['person'=>'Character sheet', 'entry'=>'Encyclopedia entry', 'relationship'=>'Relationship'][$proposal['kind']] ?? ucfirst($proposal['kind']) }}: <strong>{{ $catalogue[$proposal['target_key'] ?? '']['name'] ?? $proposal['title'] }}</strong>@if(!empty($proposal['target_key'])) · update existing @endif @if($proposal['kind']==='person') · Notes @endif</li>
+                    <li>{{ ['person'=>'Character sheet', 'entry'=>'Encyclopedia entry', 'relationship'=>'Relationship'][$proposal['kind']] ?? ucfirst($proposal['kind']) }}: <strong>{{ $catalogue[$proposal['target_key'] ?? '']['name'] ?? $proposal['title'] }}</strong>@if(!empty($proposal['target_key'])) · update existing @endif @if($proposal['kind']==='person') · Structured sheet fields @endif</li>
                 @endforeach</ul>
-                <flux:button size="sm" variant="primary" icon="document-check" wire:click="reviewTurn({{ $turn->id }})" x-on:click="detailsOpen=true;conversationFocus=true;mobilePane='details'" wire:loading.attr="disabled">Review {{ $recordProposals->count() }} {{ $recordProposals->count() === 1 ? 'update' : 'updates' }}</flux:button>
+                <flux:button size="sm" variant="primary" icon="document-check" wire:click="reviewTurn({{ $turn->id }})" x-on:click="detailsOpen=true;conversationFocus=true;mobilePane='details'" wire:loading.attr="disabled">{{ $acceptedCount===$recordProposals->count() ? 'View accepted changes' : 'Review pending changes' }}</flux:button>
                 <p class="sandbox-help">Drafts are on the board. Discuss a draft to refine it; accept only the changes you want.</p>
             </div>
         @else
@@ -32,8 +34,8 @@
                 <section class="sandbox-proposal-preview-item">
                     <h3>{{ $proposal['title'] }}</h3>
                     @if(!empty($proposal['target_key']))<p>Linked to {{ $catalogue[$proposal['target_key']]['name'] ?? $proposal['title'] }}</p>@endif
-                    @if($proposal['kind']==='person')<p>Destination: character sheet → Notes</p>@endif
-                    <x-studio.markdown :text="$proposal['notes_md'] ?? ''" />
+                    @if($proposal['kind']==='person')<p>Destination: character sheet → proposed fields</p>@endif
+                    <x-studio.canon-fields :fields="array_replace($proposal['fields'] ?? [],array_key_exists('notes_md',$proposal) ? ['notes_md'=>$proposal['notes_md']] : [])" :entry-types="$entryTypes" :catalogue="$catalogue" :proposal-names="collect($turn->proposals['ideas'])->mapWithKeys(fn($draft,$index)=>['idea:'.$index=>$draft['title']])->all()" />
                     <p>Proposed basis: {{ str_replace('_', ' ', $proposal['basis'] ?? 'interpretation') }}</p>
                     <x-studio.markdown :text="$proposal['evidence'] ?? 'No supporting evidence supplied.'" />
                     @if($proposal['uncertainty'] ?? null)<p>Still undecided: {{ $proposal['uncertainty'] }}</p>@endif
@@ -41,6 +43,8 @@
             @endforeach
         </details>
     @endif
+    @if($turn->status==='completed' && $turn->mode!=='summary' && ($turn->request_context['response_contract'] ?? 0)<3 && !empty($turn->proposals['ideas']))<flux:button size="sm" icon="document-plus" wire:click="restructureSavedTurn({{ $turn->id }})" wire:loading.attr="disabled">Restructure saved output</flux:button><p class="sandbox-help">Uses the original connection and saved content. Accepted records remain unchanged until a new review.</p>@endif
+    @if($turn->proposals['continuation']['has_more'] ?? false)<section class="sandbox-notice"><strong>Partial batch</strong><p>Completed: {{ $turn->proposals['continuation']['completed_scope'] }}</p><p>Next: {{ $turn->proposals['continuation']['next_scope'] }}</p><flux:button size="sm" wire:click="continueStructuredTurn({{ $turn->id }})" wire:loading.attr="disabled">Continue this draft</flux:button></section>@endif
     <details wire:ignore.self wire:key="source-disclosure-{{ $turn->id }}"><summary>Sources consulted · {{ $turn->created_at->asDateTime() }}</summary>
         @if($turn->request_context['recovery'] ?? null)<p>Prepared from a saved response or thought. Original source citations are retained; the novel was not reread.</p>@endif
         <p>{{ $turn->reading_depth === 'whole' ? 'Whole-source reading' : 'Focused investigation' }} · {{ count($turn->request_context['passages'] ?? $turn->context_manifest['source_collection'] ?? []) }} chapters available</p>

@@ -20,7 +20,8 @@
     @endif
     @if($ideaForm->kind==='alignment')@foreach(['left_label'=>'Left axis','right_label'=>'Right axis','top_label'=>'Top axis','bottom_label'=>'Bottom axis'] as $field=>$label)<flux:input :label="$label" wire:model="ideaForm.{{ $field }}" :disabled="$selected && !$selected->canEdit()" />@endforeach @endif
     @if($ideaForm->kind==='comparison')<flux:textarea label="Criteria (one per line)" wire:model="ideaForm.criteria" rows="4" :disabled="$selected && !$selected->canEdit()" />@endif
-    @if($ideaForm->kind==='map')<p class="sandbox-help">New map proposals create a blank map with these notes. Add images, pins, scale and journeys in Maps after acceptance. Existing map geometry and images are preserved.</p>@endif
+    @if($ideaForm->kind==='map')<p class="sandbox-help">Review scale, pins and journey below. Image uploads stay in Maps; existing images are preserved.</p>@endif
+    @include('livewire.studio.worlds.sandbox-structure')
     @if(!$selected || $selected->canEdit())<flux:button type="submit" variant="primary" icon="check">Save sandbox idea</flux:button>@endif
 </form>
 @if($selected)
