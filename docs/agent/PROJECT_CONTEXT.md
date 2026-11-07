@@ -279,3 +279,37 @@ See manual-testing/conversational-world-updates.md for the current review workfl
 ## Author dashboard and world-tool display — 2026/11/06
 
 Local dashboard now includes manuscript word/activity tracking, explicit additions/removals and size charts, chapter counts, optional weekly goals, recent work and review/release attention. Activity starts from a current-size baseline rather than fabricated history. Relationships have a network/inspector and explicit mutual direction; the null optional-field edit failure is fixed. Compare has a full-page matrix/editor; Timeline has an event rail; character dossiers link to connections. Two additive migrations under 2026_11_06 are applied locally. No production deployment or database reset. See `docs/DASHBOARD_WRITING_ACTIVITY.md` and `docs/WORLD_RELATIONSHIPS_AND_COMPARISONS.md`. Testing charters are created only when Tapuwa explicitly requests one.
+
+## Poetry analysis increment — 2026/11/07
+
+Local source now adds a private React poetry analysis workspace, immutable source
+snapshots, conversations, comparison selection, author notes and revision-aware
+follow-ups. It shares assistant connections, turns, usage and activity with worlds;
+world generation/proposals remain separate. See POETRY_ANALYSIS_IMPLEMENTATION.md
+and CLAUDE_POETRY_ANALYSIS_REVIEW.md for scope, three execution rounds and limits.
+The new 2026_11_07_000001 migration is NOT applied to normal MySQL: this execution
+sandbox blocks database sockets. Full migrations and 41 cumulative runtime checks
+passed on disposable SQLite with simulated provider responses. Chrome launch was
+also blocked, so frontend interactions, real provider generation, detached worker
+startup and MySQL concurrency remain unverified. No production work or reset.
+Pre-existing unrelated structured-world/timeline changes were preserved.
+
+
+2026/11/07 poetry review follow-up: the first reviewer confirmed the local MySQL
+migration/indexes are in place (no poetry usage yet). All thirteen reported issues
+were addressed: latest-only retry, relative world links, retained stopped-cost
+estimates, recovering/immediate polling, explicit previous-text context, aligned
+activity filtering, deliberate New selection, note attribution/restore, original
+Claude world prompt, bounded cancellation checks, shared model-owned expiry/stop
+and dedicated activity controller, plus HTTP-safe cryptographic UUID generation.
+53 isolated runtime and five JavaScript checks passed. Browser checks covered the
+empty local workspace, mobile draft/pane continuity, desktop structure and activity
+menu without creating writing/conversations or sending a provider request. See the
+review-corrections section of POETRY_ANALYSIS_IMPLEMENTATION.md for remaining limits.
+
+2026/11/07 second poetry review: latest-attempt JSX lookup is now explicit findLast;
+world timeout copy and unknown-stop no-op semantics restored. Guarded model-owned
+failRun cleanup retains the last streamed tail and releases active turns promptly
+on end-of-stream access loss. 59 cumulative isolated runtime checks and seven
+focused JavaScript checks passed, alongside build/lint/Pint/syntax checks. No real
+provider, normal database fixtures, deployment or commit.

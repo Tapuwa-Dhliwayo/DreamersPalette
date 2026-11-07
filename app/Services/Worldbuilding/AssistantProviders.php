@@ -187,7 +187,9 @@ class AssistantProviders
         File::ensureDirectoryExists($directory, 0700);
         $environment = self::isolatedEnvironment();
         if ($connection->provider === 'claude') {
-            $command = [$this->binary('claude'), '--print', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--setting-sources', '', '--settings', '{"disableAllHooks":true}', '--disable-slash-commands', '--permission-mode', 'dontAsk', '--no-session-persistence', '--system-prompt', 'You are a worldbuilding conversation partner. No tools or filesystem access. Follow the supplied exercise instructions.', '--model', $connection->model];
+            $command = [$this->binary('claude'), '--print', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--setting-sources', '', '--settings', '{"disableAllHooks":true}', '--disable-slash-commands', '--permission-mode', 'dontAsk', '--no-session-persistence', '--system-prompt', match ($usage->purpose) {
+                'poetry_analysis' => 'You are a writing conversation partner. No tools or filesystem access. Follow the supplied conversation instructions.', default => 'You are a worldbuilding conversation partner. No tools or filesystem access. Follow the supplied exercise instructions.'
+            }, '--model', $connection->model];
         } else {
             // Isolate configuration/plugins/MCP from the user's coding setup; retain only their existing authentication.
             $home = $directory.'/codex';

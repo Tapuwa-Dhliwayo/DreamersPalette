@@ -20,6 +20,7 @@ use App\Livewire\Studio\Worlds\Reasoning;
 use App\Livewire\Studio\Worlds\Sandbox;
 use App\Livewire\Studio\Worlds\Thinking;
 use Illuminate\Support\Facades\Route;
+use Spatie\Permission\Middleware\PermissionMiddleware;
 
 Route::middleware(PreventAuthenticationCaching::class)->group(__DIR__.'/auth.php');
 
@@ -27,7 +28,7 @@ Route::prefix('studio')->name('studio.')->middleware([PreventAuthenticationCachi
     Route::get('/', Index::class)->middleware('can:manuscripts.view')->name('index');
     Route::get('/reviews', App\Livewire\Studio\Reviews\Index::class)->middleware('can:reviews.view')->name('reviews');
     Route::get('/reviews/{grant}', App\Livewire\Studio\Reviews\Workspace::class)->whereNumber('grant')->middleware('can:reviews.view')->name('review');
-    Route::get('/assistant-connections', AssistantConnections::class)->middleware('can:worlds.update')->name('assistant-connections');
+    Route::get('/assistant-connections', AssistantConnections::class)->middleware(PermissionMiddleware::class.':worlds.update|poems.update')->name('assistant-connections');
     Route::get('/worlds/{world}/sandbox', Sandbox::class)->whereNumber('world')->middleware('can:worlds.update')->name('world.sandbox');
     Route::get('/worlds', App\Livewire\Studio\Worlds\Index::class)->middleware('can:worlds.view')->name('worlds');
     Route::get('/worlds/{world}/calendars', Calendars::class)->whereNumber('world')->middleware('can:worlds.view')->name('world.calendars');
@@ -56,6 +57,7 @@ Route::middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.sessio
         Route::view('/dashboard/'.$resource.'/new', 'app')->middleware('can:'.$resource.'.create');
         Route::view('/dashboard/'.$resource.'/{id}/edit', 'app')->whereNumber('id')->middleware('can:'.$resource.'.update');
     }
+    Route::view('/dashboard/poems/{id}/analysis', 'app')->whereNumber('id')->middleware('can:poems.update');
     Route::view('/dashboard/trash', 'app')->middleware('can:trash.view');
 });
 Route::view('/dashboard/security', 'app')->middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.session', 'verified', 'can:account.security.manage']);

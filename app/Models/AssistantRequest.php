@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class AssistantRequest extends Model
 {
@@ -26,15 +27,27 @@ class AssistantRequest extends Model
 
     public function finish(string $status): void
     {
-        $estimate = null;
-        if ($this->pricing && $this->input_tokens !== null && $this->output_tokens !== null) {
-            $input = $this->input_tokens;
-            if (in_array($this->provider, ['anthropic', 'claude'], true)) {
-                $input += ($this->cache_read_tokens ?? 0) + ($this->cache_write_tokens ?? 0);
+        DB::transaction(function () use ($status): void {
+            $current = self::whereKey($this->id)->lockForUpdate()->firstOrFail();
+            $fields = ['estimated_cost_usd' => $current->estimatedCost()];
+            if ($current->status === 'running') {
+                $fields += ['status' => $status, 'finished_at' => now()];
             }
-            $estimate = ($input * $this->pricing['input_rate_usd'] + $this->output_tokens * $this->pricing['output_rate_usd']) / 1000000;
+            $current->update($fields);
+        });
+    }
+
+    private function estimatedCost(): ?float
+    {
+        if (! $this->pricing || $this->input_tokens === null || $this->output_tokens === null) {
+            return null;
         }
-        $this->update(['status' => $status, 'estimated_cost_usd' => $estimate, 'finished_at' => now()]);
+        $input = $this->input_tokens;
+        if (in_array($this->provider, ['anthropic', 'claude'], true)) {
+            $input += ($this->cache_read_tokens ?? 0) + ($this->cache_write_tokens ?? 0);
+        }
+
+        return ($input * $this->pricing['input_rate_usd'] + $this->output_tokens * $this->pricing['output_rate_usd']) / 1000000;
     }
 
     public function recordUsage(array $usage): void
@@ -47,7 +60,8 @@ class AssistantRequest extends Model
             }
         }
         if ($fields) {
-            $this->update($fields);
+            $this->fill($fields);
+            $this->update([...$fields, 'estimated_cost_usd' => $this->estimatedCost()]);
         }
     }
 }

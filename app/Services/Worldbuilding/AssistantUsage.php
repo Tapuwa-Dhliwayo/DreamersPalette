@@ -19,10 +19,10 @@ class AssistantUsage
             $saved = AssistantConnection::lockForUpdate()->findOrFail($connection->id);
             $current = AssistantTurn::lockForUpdate()->findOrFail($turn->id);
             Gate::forUser($user)->authorize('update', $saved);
-            Gate::forUser($user)->authorize('update', $current->exercise);
+            Gate::forUser($user)->authorize('update', $current->subject());
             if (
                 $current->connection_id !== $saved->id
-                || $current->exercise->world->author_id !== $saved->user_id
+                || $current->authorId() !== $saved->user_id
                 || ! $saved->enabled
                 || $saved->revision !== $connection->revision
                 || $current->status !== 'running'

@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class AssistantTurn extends Model
 {
@@ -24,6 +26,101 @@ class AssistantTurn extends Model
     public function exercise(): BelongsTo
     {
         return $this->belongsTo(WorldExercise::class, 'exercise_id');
+    }
+
+    public function poemConversation(): BelongsTo
+    {
+        return $this->belongsTo(PoemAnalysisConversation::class, 'poem_conversation_id');
+    }
+
+    public function subject(): ?Model
+    {
+        return $this->poem_conversation_id ? $this->poemConversation : $this->exercise;
+    }
+
+    public function authorId(): ?int
+    {
+        return $this->poem_conversation_id ? $this->poemConversation?->author_id : $this->exercise?->world?->author_id;
+    }
+
+    // Conversation titles repeat across poems ("Analysis 1"), so poetry activity is named by its poem first.
+    public function activityTitle(): string
+    {
+        return $this->poem_conversation_id
+            ? $this->poemConversation->poem->title.' · '.$this->poemConversation->title
+            : $this->exercise->title;
+    }
+
+    public function activityUrl(): string
+    {
+        return $this->poem_conversation_id
+            ? '/dashboard/poems/'.$this->poemConversation->poem_id.'/analysis?conversation='.$this->poem_conversation_id
+            : route('studio.world.sandbox', ['world' => $this->exercise->world_id, 'exercise' => $this->exercise_id], absolute: false);
+    }
+
+    public static function outstandingFor(User $author): Collection
+    {
+        return self::forAuthor($author->id)->with(['exercise', 'poemConversation.poem'])
+            ->where(fn ($query) => $query->active()->orWhereNull('acknowledged_at'))
+            ->latest('updated_at')->get()
+            ->filter(fn ($turn) => $turn->subject() && Gate::forUser($author)->allows('update', $turn->subject()));
+    }
+
+    public function stop(): void
+    {
+        DB::transaction(function (): void {
+            $current = self::whereKey($this->id)->lockForUpdate()->firstOrFail();
+            if (! $current->isActive()) {
+                return;
+            }
+            $current->update(['status' => 'cancelled', 'finished_at' => now()]);
+            $current->closeRequests('cancelled');
+        });
+    }
+
+    private function closeRequests(string $status): void
+    {
+        AssistantRequest::where('turn_id', $this->id)->where('run_uuid', $this->run_uuid)->where('status', 'running')
+            ->update(['status' => $status, 'finished_at' => now()]);
+    }
+
+    public static function expireStalled(Builder $scope): void
+    {
+        $cutoff = now()->subSeconds(config('worldbuilding.timeout') + 60);
+        $ids = (clone $scope)->active()->where('updated_at', '<', $cutoff)->limit(100)->pluck('id');
+        foreach ($ids as $id) {
+            DB::transaction(function () use ($id, $cutoff): void {
+                $turn = self::whereKey($id)->lockForUpdate()->first();
+                if (! $turn || ! $turn->isActive() || $turn->updated_at >= $cutoff) {
+                    return;
+                }
+                $turn->update(['status' => 'failed', 'error' => $turn->interruptionMessage(), 'finished_at' => now()]);
+                $turn->closeRequests('interrupted');
+            });
+        }
+    }
+
+    private function interruptionMessage(): string
+    {
+        return match (true) {
+            $this->poem_conversation_id !== null => 'The response was interrupted. Your question and sources are saved. Open the conversation to retry.',
+            default => 'This response was interrupted or timed out. Your question and completed reading are saved. Retry this request to continue.',
+        };
+    }
+
+    public function failRun(string $runId, string $message, ?string $receivedText = null): void
+    {
+        DB::transaction(function () use ($runId, $message, $receivedText): void {
+            $current = self::whereKey($this->id)->lockForUpdate()->firstOrFail();
+            if ($current->status !== 'running' || $current->run_uuid !== $runId) {
+                return;
+            }
+            if ($receivedText !== null && $current->response_id !== null) {
+                AssistantMessage::whereKey($current->response_id)->update(['content' => $receivedText]);
+            }
+            $current->update(['status' => 'failed', 'error' => $message, 'finished_at' => now()]);
+            $current->closeRequests('interrupted');
+        });
     }
 
     public function message(): BelongsTo
@@ -61,7 +158,10 @@ class AssistantTurn extends Model
 
     public function scopeForAuthor(Builder $query, int $userId): void
     {
-        $query->whereHas('exercise.world', fn ($world) => $world->where('author_id', $userId));
+        $query->where(function ($owned) use ($userId): void {
+            $owned->whereHas('exercise.world', fn ($world) => $world->where('author_id', $userId))
+                ->orWhereHas('poemConversation', fn ($conversation) => $conversation->where('author_id', $userId));
+        });
     }
 
     // A status without a `partial` verdict was never really recorded, whatever else it carries.

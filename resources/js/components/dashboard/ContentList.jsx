@@ -90,6 +90,7 @@ export function ContentListRow({
     onEdit,
     onArchive,
     onPublish,
+    onAnalyse,
     pending = false,
     children
 }) {
@@ -116,6 +117,7 @@ export function ContentListRow({
                 <Button size="sm" variant="subtle" disabled={pending} onClick={() => onPublish(item)}>
                     {item.is_published ? "Unpublish" : "Publish"}
                 </Button>
+                {onAnalyse && <Button size="sm" variant="ghost" onClick={() => onAnalyse(item)}>Analyse</Button>}
                 <Button size="sm" variant="ghost" onClick={() => onEdit(item)}>Edit</Button>
                 <Button size="sm" variant="ghost" onClick={() => onArchive(item)}>Archive</Button>
             </div>

@@ -95,7 +95,7 @@ export default function PoemEditorPage() {
         initialize()
     }, [id, isEditMode, navigate])
 
-    async function handleSave() {
+    async function handleSave(openAnalysis = false) {
         if (!form.title.trim()) {
             setValidationError("A poem title is required.")
             return
@@ -111,6 +111,7 @@ export default function PoemEditorPage() {
             setValidationError("")
             setSaveError("")
 
+            let savedPoemId = id
             if (isEditMode) {
                 await updatePoem(id, {
                     title: form.title,
@@ -118,17 +119,18 @@ export default function PoemEditorPage() {
                     collection_id: form.collection_id
                 })
             } else {
-                await createPoem({
+                const created = await createPoem({
                     title: form.title,
                     content_md: form.content_md,
                     collection_id: form.collection_id,
                     is_published: false
                 })
+                savedPoemId = created.id
             }
 
             localDraft.clearDraft()
             navigationGuard.markSafe()
-            navigate(DASHBOARD_ROUTES.POEMS)
+            navigate(openAnalysis ? DASHBOARD_ROUTES.POEM_ANALYSIS(savedPoemId) : DASHBOARD_ROUTES.POEMS)
 
         } catch (err) {
             setSaveError(err.message || "The poem could not be saved. Your writing is still here.")
@@ -172,8 +174,9 @@ export default function PoemEditorPage() {
                         Cancel
                     </Button>
 
+                    <Button variant="subtle" disabled={saving || collections.length === 0 || (isEditMode && !initialForm)} onClick={() => handleSave(true)}>Save and analyse</Button>
                     <Button
-                        onClick={handleSave}
+                        onClick={() => handleSave()}
                         disabled={saving || collections.length === 0 || (isEditMode && !initialForm)}
                     >
                         {saving ? "Saving..." : "Save"}

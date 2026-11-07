@@ -27,6 +27,7 @@ const DashboardCollections = lazy(
 const DashboardCollectionEditor = lazy(
     () => import("@/pages/dashboard/CollectionEditorPage"),
 );
+const PoemAnalysisPage = lazy(() => import("@/pages/dashboard/PoemAnalysisPage"));
 const DashboardPoems = lazy(() => import("@/pages/dashboard/Poems"));
 const DashboardBooks = lazy(() => import("@/pages/dashboard/Books"));
 const DashboardChapters = lazy(() => import("@/pages/dashboard/Chapters"));
@@ -134,6 +135,10 @@ export const router = createBrowserRouter([
                         <DashboardPoemEditor />
                     </ProtectedRoute>
                 ),
+            },
+            {
+                path: "poems/:id/analysis",
+                element: <ProtectedRoute permission="poems.update"><PoemAnalysisPage /></ProtectedRoute>,
             },
             {
                 path: "poems/:id/edit",

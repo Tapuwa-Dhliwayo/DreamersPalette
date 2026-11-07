@@ -36,7 +36,7 @@ class AssistantConnections extends Component
 
     public function mount(): void
     {
-        abort_unless(auth()->user()->can('worlds.update'), 403);
+        abort_unless(auth()->user()->canAny(['worlds.update', 'poems.update']), 403);
     }
 
     public function edit(?int $id = null): void

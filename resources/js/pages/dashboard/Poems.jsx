@@ -165,6 +165,7 @@ export default function Poems() {
                                 title={poem.title}
                                 description={poem.excerpt}
                                 metadata={`Updated ${formatDate(poem.updated_at || poem.created_at)}`}
+                                onAnalyse={() => navigate(DASHBOARD_ROUTES.POEM_ANALYSIS(poem.id))}
                                 onEdit={() => navigate(DASHBOARD_ROUTES.POEM_EDIT(poem.id))}
                                 onArchive={() => setArchiveTargets([poem])}
                                 onPublish={() => setPublishTargets([poem])}

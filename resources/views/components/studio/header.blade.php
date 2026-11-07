@@ -26,6 +26,6 @@
             @endforeach
         </flux:navmenu>
     </flux:dropdown>
-    @can('worlds.update')<livewire:studio.assistant-activity />@endcan
+    @canany(['worlds.update', 'poems.update'])<livewire:studio.assistant-activity />@endcanany
     <span class="studio-header-user">{{ $user->name }}</span>
 </header>

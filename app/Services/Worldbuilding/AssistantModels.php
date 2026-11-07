@@ -74,7 +74,7 @@ class AssistantModels
 
     private function authorize(AssistantConnection $connection): void
     {
-        abort_unless($connection->user_id === auth()->id() && auth()->user()?->can('worlds.update'), 403);
+        abort_unless($connection->user_id === auth()->id() && auth()->user()?->canAny(['worlds.update', 'poems.update']), 403);
         if ($connection->exists) {
             Gate::authorize('update', $connection);
         }
