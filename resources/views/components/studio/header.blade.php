@@ -6,6 +6,7 @@
         'worlds' => ['Worlds', route('studio.worlds'), 'globe-alt', $user->can('worlds.view')],
         'reviews' => ['Editorial reviews', route('studio.reviews'), 'document-magnifying-glass', $user->can('reviews.view')],
         'publishing' => ['Publishing', '/dashboard/books', 'book-open', $user->can('books.view')],
+        'account' => ['Account', route('account.profile'), 'user-circle', $user->can('account.view')],
         'dashboard' => ['Dashboard', '/dashboard', 'squares-2x2', true],
     ])->filter(fn (array $link): bool => $link[3]);
 @endphp
@@ -27,5 +28,5 @@
         </flux:navmenu>
     </flux:dropdown>
     @canany(['worlds.update', 'poems.update'])<livewire:studio.assistant-activity />@endcanany
-    <span class="studio-header-user">{{ $user->name }}</span>
+    <a class="studio-header-user" href="{{ route('account.profile') }}" @if($guard) @click="guardLink($event)" @endif>{{ $user->profile?->display_name ?: $user->name }}</a>
 </header>

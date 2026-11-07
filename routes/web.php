@@ -5,6 +5,7 @@ use App\Http\Controllers\Studio\DraftMapImageController;
 use App\Http\Controllers\Studio\ExportDraftController;
 use App\Http\Controllers\Studio\MapImageController;
 use App\Http\Middleware\PreventAuthenticationCaching;
+use App\Livewire\Studio\Account\Profile;
 use App\Livewire\Studio\AssistantConnections;
 use App\Livewire\Studio\Manuscripts\Compile;
 use App\Livewire\Studio\Manuscripts\Details;
@@ -23,6 +24,8 @@ use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 
 Route::middleware(PreventAuthenticationCaching::class)->group(__DIR__.'/auth.php');
+
+Route::get('/account', Profile::class)->middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.session', 'verified', 'can:account.view'])->name('account.profile');
 
 Route::prefix('studio')->name('studio.')->middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.session', 'verified', 'can:dashboard.access'])->group(function (): void {
     Route::get('/', Index::class)->middleware('can:manuscripts.view')->name('index');

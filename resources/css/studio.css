@@ -2055,3 +2055,5 @@ a.thinking-subject:hover { text-decoration: underline; text-underline-offset: 4p
     .character-timeline-date { padding:8px 0; }
 }
 
+.account-settings { max-width: 780px; margin-inline: auto; width: 100%; }
+.account-settings .studio-form { max-width: none; }

@@ -313,3 +313,22 @@ failRun cleanup retains the last streamed tail and releases active turns promptl
 on end-of-stream access loss. 59 cumulative isolated runtime checks and seven
 focused JavaScript checks passed, alongside build/lint/Pint/syntax checks. No real
 provider, normal database fixtures, deployment or commit.
+
+
+## Account profile — 2026/11/07
+
+`/account` is a shared Livewire/Flux profile destination from the React dashboard
+and studio/world header. Authors can edit display name/bio and upload or remove a
+JPG/PNG/WebP avatar (2 MB limit). Profile/Security navigation connects the existing
+security screen; the sidebar shows the saved avatar and studio uses display name.
+Own-account policy and account.view protect route, render and actions. Shared user
+name/email/password are unchanged. Missing publishing profiles are created on save;
+existing ones update in place. No migration is required. Failed database saves
+remove their new upload; replaced historical avatar files are retained.
+
+11 disposable runtime checks passed, covering create/update, field preparation,
+identity preservation, valid image storage, validation, avatar removal and ownership.
+Focused ESLint/Pint, PHP syntax, route registration, frontend build and diff checks
+passed. Browser confirmed profile rendering and navigation to Security; subsequent
+mobile verification was blocked by browser debugger synchronization timeout.
+The actual author's profile was not changed. No production deployment or commit.

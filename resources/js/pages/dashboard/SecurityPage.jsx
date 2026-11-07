@@ -48,14 +48,16 @@ export default function SecurityPage() {
     }
 
     return (
-        <section className="mx-auto w-full max-w-3xl space-y-8 p-4 md:p-8">
+        <section className="mx-auto min-h-0 w-full max-w-3xl space-y-6 overflow-y-auto p-1 md:p-4">
             <header className="space-y-2">
-                <h1 className="font-serif text-2xl">Account security</h1>
+                <h1 className="font-serif text-2xl">Account</h1>
+                <nav aria-label="Account settings" className="flex gap-6 border-b border-neutral-200 text-sm"><a href="/account" className="py-3 text-neutral-600 hover:text-neutral-950">Profile</a><span aria-current="page" className="border-b-2 border-teal-700 py-3 font-medium">Security</span></nav>
                 <p className="text-sm text-neutral-600">
                     Password sign-in is always available. Two-factor
                     authentication and passkeys are optional.
                 </p>
             </header>
+            <h2 className="text-lg font-semibold">Security</h2>
             {error && (
                 <p
                     role="alert"
