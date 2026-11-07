@@ -76,13 +76,20 @@ class Sandbox extends Component
     #[Locked]
     public array $undoMove = [];
 
+    #[Locked]
+    public array $undoTidy = [];
+
     public array $selectedIdeas = [];
 
     public bool $acknowledgeUncertainty = false;
 
-    public string $view = 'board';
+    // One working surface at a time; the conversation is the main surface in Discuss and a drawer otherwise.
+    private const VIEWS = ['discuss', 'board', 'timeline', 'list'];
 
-    public string $panel = 'idea';
+    public string $view = 'discuss';
+
+    // Details open only for a selection or a chosen action; an empty string keeps them closed.
+    public string $panel = '';
 
     public string $alternativeFilter = '';
 
@@ -175,8 +182,19 @@ class Sandbox extends Component
         $this->conversationForm->effort = $lastTurn?->request_context['effort'] ?? 'default';
         $this->conversationForm->reading_depth = $lastReadingTurn?->reading_depth ?? 'focused';
         $this->conversationForm->auto_continue = $lastReadingTurn?->request_context['auto_continue'] ?? true;
-        $this->reset('ideaId', 'selectedIdeas', 'canonReview', 'undoMove', 'alternativeFilter');
-        $this->panel = 'idea';
+        $this->reset('ideaId', 'selectedIdeas', 'canonReview', 'undoMove', 'undoTidy', 'alternativeFilter');
+        $rememberedView = session('sandbox.view.'.$id);
+        $this->view = in_array($rememberedView, self::VIEWS, true) ? $rememberedView : 'discuss';
+        $this->panel = '';
+        $this->resetValidation();
+    }
+
+    public function closeDetails(): void
+    {
+        $this->panel = '';
+        $this->ideaId = null;
+        $this->ideaForm->reset();
+        $this->proposalTarget = '';
         $this->resetValidation();
     }
 
@@ -382,6 +400,34 @@ class Sandbox extends Component
         return ['revision' => $revision + 1];
     }
 
+    public function tidyBoard(bool $compactCards, int $columns): void
+    {
+        $this->undoTidy = $this->write(fn ($exercise) => $exercise->tidyBoard($compactCards, $columns));
+        $this->undoMove = [];
+        $this->syncOpenIdeaRevision($this->undoTidy);
+        $this->notice = $this->undoTidy ? 'Board tidied. Undo tidy restores the previous layout.' : 'The board is already tidy.';
+    }
+
+    public function undoTidyBoard(): void
+    {
+        if (! $this->undoTidy) {
+            return;
+        }
+        $previous = $this->undoTidy;
+        $this->write(fn ($exercise) => $exercise->restoreBoard($previous));
+        $this->syncOpenIdeaRevision(array_map(fn (array $saved): array => ['revision' => $saved['revision'] + 1], $previous));
+        $this->undoTidy = [];
+        $this->notice = 'Previous board layout restored.';
+    }
+
+    // Layout moves bump revisions; keep an open idea form saveable afterwards.
+    private function syncOpenIdeaRevision(array $moved): void
+    {
+        if ($this->ideaId && isset($moved[$this->ideaId])) {
+            $this->ideaForm->revision = $moved[$this->ideaId]['revision'];
+        }
+    }
+
     public function undoMovement(): void
     {
         if ($this->undoMove) {
@@ -427,7 +473,7 @@ class Sandbox extends Component
     public function archiveIdea(int $id, int $revision, bool $archive): void
     {
         $this->write(fn ($exercise) => $exercise->ideas()->withTrashed()->findOrFail($id)->setArchived($archive, auth()->id(), $revision));
-        $this->ideaId = null;
+        $this->closeDetails();
         $this->notice = $archive ? 'Idea archived. Its conversation and connections are retained.' : 'Idea restored.';
     }
 
@@ -572,8 +618,11 @@ class Sandbox extends Component
 
     public function updatedView(): void
     {
-        if (! in_array($this->view, ['board', 'timeline', 'list'], true)) {
-            $this->view = 'board';
+        if (! in_array($this->view, self::VIEWS, true)) {
+            $this->view = 'discuss';
+        }
+        if ($this->exerciseId) {
+            session()->put('sandbox.view.'.$this->exerciseId, $this->view);
         }
     }
 

@@ -23,7 +23,7 @@
                 <ul>@foreach($recordProposals as $proposal)
                     <li>{{ ['person'=>'Character sheet', 'entry'=>'Encyclopedia entry', 'relationship'=>'Relationship'][$proposal['kind']] ?? ucfirst($proposal['kind']) }}: <strong>{{ $catalogue[$proposal['target_key'] ?? '']['name'] ?? $proposal['title'] }}</strong>@if(!empty($proposal['target_key'])) · update existing @endif @if($proposal['kind']==='person') · Structured sheet fields @endif</li>
                 @endforeach</ul>
-                <flux:button size="sm" variant="primary" icon="document-check" wire:click="reviewTurn({{ $turn->id }})" x-on:click="detailsOpen=true;conversationFocus=true;mobilePane='details'" wire:loading.attr="disabled">{{ $acceptedCount===$recordProposals->count() ? 'View accepted changes' : 'Review pending changes' }}</flux:button>
+                <flux:button size="sm" variant="primary" icon="document-check" wire:click="reviewTurn({{ $turn->id }})" wire:loading.attr="disabled">{{ $acceptedCount===$recordProposals->count() ? 'View accepted changes' : 'Review pending changes' }}</flux:button>
                 <p class="sandbox-help">Drafts are on the board. Discuss a draft to refine it; accept only the changes you want.</p>
             </div>
         @else
@@ -62,11 +62,11 @@
                 <strong>{{ $reading->title }}</strong>@if(collect($reading->reads)->contains(fn($read)=>isset($read['reused_from'])))<span class="sandbox-reference-label">Saved reference reused</span>@endif
                 <p>{{ count($reading->passages) === 0 ? 'No prose' : ($readCount === 0 ? 'Unread' : ($readCount === count($reading->passages) ? 'Historically analysed in full' : 'Historically partially analysed')) }} · {{ $readCount }}/{{ count($reading->passages) }} passages · revision {{ $reading->chapter_revision }}</p>
                 @if(($sourceRevisions[$reading->chapter_id] ?? null) !== $reading->chapter_revision)<p>Chapter changed or was archived after this reading. These are the saved passages used for the response.</p>@endif
-                @foreach($ranges as [$start,$end])<button class="sandbox-text-action" wire:click="openSource({{ $reading->id }},{{ $start }},{{ $end }})" x-on:click="detailsOpen=true;conversationFocus=true;mobilePane='details'">Read passages {{ $start }}–{{ $end }}</button>@endforeach
+                @foreach($ranges as [$start,$end])<button class="sandbox-text-action" wire:click="openSource({{ $reading->id }},{{ $start }},{{ $end }})">Read passages {{ $start }}–{{ $end }}</button>@endforeach
                 @foreach(collect($reading->reads ?? [])->filter(fn($read)=>!\App\Models\AssistantSource::isAnalysis($read))->unique(fn($read)=>$read['start'].'-'.$read['end']) as $consultation)
-                    <button class="sandbox-text-action" wire:click="openSource({{ $reading->id }},{{ $consultation['start'] }},{{ $consultation['end'] }})" x-on:click="detailsOpen=true;conversationFocus=true;mobilePane='details'">Consulted without analysis: {{ $consultation['start'] }}–{{ $consultation['end'] }}</button>
+                    <button class="sandbox-text-action" wire:click="openSource({{ $reading->id }},{{ $consultation['start'] }},{{ $consultation['end'] }})">Consulted without analysis: {{ $consultation['start'] }}–{{ $consultation['end'] }}</button>
                 @endforeach
-                @if(!$ranges && count($reading->passages)>0)<button class="sandbox-text-action" wire:click="openSource({{ $reading->id }})" x-on:click="detailsOpen=true;conversationFocus=true;mobilePane='details'">Inspect available source</button>@endif
+                @if(!$ranges && count($reading->passages)>0)<button class="sandbox-text-action" wire:click="openSource({{ $reading->id }})">Inspect available source</button>@endif
             </article>
         @endforeach
         @if($turn->mode === 'summary')<p>This request summarises the discussion. It does not reread the manuscript collection.</p>@endif

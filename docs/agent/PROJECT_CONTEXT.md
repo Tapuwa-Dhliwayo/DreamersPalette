@@ -335,3 +335,16 @@ Focused ESLint/Pint, PHP syntax, route registration, frontend build and diff che
 passed. Browser confirmed profile rendering and navigation to Security; subsequent
 mobile verification was blocked by browser debugger synchronization timeout.
 The actual author's profile was not changed. No production deployment or commit.
+
+## World sandbox layout — 2026/11/07
+
+The sandbox shows one working surface at a time: Discuss | Board | Timeline | List.
+Discuss gives the conversation the main area with a rail of what it produced; the
+other modes give the arrangement the space and turn the conversation into a drawer.
+Details open as a slide-over only for a selection or a chosen action (`$panel` is
+empty otherwise); structured records keep their full-width editor. Each exercise
+remembers its last mode in the session. Assistant replies over 6,000 characters show
+as a card that opens a reader (`AssistantMessage::readsAsDocument()`). Board cards
+are compact by default (a per-browser preference), links show for the selected card
+unless "All connections" is ticked, and Tidy layout (`WorldExercise::tidyBoard()`)
+arranges rows by kind and events in story order to the board's width, with Undo.
