@@ -82,15 +82,7 @@
                     @if(filled($entry->notes_md))<details class="world-tool-notes"><summary>Arc notes</summary><x-studio.markdown :text="$entry->notes_md" /></details>@endif
                     <div class="world-section-heading"><h2>{{ $entry->measure }}</h2>@can('update', $world)@if(!$entry->trashed() && !$archivedChildren)<flux:button icon="plus" size="sm" wire:click="edit('beat')">Add beat</flux:button>@endif@endcan</div>
                     @if($beats->isNotEmpty())
-                        @if(count($arcSeries) > 1)
-                        <div class="development-arc-chart" wire:key="arc-chart-{{ $entry->id }}-{{ $beats->max('updated_at')?->timestamp }}-{{ $beats->sum('revision') }}" role="img" aria-label="{{ $entry->measure }} across {{ $beats->count() }} beats. Values are listed below.">
-                            <flux:chart :value="$arcSeries" class="h-64">
-                                <flux:chart.svg><flux:chart.line field="intensity" style="color:var(--studio-accent)" /><flux:chart.point field="intensity" style="color:var(--studio-accent)" /><flux:chart.axis axis="x" field="step"><flux:chart.axis.tick /><flux:chart.axis.line /></flux:chart.axis><flux:chart.axis axis="y" :tick-values="[0,25,50,75,100]"><flux:chart.axis.grid /><flux:chart.axis.tick /></flux:chart.axis></flux:chart.svg>
-                                <flux:chart.tooltip><flux:chart.tooltip.heading field="title" /><flux:chart.tooltip.value field="intensity" :label="$entry->measure" /></flux:chart.tooltip>
-                            </flux:chart>
-                        </div>
-                        @endif
-                        <ol class="development-beats">@foreach($beats as $beat)<li wire:key="beat-{{ $beat->id }}"><div class="world-rule-heading"><h3>{{ $loop->iteration }}. {{ $beat->title }}</h3>@can('update', $world)@if(!$entry->trashed())<flux:button size="sm" :icon="$beat->trashed() ? 'arrow-uturn-left' : 'archive-box'" wire:click="archiveChild('beat', {{ $beat->id }}, {{ $beat->revision }}, {{ $beat->trashed() ? 'false' : 'true' }})">{{ $beat->trashed() ? 'Restore' : 'Archive' }}</flux:button>@endif@endcan<span>{{ $beat->intensity === null ? 'Unrated' : $beat->intensity.'/100' }}</span>@can('update', $world)@if(!$archivedChildren && !$entry->trashed())<flux:button icon="pencil-square" size="sm" wire:click="edit('beat', {{ $beat->id }})">Edit beat</flux:button>@endif@endcan</div>@if($beat->event)<a class="development-event-link" href="{{ route('studio.world.develop', ['world' => $world, 'section' => 'timeline', 'selected' => $beat->event_id]) }}">{{ $beat->event->calendarLabel() ?: $beat->event->date_label }} · {{ $beat->event->title }}</a>@endif<x-studio.markdown :text="$beat->notes_md ?? ''" /></li>@endforeach</ol>
+                        <x-studio.arc-explorer :arc="$entry" :beats="$beats" :world="$world" :archived="$archivedChildren" />
                     @else<p class="world-empty">No beats yet</p>@endif
                 @else
                     @if(filled($entry->notes_md))<details class="world-tool-notes"><summary>What these axes mean</summary><x-studio.markdown :text="$entry->notes_md" /></details>@endif

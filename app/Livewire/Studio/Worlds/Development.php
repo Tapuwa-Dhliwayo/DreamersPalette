@@ -358,7 +358,6 @@ class Development extends Component
             'systems' => $this->world->systems()->withTrashed()->where(fn ($query) => $query->whereNull('deleted_at')->orWhere('id', $this->placementForm->system_id))->get(),
             'availableEvents' => $this->world->events()->withTrashed()->where(fn ($query) => $query->whereNull('deleted_at')->orWhere('id', $this->beatForm->event_id))->get(),
             'beats' => $beats,
-            'arcSeries' => $beats->whereNotNull('intensity')->values()->map(fn ($beat, $index) => ['step' => $index + 1, 'title' => $beat->title, 'intensity' => $beat->intensity])->all(),
             'placements' => $entry instanceof AlignmentChart ? $entry->placements()->when($this->archivedChildren, fn ($query) => $query->onlyTrashed())->with(['person', 'system'])->get() : collect(),
         ]);
     }

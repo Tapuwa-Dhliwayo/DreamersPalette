@@ -373,3 +373,28 @@ The existing 59-check poetry rehearsal also passed. Fixtures used disposable SQL
 transactions and simulated providers; real MySQL races/provider workers were not run.
 Browser confirmed the publishing list and populated poem editor load without editing
 or saving author data. Recent view decluttering was preserved. No migration required.
+
+## Local experimentation authorization — 2026/11/07
+
+Tapuwa explicitly confirms this local environment is disposable test data used for
+structural and visual experiments before live deployment. Agents may adjust local
+sample content, ratings and arrangements and redo experiments as needed within the
+requested work. Do not treat this authorization as applying to Anubis/production.
+Use populated examples to deliver real visual feedback, not only lists or proposals.
+
+## Arc visual workspace — 2026/11/07
+
+The active local trio arcs have 33 provisional 0–100 connection ratings for visual
+experimentation (Samuelá 10, Tamarius 10, Tiberius 13). These are illustrative design
+fixtures, including speculative values for offstage/separated scenes, not canon.
+The arc workspace now uses a fixed-scale interactive SVG curve with numbered beat
+markers, a horizontal beat selector and one selected detail panel with event/source
+links and existing edit/archive controls. Missing ratings break the line rather
+than being interpolated; single points remain selectable. Character accents are
+stable. The graph scrolls within its own region on narrow screens.
+
+composer verify passed. Browser exercised graph selection, beat-strip navigation,
+keyboard activation and the selected-beat edit form; all three arcs were rated
+through the actual forms. A 390px viewport had page width 390px and the 640px graph
+contained within its 301px scroll region. No new errors appeared in the normal log.
+Local production assets rebuilt for immediate viewing; no deployment or migration.
