@@ -101,9 +101,9 @@ class PoemAnalysisController extends Controller
         return response()->noContent();
     }
 
-    public function retry(int $poem, int $conversation, int $turn, PoemAnalysis $analysis)
+    public function retry(PoemAnalysisRequest $request, int $poem, int $conversation, int $turn, PoemAnalysis $analysis)
     {
-        $fields = request()->validate(['request_uuid' => 'required|uuid']);
+        $fields = $request->validated();
         $attempt = $analysis->retry($this->conversation($poem, $conversation)->turns()->findOrFail($turn), $fields['request_uuid']);
 
         return response()->json(['turn_id' => $attempt->id], 202);

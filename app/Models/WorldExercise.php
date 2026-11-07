@@ -7,6 +7,7 @@ use App\Models\Concerns\RevisesWorldRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Validation\ValidationException;
 
 class WorldExercise extends Model
 {
@@ -50,6 +51,35 @@ class WorldExercise extends Model
     public function changes(): HasMany
     {
         return $this->hasMany(CanonChange::class, 'exercise_id')->latest('id');
+    }
+
+    public function moveEvent(int $sourceId, int $sourceRevision, int $targetId, int $targetRevision, bool $after): array
+    {
+        return $this->getConnection()->transaction(function () use ($sourceId, $sourceRevision, $targetId, $targetRevision, $after): array {
+            $exercise = self::whereKey($this->id)->lockForUpdate()->firstOrFail();
+            $source = $exercise->ideas()->lockForUpdate()->findOrFail($sourceId);
+            $target = $exercise->ideas()->lockForUpdate()->findOrFail($targetId);
+            abort_unless($source->kind === 'event' && $target->kind === 'event' && $source->canEdit() && $target->canEdit(), 422);
+            if ($source->revision !== $sourceRevision || $target->revision !== $targetRevision) {
+                throw ValidationException::withMessages(['timeline' => 'These events changed. Refresh the timeline before moving them.']);
+            }
+            if ($source->alternative !== $target->alternative) {
+                throw ValidationException::withMessages(['timeline' => 'Move events within the same scenario. Fork an event to explore a different scenario.']);
+            }
+            if ($sourceId === $targetId) {
+                return [];
+            }
+            $ordered = $exercise->ideas()->where('kind', 'event')->where('alternative', $target->alternative)->where('lane', $target->lane)->whereNull('canonised_at')->lockForUpdate()->get()->reject(fn ($idea) => $idea->id === $sourceId)->values();
+            $index = $ordered->search(fn ($idea) => $idea->id === $targetId);
+            $ordered->splice($index + ($after ? 1 : 0), 0, [$source]);
+            $moved = [];
+            foreach ($ordered as $index => $idea) {
+                $moved[$idea->id] = ['previous_revision' => $idea->revision, 'revision' => $idea->revision + 1];
+                $idea->revise(['position' => ($index + 1) * 10, 'lane' => $target->lane], $idea->revision);
+            }
+
+            return $moved;
+        });
     }
 
     /**

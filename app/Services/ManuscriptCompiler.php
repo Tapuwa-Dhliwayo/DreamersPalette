@@ -16,12 +16,10 @@ class ManuscriptCompiler
         if ($compile->status === 'ready') {
             return;
         }
-        $path = 'studio-compiles/'.$compile->request_uuid.'.'.match ($compile->format) {
-            'pdf' => 'pdf', 'review' => 'zip', default => 'md'
-        };
+        $path = 'studio-compiles/'.$compile->request_uuid.'.'.ManuscriptCompile::extensionFor($compile->format);
         try {
             $contents = match ($compile->format) {
-                'pdf' => $this->pdf($compile), 'review' => $this->reviewPacket($compile), default => $compile->markdown()
+                'pdf' => $this->pdf($compile), 'review' => $this->reviewPacket($compile), 'markdown' => $compile->markdown(), default => throw new \InvalidArgumentException('Unsupported compile format.')
             };
             if (! Storage::disk('local')->put($path, $contents)) {
                 throw new RuntimeException('The private compile output could not be saved.');

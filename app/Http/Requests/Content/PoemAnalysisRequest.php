@@ -26,6 +26,7 @@ class PoemAnalysisRequest extends FormRequest
                 'comparison_ids' => ['present', 'array', 'max:4'],
                 'comparison_ids.*' => ['integer', 'distinct'],
             ],
+            'retry' => ['request_uuid' => ['required', 'uuid']],
             'create' => ['title' => ['required', 'string', 'max:150']],
             'note' => [
                 'content' => ['required', 'string', 'max:4000'],

@@ -1,3 +1,4 @@
+import DraftRecovery from "@/components/dashboard/DraftRecovery"
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import Button from "@/components/ui/Button"
@@ -142,7 +143,8 @@ export default function CollectionEditorPage() {
     const isEditMode = Boolean(id)
     const providerLabel = getAiProviderLabel()
     const [form, setForm] = useState(EMPTY_FORM)
-    const [initialForm, setInitialForm] = useState(null)
+    const [initialForm, setInitialForm] = useState(isEditMode ? null : EMPTY_FORM)
+    const [editToken, setEditToken] = useState(null)
     const [backgroundPrompt, setBackgroundPrompt] = useState("")
     const [loading, setLoading] = useState(isEditMode)
     const [saving, setSaving] = useState(false)
@@ -156,20 +158,18 @@ export default function CollectionEditorPage() {
         key: `dreamers-palette:collection:${id || "new"}`,
         form,
         initialForm,
+        version: editToken,
         setForm
     })
     const navigationGuard = useUnsavedChanges(localDraft.isDirty && !saving)
 
     useEffect(() => {
-        if (!isEditMode) {
-            setInitialForm(EMPTY_FORM)
-            setLoading(false)
-            return
-        }
+        if (!isEditMode) return
 
         async function loadCollection() {
             try {
                 const collection = await getMyCollectionById(id)
+                setEditToken(collection.edit_token)
                 const nextForm = {
                     title: collection.title || "",
                     description: collection.description || "",
@@ -223,7 +223,7 @@ export default function CollectionEditorPage() {
                 theme_background_url: form.theme_background_url || null
             }
             if (isEditMode) {
-                await updateCollection(id, payload)
+                await updateCollection(id, { ...payload, edit_token: editToken })
             } else {
                 await createCollection({ ...payload, is_published: false })
             }
@@ -311,6 +311,8 @@ export default function CollectionEditorPage() {
                     </Button>
                 </div>
             </header>
+
+            <DraftRecovery draft={localDraft} initialForm={initialForm} />
 
             <StatusMessage tone="error">{error}</StatusMessage>
             <StatusMessage tone="success">{uploadInfo}</StatusMessage>

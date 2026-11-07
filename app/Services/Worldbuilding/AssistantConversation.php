@@ -11,6 +11,7 @@ use App\Models\WorldExercise;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Ramsey\Uuid\Uuid;
@@ -332,6 +333,9 @@ class AssistantConversation
                 }
             });
         } catch (\Throwable $exception) {
+            if (! $exception instanceof ValidationException && get_class($exception) !== \RuntimeException::class) {
+                Log::error('World assistant turn failed.', ['turn_id' => $turn->id, 'exercise_id' => $turn->exercise_id, 'exception' => $exception]);
+            }
             if (isset($text)) {
                 $this->retainReceivedResponse($turn, $response, $runId, $text, $structured ?? false, $displayText ?? '');
             }

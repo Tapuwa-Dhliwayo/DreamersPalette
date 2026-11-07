@@ -1,40 +1,17 @@
-function formatTime(value) {
-    if (!value) return null
-    return new Intl.DateTimeFormat(undefined, {
-        hour: "numeric",
-        minute: "2-digit"
-    }).format(new Date(value))
+import { formatDateTime } from "@/utils/formatDate";
+
+function saveStatus({ error, saving, recoveredAt, isDirty, persistedAt }) {
+    switch (true) {
+        case Boolean(error): return ["Save failed", "text-red-700"];
+        case saving: return ["Saving…", "text-neutral-600"];
+        case Boolean(recoveredAt): return [`Recovered local draft from ${formatDateTime(recoveredAt)}`, "text-amber-800"];
+        case isDirty && Boolean(persistedAt): return [`Unsaved · recovery copy stored ${formatDateTime(persistedAt)}`, "text-amber-800"];
+        case isDirty: return ["Unsaved changes", "text-amber-800"];
+        default: return ["All changes saved", "text-neutral-600"];
+    }
 }
 
-export default function EditorSaveState({
-    saving,
-    isDirty,
-    persistedAt,
-    recoveredAt,
-    error
-}) {
-    let label = "All changes saved"
-    let tone = "text-neutral-600"
-
-    if (error) {
-        label = "Save failed"
-        tone = "text-red-700"
-    } else if (saving) {
-        label = "Saving…"
-    } else if (recoveredAt) {
-        label = `Recovered local draft from ${formatTime(recoveredAt)}`
-        tone = "text-amber-800"
-    } else if (isDirty && persistedAt) {
-        label = `Unsaved · recovery copy stored ${formatTime(persistedAt)}`
-        tone = "text-amber-800"
-    } else if (isDirty) {
-        label = "Unsaved changes"
-        tone = "text-amber-800"
-    }
-
-    return (
-        <span role="status" aria-live="polite" className={`text-xs ${tone}`}>
-            {label}
-        </span>
-    )
+export default function EditorSaveState(props) {
+    const [label, tone] = saveStatus(props);
+    return <span role="status" aria-live="polite" className={`text-xs ${tone}`}>{label}</span>;
 }

@@ -1,3 +1,4 @@
+import DraftRecovery from "@/components/dashboard/DraftRecovery"
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
@@ -32,6 +33,7 @@ export default function PoemEditorPage() {
     const [validationError, setValidationError] = useState("")
     const [saveError, setSaveError] = useState("")
     const [initialForm, setInitialForm] = useState(null)
+    const [editToken, setEditToken] = useState(null)
 
     const [collections, setCollections] = useState([])
 
@@ -44,6 +46,7 @@ export default function PoemEditorPage() {
         key: `dreamers-palette:poem:${id || "new"}`,
         form,
         initialForm,
+        version: editToken,
         setForm
     })
     const navigationGuard = useUnsavedChanges(localDraft.isDirty && !saving)
@@ -56,6 +59,7 @@ export default function PoemEditorPage() {
 
                 if (isEditMode) {
                     const existingPoem = await getMyPoemById(id)
+                    setEditToken(existingPoem.edit_token)
 
                     if (!existingPoem) {
                         navigate(DASHBOARD_ROUTES.POEMS)
@@ -114,6 +118,7 @@ export default function PoemEditorPage() {
             let savedPoemId = id
             if (isEditMode) {
                 await updatePoem(id, {
+                    edit_token: editToken,
                     title: form.title,
                     content_md: form.content_md,
                     collection_id: form.collection_id
@@ -183,6 +188,8 @@ export default function PoemEditorPage() {
                     </Button>
                 </div>
             </div>
+
+            <DraftRecovery draft={localDraft} initialForm={initialForm} />
 
             {/* Metadata */}
             <StatusMessage tone="error">{validationError || saveError}</StatusMessage>

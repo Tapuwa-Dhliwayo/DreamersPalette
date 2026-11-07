@@ -28,9 +28,9 @@ class AssistantConnectionForm extends Form
 
     public int $revision = 1;
 
-    public function fields(): array
+    public function rules(): array
     {
-        return $this->validate([
+        return [
             'name' => 'required|string|max:255',
             'provider' => ['required', Rule::in(array_keys(AssistantProviders::PROVIDERS))],
             'model' => ['required', 'string', 'max:200', 'regex:/^[a-zA-Z0-9][a-zA-Z0-9_\.\/:\-]*$/D'],
@@ -40,6 +40,16 @@ class AssistantConnectionForm extends Form
             'enabled' => 'boolean',
             'daily_request_limit' => 'required|integer|between:1,10000',
             'turn_request_limit' => 'required|integer|between:1,1000',
-        ]);
+        ];
+    }
+
+    public function discoveryFields(): array
+    {
+        return $this->validate(collect($this->rules())->only(['provider', 'credential'])->all());
+    }
+
+    public function fields(): array
+    {
+        return $this->validate();
     }
 }

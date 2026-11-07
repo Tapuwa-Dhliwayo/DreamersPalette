@@ -1,3 +1,5 @@
+import { useAuth } from "@/hooks/useAuth"
+import { can } from "@/services/authService"
 import { formatDate } from "@/utils/formatDate"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
@@ -17,6 +19,10 @@ const PAGE_SIZE = 10
 
 export default function Books() {
     const navigate = useNavigate()
+    const { user } = useAuth()
+    const canCreate = can(user, "books.create")
+    const canPublish = can(user, "books.publish")
+    const canArchive = can(user, "books.archive")
     const [books, setBooks] = useState([])
     const [loading, setLoading] = useState(true)
     const [pending, setPending] = useState(false)
@@ -82,7 +88,7 @@ export default function Books() {
                         <h2 className="text-2xl font-semibold tracking-tight">Novels</h2>
                         <p className="mt-1 text-sm text-neutral-600">Manage long-form work and cover imagery.</p>
                     </div>
-                    <Button onClick={() => navigate(DASHBOARD_ROUTES.BOOK_NEW)}>New Novel</Button>
+                    {canCreate && <Button onClick={() => navigate(DASHBOARD_ROUTES.BOOK_NEW)}>New Novel</Button>}
                 </header>
 
                 <ContentListToolbar
@@ -92,8 +98,8 @@ export default function Books() {
                     onSortChange={list.setSort}
                     selectedCount={list.selectedIds.length}
                     pending={pending}
-                    onBulkPublish={() => setPublishTargets(selectedItems.filter((item) => !item.is_published))}
-                    onBulkArchive={() => setArchiveTargets(selectedItems)}
+                    onBulkPublish={canPublish ? () => setPublishTargets(selectedItems.filter((item) => item.capabilities?.publish && !item.is_published)) : undefined}
+                    onBulkArchive={canArchive ? () => setArchiveTargets(selectedItems.filter((item) => item.capabilities?.archive)) : undefined}
                 />
 
                 <StatusMessage tone="error" action={error ? <Button size="sm" variant="ghost" onClick={loadBooks}>Try again</Button> : null}>{error}</StatusMessage>
@@ -107,12 +113,12 @@ export default function Books() {
                     <PublishingEmptyState>
                         <h3 className="text-lg font-medium">No novels found</h3>
                         <p className="mt-2 text-sm text-neutral-600">Adjust the search or begin a new novel.</p>
-                        <Button className="mt-5" onClick={() => navigate(DASHBOARD_ROUTES.BOOK_NEW)}>Create Novel</Button>
+                        {canCreate && <Button className="mt-5" onClick={() => navigate(DASHBOARD_ROUTES.BOOK_NEW)}>Create Novel</Button>}
                     </PublishingEmptyState>
                 )}
 
                 {!loading && list.filteredItems.length > 0 && (
-                    <ContentList items={list.visibleItems} selectedIds={list.selectedIds} onToggleAll={list.toggleAll}>
+                    <ContentList selectable={canPublish || canArchive} items={list.visibleItems} selectedIds={list.selectedIds} onToggleAll={list.toggleAll}>
                         {list.visibleItems.map((book) => (
                             <ContentListRow
                                 key={book.id}

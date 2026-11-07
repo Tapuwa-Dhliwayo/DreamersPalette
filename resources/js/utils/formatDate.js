@@ -10,3 +10,15 @@ export function formatDate(value) {
 
     return `${year}/${month}/${day}`;
 }
+
+export function formatTime(value) {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+export function formatDateTime(value) {
+    const date = formatDate(value);
+    return date ? `${date} ${formatTime(value)}` : null;
+}

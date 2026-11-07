@@ -83,6 +83,18 @@ class SandboxIdea extends Model
         return $provenance;
     }
 
+    public function forkAlternative(): self
+    {
+        $fields = $this->only($this->getFillable());
+        unset($fields['source_token']);
+        $fields['alternative'] = ($this->alternative ? $this->alternative.' · ' : '').'Alternative';
+        $fields['x'] += 35;
+        $fields['y'] += 35;
+        $fields['origin'] = 'author';
+
+        return $this->exercise->ideas()->create($fields);
+    }
+
     public function canEdit(): bool
     {
         return $this->canonised_at === null && ! $this->trashed();

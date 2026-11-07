@@ -89,11 +89,17 @@ class ManuscriptCompile extends Model
             $sourceManuscript->forceFill(['compile_preferences' => ['format' => $options['format'], 'prose' => $options['prose'], 'summaries' => $options['summaries'], 'world' => $options['world'] ?? false]])->save();
 
             return static::create(['manuscript_id' => $manuscript->id, 'created_by' => $authorId, 'request_uuid' => $requestUuid,
-                'format' => $options['format'], 'manifest' => $manifest, 'filename' => (Str::slug($title) ?: 'manuscript').'-'.Str::slug($sourceLabel).'.'.match ($options['format']) {
-                    'pdf' => 'pdf', 'review' => 'zip', default => 'md'
-                },
+                'format' => $options['format'], 'manifest' => $manifest, 'filename' => (Str::slug($title) ?: 'manuscript').'-'.Str::slug($sourceLabel).'.'.self::extensionFor($options['format']),
                 'expires_at' => now()->addDay()]);
         });
+    }
+
+    public static function extensionFor(string $format): string
+    {
+        return match ($format) {
+            'markdown' => 'md', 'pdf' => 'pdf', 'review' => 'zip',
+            default => throw new \InvalidArgumentException('Unsupported compile format.'),
+        };
     }
 
     public function enableAssistantAccess(): string

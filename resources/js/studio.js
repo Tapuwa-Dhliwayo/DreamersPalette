@@ -328,12 +328,17 @@ Alpine.data('manuscriptEditor', (initial) => ({
         const request = ++this.assistSequence; this.assistStatus = 'Looking at your selection…'; this.suggestions = [];
         try {
             let suggestions;
-            if (tool === 'grammar') suggestions = await getGrammarSuggestions(this.assistSelection);
-            else if (tool === 'synonyms') {
-                const words = await getThesaurusSuggestions(this.assistSelection);
-                suggestions = [...words.synonyms, ...words.antonyms, ...words.related];
-            } else if (tool === 'spelling') suggestions = await getSpellingSuggestions(this.assistSelection);
-            else suggestions = await getDefinitions(this.assistSelection);
+            switch (tool) {
+                case 'grammar': suggestions = await getGrammarSuggestions(this.assistSelection); break;
+                case 'synonyms': {
+                    const words = await getThesaurusSuggestions(this.assistSelection);
+                    suggestions = [...words.synonyms, ...words.antonyms, ...words.related];
+                    break;
+                }
+                case 'spelling': suggestions = await getSpellingSuggestions(this.assistSelection); break;
+                case 'definitions': suggestions = await getDefinitions(this.assistSelection); break;
+                default: throw new Error('Unsupported writing assistance tool.');
+            }
             if (request !== this.assistSequence || !this.assistOpen) return;
             this.suggestions = suggestions; this.assistStatus = suggestions.length ? 'Choose a replacement, or keep your wording.' : 'No suggestions for this selection.';
         } catch { if (request === this.assistSequence) this.assistStatus = 'This tool is unavailable right now. Your writing has not changed.'; }

@@ -431,41 +431,44 @@ Guidance for coding agents working in this repository.
 
 ## Project Overview
 
-DreamersPalette is a React 19 + Vite single-page app for publishing and managing literary content. It uses React Router, Supabase, Tailwind CSS v4, and Vercel Analytics.
+DreamersPalette runs Laravel 13 with MySQL. Publishing and public readers use
+React 19 + React Router; the private writing/worldbuilding studio and Account use
+Livewire 4 + Flux Pro. Both surfaces use Tailwind CSS v4 and shared author tokens.
+Supabase is a historical import source, not a runtime dependency.
 
-The app has two main surfaces:
-
-- Public reading pages in `src/pages/public`
-- Authenticated dashboard/editor pages in `src/pages/dashboard`
-
-Shared UI components live in `src/components/ui`, layout components in `src/layouts`, hooks in `src/hooks`, and Supabase-backed data access in `src/services`.
+- Public reading pages: `resources/js/pages/public`
+- Publishing dashboard/editors: `resources/js/pages/dashboard`
+- Shared React components, hooks, layouts and services: `resources/js/`
+- Studio logic and Form Objects: `app/Livewire`
+- Studio Blade: `resources/views/livewire/studio`
+- Publishing persistence: Laravel models, policies, Form Requests and same-origin APIs
 
 ## Commands
 
-Use npm scripts from the repository root:
+- `php artisan serve` starts Laravel; open its URL rather than Vite directly.
+- `npm run dev` provides development assets.
+- `npm run build` writes production assets to `public/build`.
+- `npm run lint` runs ESLint; `vendor/bin/pint --test` checks PHP style.
+- `composer validate` checks Composer configuration.
 
-- `npm run dev` starts the Vite development server.
-- `npm run build` creates the production build in `dist`.
-- `npm run lint` runs ESLint.
-- `npm run preview` previews a built app locally.
-
-When changing UI, run at least `npm run lint`. Run `npm run build` before handing off larger changes or changes involving routing, imports, or environment assumptions.
+Run lint for UI work and a production build for routing/import/production changes.
+Verify behaviour directly; do not add automated tests or testing charters unless
+Tapuwa explicitly requests them.
 
 ## Environment
 
-Supabase is required at runtime. The app expects these Vite environment variables:
-
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-
-Do not commit secrets. If local commands fail immediately from missing Supabase env vars, report that directly instead of adding fallback credentials.
+Laravel owns database, mail, session, storage and provider configuration in `.env`.
+The local application uses persistent MySQL; preserve writing and existing test
+state. Never run destructive database resets or copy local test data to Anubis.
+Do not commit credentials, environment files or private backups. Follow
+`docs/agent/PROJECT_CONTEXT.md` for current deployment and local-provider boundaries.
 
 ## Code Style
 
 - This is an ES module JavaScript/JSX codebase. Follow the existing style: double quotes, semicolons, functional React components, and Tailwind utility classes.
-- Prefer existing components from `src/components/ui` before adding new UI primitives.
-- Keep data fetching and persistence logic in `src/services`; do not scatter Supabase calls through page components unless that is already the established pattern nearby.
-- Keep routing changes centralized in `src/app/router.jsx` and route constants in `src/app/routes.js` when possible.
+- Prefer existing components from `resources/js/components/ui` before adding new UI primitives.
+- Keep data fetching and persistence logic in `resources/js/services`; do not scatter persistence calls through page components unless that is already the established pattern nearby.
+- Keep routing changes centralized in `resources/js/app/router.jsx` and route constants in `resources/js/app/routes.js` when possible.
 - Use existing hooks for auth, active collection, theming, and reader navigation instead of duplicating state logic.
 - Avoid broad refactors unless they are necessary for the requested change.
 
@@ -473,7 +476,7 @@ Do not commit secrets. If local commands fail immediately from missing Supabase 
 
 - Preserve the literary/editorial tone of the public reader pages.
 - Preserve dashboard density and utility for authenticated workflows.
-- Use Tailwind v4 classes and the global styles in `src/index.css`.
+- Use Tailwind v4 classes and the global styles in `resources/js/index.css`.
 - Be careful with reader contrast, themed backgrounds, safe-area spacing, and mobile viewport behavior. Existing classes such as `h-frame`, `poetry-content`, `reader-muted`, and reader text-shadow utilities are intentional.
 - Avoid nested cards and decorative gradients unless they match an existing local pattern.
 
@@ -481,7 +484,7 @@ Do not commit secrets. If local commands fail immediately from missing Supabase 
 
 - Database and storage reference material lives in `docs`, including initial schema and update history SQL files.
 - Treat SQL files and Supabase bucket/security docs as source-of-truth context when changing data assumptions.
-- Preserve slug behavior through `src/utils/slugify.js` and color utilities through `src/utils/hexToRgb.js`.
+- Preserve slug behavior through `resources/js/utils/slugify.js` and color utilities through `resources/js/utils/hexToRgb.js`.
 
 ## Reference Projects
 
@@ -502,7 +505,7 @@ If a check cannot be run because of missing env vars, sandbox limits, or depende
 
 - Do not revert user changes or unrelated work.
 - Keep commits and diffs focused on the requested task.
-- Do not modify generated output such as `dist` unless the user explicitly asks for it.
+- Do not modify generated output such as `public/build` unless the user explicitly asks for it.
 
 ## UI copy
 

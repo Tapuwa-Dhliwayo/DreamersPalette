@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/utils/formatDate"
 import { useEffect, useMemo, useState } from "react"
 import Button from "@/components/ui/Button"
 import StatusMessage from "@/components/ui/StatusMessage"
@@ -20,13 +21,6 @@ const restoreActions = {
     poem: restorePoem,
     book: restoreBook,
     chapter: restoreChapter
-}
-
-function formatArchivedDate(value) {
-    return new Intl.DateTimeFormat(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short"
-    }).format(new Date(value))
 }
 
 export default function TrashPage() {
@@ -124,7 +118,7 @@ export default function TrashPage() {
                                 <div className="min-w-0">
                                     <p className="m-0 truncate font-medium text-neutral-900">{item.title}</p>
                                     <p className="mt-1 text-xs text-neutral-600">
-                                        Archived {formatArchivedDate(item.deleted_at)}
+                                        Archived {formatDateTime(item.deleted_at)}
                                     </p>
                                 </div>
                                 <Button

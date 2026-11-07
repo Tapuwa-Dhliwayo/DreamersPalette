@@ -1,3 +1,4 @@
+import DraftRecovery from "@/components/dashboard/DraftRecovery"
 import { useEffect, useState } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 
@@ -33,6 +34,7 @@ export default function ChapterEditorPage() {
     const [studioBook, setStudioBook] = useState(null)
     const [books, setBooks] = useState([])
     const [initialForm, setInitialForm] = useState(null)
+    const [editToken, setEditToken] = useState(null)
     const [validationError, setValidationError] = useState("")
     const [saveError, setSaveError] = useState("")
 
@@ -47,6 +49,7 @@ export default function ChapterEditorPage() {
         key: `dreamers-palette:chapter:${id || "new"}`,
         form,
         initialForm,
+        version: editToken,
         setForm
     })
     const navigationGuard = useUnsavedChanges(localDraft.isDirty && !saving)
@@ -63,6 +66,7 @@ export default function ChapterEditorPage() {
 
                 if (isEditMode) {
                     const existingChapter = await getMyChapterById(id)
+                    setEditToken(existingChapter.edit_token)
 
                     setStudioBook(booksData.find(book => book.id === existingChapter.book_id && book.is_studio_managed) || null)
                     const nextForm = {
@@ -123,7 +127,7 @@ export default function ChapterEditorPage() {
             }
 
             if (isEditMode) {
-                await updateChapter(id, payload)
+                await updateChapter(id, { ...payload, edit_token: editToken })
             } else {
                 await createChapter({
                     ...payload,
@@ -191,6 +195,8 @@ export default function ChapterEditorPage() {
                     </Button>
                 </div>
             </div>
+
+            <DraftRecovery draft={localDraft} initialForm={initialForm} />
 
             <StatusMessage tone="error">{validationError || saveError}</StatusMessage>
 

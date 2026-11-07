@@ -1,3 +1,4 @@
+import DraftRecovery from "@/components/dashboard/DraftRecovery"
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
@@ -40,6 +41,7 @@ export default function BookEditorPage() {
     const [validationError, setValidationError] = useState("")
     const [studioBook, setStudioBook] = useState(null)
     const [initialForm, setInitialForm] = useState(null)
+    const [editToken, setEditToken] = useState(null)
 
     const [form, setForm] = useState({
         title: "",
@@ -50,6 +52,7 @@ export default function BookEditorPage() {
         key: `dreamers-palette:novel:${id || "new"}`,
         form,
         initialForm,
+        version: editToken,
         setForm
     })
     const navigationGuard = useUnsavedChanges(localDraft.isDirty && !saving)
@@ -59,6 +62,7 @@ export default function BookEditorPage() {
             try {
                 if (isEditMode) {
                     const existingBook = await getMyBookById(id)
+                    setEditToken(existingBook.edit_token)
 
                     if (!existingBook) {
                         navigate(DASHBOARD_ROUTES.BOOKS)
@@ -107,7 +111,7 @@ export default function BookEditorPage() {
             }
 
             if (isEditMode) {
-                await updateBook(id, payload)
+                await updateBook(id, { ...payload, edit_token: editToken })
             } else {
                 await createBook({
                     ...payload,
@@ -218,6 +222,8 @@ export default function BookEditorPage() {
             <div className="publishing-book-fields">
                 <section className="space-y-4"><h3>Novel details</h3>
                 {studioBook && <p className="text-sm text-neutral-700">Writing is managed in the manuscript studio. <a className="underline" href={studioBook.studio_manuscript_id && !studioBook.studio_manuscript_archived ? `/studio/manuscripts/${studioBook.studio_manuscript_id}` : "/studio"}>Open manuscript</a>. Cover changes remain available here.</p>}
+                <DraftRecovery draft={localDraft} initialForm={initialForm} />
+
                 <StatusMessage tone="error">{validationError || saveError}</StatusMessage>
                 <FormField label="Novel title" htmlFor="book-title" required>
                     <Input

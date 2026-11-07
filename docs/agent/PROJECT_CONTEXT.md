@@ -348,3 +348,28 @@ as a card that opens a reader (`AssistantMessage::readsAsDocument()`). Board car
 are compact by default (a per-browser preference), links show for the selected card
 unless "All connections" is ticked, and Tidy layout (`WorldExercise::tidyBoard()`)
 arranges rows by kind and events in story order to the board's width, with Undo.
+
+## Standards cleanup — 2026/11/07
+
+Publishing saves now run through PublishingContent with model-owned slug allocation,
+locked parent/record authorization and edit-token conflict checks. All four React
+publishing editors send the loaded token. Browser recovery is author-scoped, keeps
+its base version, offers explicit comparison/restoration and tolerates blocked or
+full storage. Historical unscoped copies are ignored because their owner is unknown.
+Publishing lists use policy-derived capabilities for row and bulk actions.
+
+Sandbox alternative creation and event sequencing live on their subject models;
+Livewire retains UI coordination and open-form revision handling. Connection discovery
+and poetry retry validation live in their forms/requests. Unexpected world assistant
+exceptions are logged with turn/exercise context. Reader feeds share their loading
+hook; date/time labels and supported lookup/compile formats are explicit. AGENTS.md
+project paths and stack descriptions match the current Laravel application.
+
+Full ESLint, Pint, frontend build, Composer validation and diff checks passed.
+32 isolated PHP runtime checks covered publishing conflicts/ownership/capabilities,
+managed-novel protections, sequencing, forks, compile formats and failure diagnostics;
+11 JavaScript checks covered recovery isolation/storage errors/date formatting.
+The existing 59-check poetry rehearsal also passed. Fixtures used disposable SQLite
+transactions and simulated providers; real MySQL races/provider workers were not run.
+Browser confirmed the publishing list and populated poem editor load without editing
+or saving author data. Recent view decluttering was preserved. No migration required.

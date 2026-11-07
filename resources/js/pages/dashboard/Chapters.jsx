@@ -1,3 +1,5 @@
+import { useAuth } from "@/hooks/useAuth"
+import { can } from "@/services/authService"
 import { formatDate } from "@/utils/formatDate"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
@@ -23,6 +25,10 @@ const PAGE_SIZE = 10
 
 export default function Chapters() {
     const navigate = useNavigate()
+    const { user } = useAuth()
+    const canCreate = can(user, "chapters.create") && can(user, "books.update")
+    const canPublish = can(user, "chapters.publish")
+    const canArchive = can(user, "chapters.archive")
     const [books, setBooks] = useState([])
     const [chapters, setChapters] = useState([])
     const [selectedBookId, setSelectedBookId] = useState("")
@@ -124,7 +130,7 @@ export default function Chapters() {
                         <h2 className="text-2xl font-semibold tracking-tight">Chapters</h2>
                         <p className="mt-1 text-sm text-neutral-600">Organize and publish chapters within each novel.</p>
                     </div>
-                    {selectedBook?.is_studio_managed ? <a className="publishing-managed-link" href={manuscriptUrl}>{selectedBook.studio_manuscript_archived ? "Restore manuscript" : "Open manuscript"} ↗</a> : <Button
+                    {selectedBook?.is_studio_managed ? <a className="publishing-managed-link" href={manuscriptUrl}>{selectedBook.studio_manuscript_archived ? "Restore manuscript" : "Open manuscript"} ↗</a> : canCreate && <Button
                         disabled={!selectedBookId}
                         onClick={() => navigate(`${DASHBOARD_ROUTES.CHAPTER_NEW}?bookId=${selectedBookId}`)}
                     >
@@ -139,8 +145,8 @@ export default function Chapters() {
                     onSortChange={list.setSort}
                     selectedCount={list.selectedIds.length}
                     pending={pending}
-                    onBulkPublish={() => setPublishTargets(selectedItems.filter((item) => !item.is_published))}
-                    onBulkArchive={() => setArchiveTargets(selectedItems)}
+                    onBulkPublish={canPublish ? () => setPublishTargets(selectedItems.filter((item) => item.capabilities?.publish && !item.is_published)) : undefined}
+                    onBulkArchive={canArchive ? () => setArchiveTargets(selectedItems.filter((item) => item.capabilities?.archive)) : undefined}
                 >
                     <label className="w-full text-sm font-medium text-neutral-700 md:w-56">
                         Novel
@@ -161,7 +167,7 @@ export default function Chapters() {
                     <PublishingEmptyState>
                         <h3 className="text-lg font-medium">Create a novel first</h3>
                         <p className="mt-2 text-sm text-neutral-600">Chapters need a novel to belong to.</p>
-                        <Button className="mt-5" onClick={() => navigate(DASHBOARD_ROUTES.BOOK_NEW)}>Create Novel</Button>
+                        {canCreate && <Button className="mt-5" onClick={() => navigate(DASHBOARD_ROUTES.BOOK_NEW)}>Create Novel</Button>}
                     </PublishingEmptyState>
                 )}
 
@@ -169,12 +175,12 @@ export default function Chapters() {
                     <PublishingEmptyState>
                         <h3 className="text-lg font-medium">No chapters found</h3>
                         <p className="mt-2 text-sm text-neutral-600">Adjust the search or add the first chapter.</p>
-                        {selectedBook?.is_studio_managed ? <a className="publishing-managed-link mt-5" href={manuscriptUrl}>Open manuscript ↗</a> : <Button className="mt-5" onClick={() => navigate(`${DASHBOARD_ROUTES.CHAPTER_NEW}?bookId=${selectedBookId}`)}>Create Chapter</Button>}
+                        {selectedBook?.is_studio_managed ? <a className="publishing-managed-link mt-5" href={manuscriptUrl}>Open manuscript ↗</a> : canCreate && <Button className="mt-5" onClick={() => navigate(`${DASHBOARD_ROUTES.CHAPTER_NEW}?bookId=${selectedBookId}`)}>Create Chapter</Button>}
                     </PublishingEmptyState>
                 )}
 
                 {!loading && list.filteredItems.length > 0 && (
-                    <ContentList items={list.visibleItems} selectedIds={list.selectedIds} onToggleAll={list.toggleAll}>
+                    <ContentList selectable={canPublish || canArchive} items={list.visibleItems} selectedIds={list.selectedIds} onToggleAll={list.toggleAll}>
                         {list.visibleItems.map((chapter) => (
                             <ContentListRow
                                 key={chapter.id}

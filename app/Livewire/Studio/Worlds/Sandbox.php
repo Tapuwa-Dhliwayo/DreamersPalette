@@ -367,17 +367,7 @@ class Sandbox extends Component
 
     public function forkIdea(int $id): void
     {
-        $new = $this->write(function ($exercise) use ($id): int {
-            $idea = $exercise->ideas()->findOrFail($id);
-            $fields = $idea->only($idea->getFillable());
-            unset($fields['source_token']);
-            $fields['alternative'] = ($idea->alternative ? $idea->alternative.' · ' : '').'Alternative';
-            $fields['x'] += 35;
-            $fields['y'] += 35;
-            $fields['origin'] = 'author';
-
-            return $exercise->ideas()->create($fields)->id;
-        });
+        $new = $this->write(fn ($exercise): int => $exercise->ideas()->findOrFail($id)->forkAlternative()->id);
         $this->editIdea($new);
         $this->notice = 'Alternative created. Change its scenario label and details independently.';
     }
@@ -439,33 +429,10 @@ class Sandbox extends Component
 
     public function moveEvent(int $sourceId, int $sourceRevision, int $targetId, int $targetRevision, bool $after = false): void
     {
-        $editorRevision = $this->ideaForm->revision;
-        $selectedWasCurrent = false;
-        $this->write(function ($exercise) use ($sourceId, $sourceRevision, $targetId, $targetRevision, $after, $editorRevision, &$selectedWasCurrent): void {
-            $source = $exercise->ideas()->lockForUpdate()->findOrFail($sourceId);
-            $target = $exercise->ideas()->lockForUpdate()->findOrFail($targetId);
-            abort_unless($source->kind === 'event' && $target->kind === 'event' && $source->canEdit() && $target->canEdit(), 422);
-            if ($source->revision !== $sourceRevision || $target->revision !== $targetRevision) {
-                throw ValidationException::withMessages(['timeline' => 'These events changed. Refresh the timeline before moving them.']);
-            }
-            if ($source->alternative !== $target->alternative) {
-                throw ValidationException::withMessages(['timeline' => 'Move events within the same scenario. Fork an event to explore a different scenario.']);
-            }
-            if ($sourceId === $targetId) {
-                return;
-            }
-            $ordered = $exercise->ideas()->where('kind', 'event')->where('alternative', $target->alternative)->where('lane', $target->lane)->whereNull('canonised_at')->lockForUpdate()->get()->reject(fn ($idea) => $idea->id === $sourceId)->values();
-            $index = $ordered->search(fn ($idea) => $idea->id === $targetId);
-            $ordered->splice($index + ($after ? 1 : 0), 0, [$source]);
-            foreach ($ordered as $index => $idea) {
-                if ($idea->id === $this->ideaId && $idea->revision === $editorRevision) {
-                    $selectedWasCurrent = true;
-                }
-                $idea->revise(['position' => ($index + 1) * 10, 'lane' => $target->lane], $idea->revision);
-            }
-        });
-        if ($this->ideaId && $selectedWasCurrent) {
-            $this->ideaForm->revision = $this->exercise()->ideas()->findOrFail($this->ideaId)->revision;
+        $moved = $this->write(fn ($exercise): array => $exercise->moveEvent($sourceId, $sourceRevision, $targetId, $targetRevision, $after));
+        $selected = $moved[$this->ideaId] ?? null;
+        if ($selected && $this->ideaForm->revision === $selected['previous_revision']) {
+            $this->ideaForm->revision = $selected['revision'];
         }
         $this->notice = 'Sandbox event sequence saved. Established dates are unchanged.';
     }

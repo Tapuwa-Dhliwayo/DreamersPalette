@@ -9,7 +9,6 @@ use App\Services\Worldbuilding\AssistantModels;
 use App\Services\Worldbuilding\AssistantProviders;
 use App\Services\Worldbuilding\AssistantUsage;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -78,10 +77,7 @@ class AssistantConnections extends Component
     private function modelConnection(): AssistantConnection
     {
         $this->mount();
-        $this->validate([
-            'form.provider' => ['required', Rule::in(array_keys(AssistantProviders::PROVIDERS))],
-            'form.credential' => 'nullable|string|max:4000',
-        ]);
+        $this->form->discoveryFields();
         $connection = $this->editingId ? AssistantConnection::where('user_id', auth()->id())->findOrFail($this->editingId) : new AssistantConnection;
         if ($connection->exists && $connection->provider !== $this->form->provider) {
             throw ValidationException::withMessages(['form.provider' => 'Create a new connection to change provider.']);
