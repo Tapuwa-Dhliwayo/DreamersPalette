@@ -12,6 +12,7 @@ use App\Models\AssistantSource;
 use App\Models\AssistantTurn;
 use App\Models\ManuscriptChapter;
 use App\Models\NamingConvention;
+use App\Models\SandboxIdea;
 use App\Models\World;
 use App\Models\WorldEntryType;
 use App\Models\WorldExercise;
@@ -23,6 +24,8 @@ use App\Services\Worldbuilding\Canonisation;
 use App\Services\Worldbuilding\ProposalTypes;
 use App\Services\Worldbuilding\SandboxProposals;
 use App\Services\Worldbuilding\WorldContext;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -256,7 +259,7 @@ class Sandbox extends Component
                 }
             }
             $this->ideaForm->fill($fields);
-            $target = $idea->target_key ? app(WorldContext::class)->target($this->world, $idea->target_key) : null;
+            $target = $this->ideaTarget($idea);
             $custom = array_replace($target ? ProposalTypes::referenceFields($idea->kind, $target) : [], $idea->fields ?? []);
             $this->ideaForm->structured = $custom;
             $structure = $idea->provenance['structure'] ?? [];
@@ -272,6 +275,20 @@ class Sandbox extends Component
     }
 
     public string $proposalTarget = '';
+
+    private function ideaTarget(?SandboxIdea $idea): ?Model
+    {
+        if (! $idea?->target_key) {
+            return null;
+        }
+
+        try {
+            return app(WorldContext::class)->target($this->world, $idea->target_key, true);
+        } catch (ModelNotFoundException) {
+            // A sandbox snapshot remains usable after its established record is removed.
+            return null;
+        }
+    }
 
     public function linkProposal(WorldContext $context): void
     {
@@ -442,7 +459,8 @@ class Sandbox extends Component
     {
         $this->write(fn ($exercise) => $exercise->ideas()->withTrashed()->findOrFail($id)->setArchived($archive, auth()->id(), $revision));
         $this->closeDetails();
-        $this->notice = $archive ? 'Idea archived. Its conversation and connections are retained.' : 'Idea restored.';
+        $this->selectedIdeas = array_values(array_filter($this->selectedIdeas, fn ($selectedId) => (int) $selectedId !== $id));
+        $this->notice = $archive ? 'Removed from the board. Restore it from Archived ideas. Established records are unchanged.' : 'Idea restored to the board.';
     }
 
     public function saveLink(): void
@@ -824,6 +842,7 @@ class Sandbox extends Component
         $catalogue = $context->catalogue($this->world, true);
         $chapters = ManuscriptChapter::whereHas('manuscript', fn ($query) => $query->where('world_id', $this->world->id)->where('author_id', auth()->id()))->with('manuscript:id,title')->orderBy('manuscript_id')->orderBy('position')->get(['id', 'manuscript_id', 'position', 'title']);
         $selected = $this->ideaId ? $exercise?->ideas()->withTrashed()->find($this->ideaId) : null;
+        $selectedTarget = $this->ideaTarget($selected);
         $similar = $selected ? $this->world->referenceCatalogue()->filter(fn ($entry) => mb_strtolower($entry['name']) === mb_strtolower($selected->title) || levenshtein(mb_strtolower($entry['name']), mb_strtolower($selected->title)) <= 2)->pluck('name')->unique() : collect();
 
         $source = $exercise && $this->readingId ? AssistantSource::whereHas('turn', fn ($query) => $query->where('exercise_id', $exercise->id))->findOrFail($this->readingId) : null;
@@ -848,7 +867,8 @@ class Sandbox extends Component
             'visibleIdeas' => $visible,
             'links' => $links,
             'selected' => $selected,
-            'recordUrl' => $selected?->target_key ? $context->url($this->world, $selected->target_key) : null,
+            'recordUrl' => $selectedTarget && ! $selectedTarget->trashed() ? $context->url($this->world, $selected->target_key) : null,
+            'selectedTarget' => $selectedTarget,
             'catalogue' => $catalogue,
             'chapters' => $chapters,
             'connections' => AssistantConnection::where('user_id', auth()->id())->where('enabled', true)->get(),
@@ -865,7 +885,7 @@ class Sandbox extends Component
             'structureManuscripts' => $this->world->manuscripts()->get(['id', 'title']),
             'structureCalendars' => $this->world->calendars()->get(['id', 'name']),
             'structureChapters' => ManuscriptChapter::whereHas('manuscript', fn ($query) => $query->where('world_id', $this->world->id)->where('author_id', $this->world->author_id))->get(['id', 'title']),
-            'existingRules' => $selected?->kind === 'system' && $selected?->target_key ? $context->target($this->world, $selected->target_key)->rules()->get() : collect(),
+            'existingRules' => $selected?->kind === 'system' && $selectedTarget ? $selectedTarget->rules()->get() : collect(),
         ]);
     }
 }
