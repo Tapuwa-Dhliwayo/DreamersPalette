@@ -11,8 +11,22 @@ Laravel's existing exception logs may still contain exception messages and SQL.
 
 ## Behaviour
 
-A known affected feature is paused for all users until an operator resolves the
-incident. HTTP reads stay available; HTTP mutations and Livewire round trips to the
+An incident is either watching or paused. The first unexpected error opens an
+incident in the watching state and sends an alert email, but the feature stays
+available and the failed request keeps its original status (500) with a notice that
+the request failed and was reported. The feature pauses when, within the last
+10 minutes of its open incident, there are 3 or more occurrences, or 2 or more
+distinct signed-in users hit the same error signature (exception class plus
+file:line). Configure with `INCIDENT_PAUSE_AFTER_OCCURRENCES` (3),
+`INCIDENT_PAUSE_AFTER_USERS` (2) and `INCIDENT_PAUSE_WINDOW_MINUTES` (10)
+(`config/incidents.php`). The incident retains up to the greater of 50 or the configured pause thresholds in recent occurrences
+(time, user id or null, signature) pruned to the window, and `paused_at` once the
+threshold is met. An operator can also pause a watched incident immediately.
+
+A paused feature stays paused for all users until an operator resolves the
+incident (503 responses, blocking notice). Only paused incidents appear in the
+status endpoint and block input in the browser; a watching notice shows the banner
+without blocking. HTTP reads stay available; HTTP mutations and Livewire round trips to the
 paused feature are rejected on the server. Livewire checks run on verified hydrated
 components before property updates/actions, and again before action calls. Page
 renders identify their component scope for failures. Invalid/stale Livewire payloads
@@ -56,17 +70,38 @@ attempts remain pending and retry after five minutes. Mail delivery uses a separ
 process and lock, rather than holding the incident file lock or user request open.
 As with SMTP generally, a lost acknowledgement after acceptance can cause a retry.
 
+Two emails per incident at most: one when it opens (state Watching, or Paused if it
+was already paused by then) and one when it becomes paused, tracked by
+`pause_notified_at` with the same five-minute retry. Bodies start with a `State:` line.
+
 ```bash
-php artisan dreamers:incidents list
+php artisan dreamers:incidents list      # State: Watching / Paused / Resolved
 php artisan dreamers:incidents notify
 # Investigate, apply the patch and verify it before resuming the feature:
 php artisan dreamers:incidents resolve INCIDENT_REFERENCE
+# Resolve every open incident (paused or watching):
+php artisan dreamers:incidents release
 ```
 
-Console access is the operator boundary; no new web administrator permission or
-unprotected incident-management endpoint is introduced. Status responses contain
-only public notices, never diagnostics. Email includes environment, feature, incident
-reference and code diagnostics, together with the command for resolution.
+Add `php artisan dreamers:incidents release` to the Forge deploy script after the
+migrations. A deploy carrying the fix then resumes paused features; if it did not
+fix the error, the threshold pauses the feature again quickly.
+
+Incidents stored before the threshold existed have no `paused_at` key. They were
+paused from their first error, so they are still treated as paused (and are not
+re-alerted); the next occurrence writes the missing keys.
+
+Operators can manage incidents in the studio at Studio > Incidents
+(`/studio/incidents`, route `studio.incidents`), guarded by the `incidents.manage`
+permission. It is granted to `superadmin` in `config/authorization.php` and, for the
+deployed studio schema, by the forward migration
+`2026_11_08_000001_add_incident_permission`. The page lists open incidents first
+(state, reference, exception, location, occurrences, first/last seen, email
+delivery) and recent resolved ones, with Resolve and Pause now actions authorised
+server-side. It is never paused itself. The console commands remain available.
+Status responses contain only public notices, never diagnostics. Email includes
+environment, feature, incident reference and code diagnostics, together with the
+command for resolution.
 
 Incident state is stored atomically under `storage/app/private/operations`, with
 file locks and restricted directory permissions. It does not need MySQL, cache or a
@@ -105,3 +140,9 @@ Attempting `npm run dev -- --host 127.0.0.1` was blocked by the execution sandbo
 `listen EPERM 127.0.0.1:5173`. Served build output was preserved. Start development
 assets outside that restriction or rebuild served assets before checking the new
 banner in the local browser.
+
+Alert configuration status validates the recipient and supported mail transport; it
+does not claim successful delivery. Pause emails and the open-incident list use
+the diagnostics captured when the pause was triggered. Initial diagnostics remain
+on the incident. Thresholds and window configuration have a minimum of 1. Legacy
+incidents retain their previous notification timestamp when upgraded.

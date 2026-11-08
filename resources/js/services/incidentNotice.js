@@ -34,13 +34,15 @@ function renderNotice() {
     const notice = incidents.get(pageFeature()) || (lastFailure?.page === window.location.href ? lastFailure.notice : null);
     banner.hidden = !notice;
     if (!notice) return;
+    banner.querySelector("[data-incident-heading]").textContent = notice.heading || (notice.paused ? "Feature paused" : "Request failed");
     banner.querySelector("[data-incident-message]").textContent = notice.message;
     banner.querySelector("[data-incident-reference]").textContent = notice.id ? `Reference: ${notice.id}` : "";
 }
 
 export function showIncident(notice) {
     if (!notice?.message) return;
-    if (notice.feature) incidents.set(notice.feature, notice);
+    // Only a paused feature blocks input; a watched failure just shows the banner.
+    if (notice.feature && notice.paused) incidents.set(notice.feature, notice);
     lastFailure = { page: window.location.href, notice };
     renderNotice();
 }
@@ -53,9 +55,9 @@ async function refreshStatus() {
         const payload = await response.json();
         incidents.clear();
         for (const notice of payload.incidents || []) incidents.set(notice.feature, notice);
-        if (lastFailure?.notice.id && ![...incidents.values()].some((notice) => notice.id === lastFailure.notice.id)) {
+        if (lastFailure?.notice.paused && lastFailure.notice.id && ![...incidents.values()].some((notice) => notice.id === lastFailure.notice.id)) {
             // Keep unsaved work in place; the user chooses when to reload after the fix.
-            lastFailure.notice = { message: "The feature pause has been cleared. Copy any unsaved writing, then reload this page before continuing." };
+            lastFailure.notice = { heading: "Pause cleared", message: "The feature pause has been cleared. Copy any unsaved writing, then reload this page before continuing." };
         }
         renderNotice();
     } catch {

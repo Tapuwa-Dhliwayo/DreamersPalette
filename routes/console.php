@@ -3,6 +3,7 @@
 use App\Models\ManuscriptCompile;
 use App\Services\Operations\IncidentMonitor;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Storage;
 
@@ -24,16 +25,16 @@ Artisan::command('dreamers:prune-compiles', function (): void {
 
 Schedule::command('dreamers:prune-compiles')->daily()->withoutOverlapping();
 
-Artisan::command('dreamers:incidents {operation=list : list, notify, or resolve} {reference?}', function (): int {
+Artisan::command('dreamers:incidents {operation=list : list, notify, resolve, or release} {reference?}', function (): int {
     $monitor = app(IncidentMonitor::class);
     switch ($this->argument('operation')) {
         case 'list':
             $this->table(['Reference', 'Feature', 'Occurrences', 'State', 'Email'], array_map(fn ($incident) => [
                 $incident['id'], $incident['feature'], $incident['count'],
-                $incident['resolved_at'] ? 'Resolved' : 'Paused', $incident['notified_at'] ? 'Sent' : 'Not delivered',
+                ucfirst($monitor->state($incident)), $incident['notified_at'] ? 'Sent' : 'Not delivered',
             ], $monitor->all()));
-            if (! config('incidents.email') || in_array(config('incidents.mailer'), ['log', 'array'], true)) {
-                $this->warn('Email alerts are not delivering. Configure INCIDENT_ALERT_TO and a delivering INCIDENT_ALERT_MAILER.');
+            if (! $monitor->alertsAreConfigured()) {
+                $this->warn('Email alerts are not configured. Configure INCIDENT_ALERT_TO and a delivering INCIDENT_ALERT_MAILER.');
             }
 
             return 0;
@@ -50,8 +51,14 @@ Artisan::command('dreamers:incidents {operation=list : list, notify, or resolve}
             $this->info('Incident resolved; feature actions are available again.');
 
             return 0;
+        case 'release':
+            $released = $monitor->release();
+            Log::notice('Application incidents released by operator.', ['released' => $released]);
+            $this->info($released.' open incident(s) resolved; paused features are available again.');
+
+            return 0;
         default:
-            $this->error('Use list, notify, or resolve.');
+            $this->error('Use list, notify, resolve, or release.');
 
             return 1;
     }

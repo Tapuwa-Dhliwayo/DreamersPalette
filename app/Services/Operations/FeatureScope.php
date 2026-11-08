@@ -48,6 +48,8 @@ class FeatureScope
                 'studio.manuscript.publishing' => 'manuscripts.publishing',
                 'studio.review', 'studio.reviews' => 'manuscripts.reviews',
                 'studio.assistant-connections' => 'assistant.connections',
+                // The page that resumes paused features must never be paused itself.
+                'studio.incidents' => null,
                 default => 'manuscripts.management',
             };
         }

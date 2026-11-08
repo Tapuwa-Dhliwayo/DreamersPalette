@@ -29,6 +29,6 @@ return [
         'editor' => [...$account, 'dashboard.access', 'reviews.view', 'reviews.comment', 'reviews.suggest'],
         'author' => $author,
         'admin' => $admin,
-        'superadmin' => [...$admin, 'users.manage', 'roles.manage'],
+        'superadmin' => [...$admin, 'users.manage', 'roles.manage', 'incidents.manage'],
     ],
 ];

@@ -35,18 +35,17 @@ class IncidentMonitor
                     $state['_history'][] = $incident;
                     $state['_history'] = array_slice($state['_history'], -200);
                 }
-                $incident = [
-                    'id' => (string) Str::ulid(), 'feature' => $feature,
-                    'exception' => $exception::class,
-                    'location' => $this->location($exception->getFile()).':'.$exception->getLine(),
-                    'trace' => array_map(fn ($frame) => $this->location($frame['file'] ?? '').':'.($frame['line'] ?? 0).' '.($frame['class'] ?? '').($frame['type'] ?? '').($frame['function'] ?? ''), array_slice($exception->getTrace(), 0, 12)),
-                    'context' => array_intersect_key($context, array_flip(['route', 'action', 'user_id', 'turn_id'])),
-                    'first_seen_at' => now()->toIso8601String(), 'count' => 0,
-                    'resolved_at' => null, 'notified_at' => null, 'last_notification_attempt_at' => null,
-                ];
+                $incident = $this->openIncident($exception, $feature, $context);
             }
+            $incident = $this->withCurrentKeys($incident);
             $incident['last_seen_at'] = now()->toIso8601String();
             $incident['count']++;
+            $incident['latest_diagnostics'] = $this->diagnostics($exception, $context);
+            $incident['occurrences'] = $this->recentOccurrences($incident, $exception, $context['user_id'] ?? null);
+            if (! $incident['paused_at'] && $this->reachesPauseThreshold($incident['occurrences'])) {
+                $incident['paused_at'] = now()->toIso8601String();
+                $incident['pause_cause'] = $incident['latest_diagnostics'];
+            }
             $state[$feature] = $incident;
 
             return $incident;
@@ -54,6 +53,87 @@ class IncidentMonitor
         Log::error('Application incident recorded.', ['incident_id' => $incident['id'], 'feature' => $feature, 'exception_class' => $exception::class]);
 
         return $incident;
+    }
+
+    private function openIncident(Throwable $exception, string $feature, array $context): array
+    {
+        return [
+            'id' => (string) Str::ulid(), 'feature' => $feature,
+            ...$this->diagnostics($exception, $context),
+            'first_seen_at' => now()->toIso8601String(), 'count' => 0,
+            'resolved_at' => null, 'notified_at' => null, 'last_notification_attempt_at' => null,
+            'paused_at' => null, 'pause_notified_at' => null, 'last_pause_notification_attempt_at' => null,
+            'occurrences' => [],
+        ];
+    }
+
+    private function diagnostics(Throwable $exception, array $context): array
+    {
+        return [
+            'exception' => $exception::class,
+            'location' => $this->signature($exception, false),
+            'trace' => array_map(fn ($frame) => $this->location($frame['file'] ?? '').':'.($frame['line'] ?? 0).' '.($frame['class'] ?? '').($frame['type'] ?? '').($frame['function'] ?? ''), array_slice($exception->getTrace(), 0, 12)),
+            'context' => array_intersect_key($context, array_flip(['route', 'action', 'user_id', 'turn_id'])),
+        ];
+    }
+
+    // Incidents stored before the pause threshold existed were paused from their first error.
+    private function withCurrentKeys(array $incident): array
+    {
+        if (! array_key_exists('paused_at', $incident)) {
+            $incident['paused_at'] = $incident['first_seen_at'];
+            $incident['pause_notified_at'] = $incident['notified_at'];
+        }
+
+        return $incident + ['occurrences' => [], 'pause_notified_at' => null, 'last_pause_notification_attempt_at' => null];
+    }
+
+    private function recentOccurrences(array $incident, Throwable $exception, ?int $userId): array
+    {
+        $occurrences = $incident['occurrences'];
+        $occurrences[] = ['at' => now()->toIso8601String(), 'user_id' => $userId, 'signature' => $this->signature($exception)];
+        $windowStart = now()->subMinutes(config('incidents.pause_window_minutes'));
+
+        $retained = max(50, config('incidents.pause_after_occurrences'), config('incidents.pause_after_users'));
+
+        return array_slice(array_values(array_filter($occurrences, fn (array $occurrence) => CarbonImmutable::parse($occurrence['at'])->greaterThanOrEqualTo($windowStart))), -$retained);
+    }
+
+    private function reachesPauseThreshold(array $recentOccurrences): bool
+    {
+        if (count($recentOccurrences) >= config('incidents.pause_after_occurrences')) {
+            return true;
+        }
+        $usersBySignature = [];
+        foreach ($recentOccurrences as $occurrence) {
+            if ($occurrence['user_id']) {
+                $usersBySignature[$occurrence['signature']][$occurrence['user_id']] = true;
+            }
+        }
+
+        return collect($usersBySignature)->contains(fn (array $users) => count($users) >= config('incidents.pause_after_users'));
+    }
+
+    private function signature(Throwable $exception, bool $withClass = true): string
+    {
+        $where = $this->location($exception->getFile()).':'.$exception->getLine();
+
+        return $withClass ? $exception::class.' '.$where : $where;
+    }
+
+    public function state(array $incident): string
+    {
+        return match (true) {
+            (bool) $incident['resolved_at'] => 'resolved',
+            $this->isPaused($incident) => 'paused',
+            default => 'watching',
+        };
+    }
+
+    private function isPaused(array $incident): bool
+    {
+        // Incidents stored before the threshold existed have no key and were paused.
+        return array_key_exists('paused_at', $incident) ? $incident['paused_at'] !== null : true;
     }
 
     public function reportRequest(Throwable $exception, Request $request): void
@@ -83,7 +163,7 @@ class IncidentMonitor
         }
 
         try {
-            return $this->change(fn (array &$state) => isset($state[$feature]) && ! $state[$feature]['resolved_at'] ? $state[$feature] : null);
+            return $this->change(fn (array &$state) => isset($state[$feature]) && $this->state($state[$feature]) === 'paused' ? $state[$feature] : null);
         } catch (Throwable $failure) {
             // An unavailable monitoring store must not take healthy features down.
             error_log('DreamersPalette incident status lookup failed: '.$failure::class);
@@ -101,6 +181,17 @@ class IncidentMonitor
         });
     }
 
+    public function paused(): array
+    {
+        return array_values(array_filter($this->all(), fn (array $incident) => $this->state($incident) === 'paused'));
+    }
+
+    public function alertsAreConfigured(): bool
+    {
+        return filter_var(config('incidents.email'), FILTER_VALIDATE_EMAIL) !== false
+            && in_array(config('mail.mailers.'.config('incidents.mailer').'.transport'), ['smtp', 'sendmail', 'ses', 'postmark', 'resend', 'mailgun'], true);
+    }
+
     public function reportBackground(Throwable $exception, string $feature, int $turnId): void
     {
         request()->attributes->set('reported_incident_exception', $exception);
@@ -112,7 +203,7 @@ class IncidentMonitor
             return;
         }
         try {
-            $incident = $this->record($exception, $feature, ['turn_id' => $turnId]);
+            $incident = $this->record($exception, $feature, ['turn_id' => $turnId, 'user_id' => Auth::guard()->hasUser() ? Auth::id() : null]);
             if ($incident) {
                 request()->attributes->set('application_incident', $incident);
             }
@@ -125,12 +216,8 @@ class IncidentMonitor
     {
         return $this->change(function (array &$state) use ($id): bool {
             foreach ($state as &$incident) {
-                if (! isset($incident['id'])) {
-                    continue;
-                }
-                if ($incident['id'] === $id && ! $incident['resolved_at']) {
-                    $incident['resolved_at'] = now()->toIso8601String();
-                    Log::notice('Application incident resolved.', ['incident_id' => $id, 'feature' => $incident['feature']]);
+                if (isset($incident['id']) && $incident['id'] === $id && ! $incident['resolved_at']) {
+                    $this->markResolved($incident);
 
                     return true;
                 }
@@ -138,6 +225,46 @@ class IncidentMonitor
 
             return false;
         });
+    }
+
+    public function pause(string $id): bool
+    {
+        return $this->change(function (array &$state) use ($id): bool {
+            foreach ($state as &$incident) {
+                if (isset($incident['id']) && $incident['id'] === $id && $this->state($incident) === 'watching') {
+                    $incident = $this->withCurrentKeys($incident);
+                    $incident['paused_at'] = now()->toIso8601String();
+                    $incident['pause_cause'] = $incident['latest_diagnostics'] ?? array_intersect_key($incident, array_flip(['exception', 'location', 'trace', 'context']));
+                    Log::notice('Application incident paused by an operator.', ['incident_id' => $id, 'feature' => $incident['feature']]);
+
+                    return true;
+                }
+            }
+
+            return false;
+        });
+    }
+
+    // Used after a deploy: a fix that did not work re-pauses through the threshold.
+    public function release(): int
+    {
+        return $this->change(function (array &$state): int {
+            $released = 0;
+            foreach ($state as $feature => &$incident) {
+                if ($feature !== '_history' && ! $incident['resolved_at']) {
+                    $this->markResolved($incident);
+                    $released++;
+                }
+            }
+
+            return $released;
+        });
+    }
+
+    private function markResolved(array &$incident): void
+    {
+        $incident['resolved_at'] = now()->toIso8601String();
+        Log::notice('Application incident resolved.', ['incident_id' => $incident['id'], 'feature' => $incident['feature']]);
     }
 
     public function notify(): int
@@ -164,35 +291,25 @@ class IncidentMonitor
     {
         $recipient = config('incidents.email');
         $mailer = config('incidents.mailer');
-        if (! filter_var($recipient, FILTER_VALIDATE_EMAIL) || ! in_array(config('mail.mailers.'.$mailer.'.transport'), ['smtp', 'sendmail', 'ses', 'postmark', 'resend', 'mailgun'], true)) {
+        if (! $this->alertsAreConfigured()) {
             return 0;
         }
         $sent = 0;
         foreach ($this->all() as $incident) {
-            if ($incident['resolved_at'] || $incident['notified_at'] || ($incident['last_notification_attempt_at'] && now()->diffInSeconds($incident['last_notification_attempt_at'], true) < 300)) {
+            $alert = $this->pendingAlert($incident);
+            if (! $alert) {
                 continue;
             }
-            $this->change(function (array &$state) use ($incident): void {
-                if ($state[$incident['feature']]['id'] === $incident['id']) {
-                    $state[$incident['feature']]['last_notification_attempt_at'] = now()->toIso8601String();
-                }
-            });
+            [$notifiedKey, $attemptKey] = match ($alert) {
+                'opened' => ['notified_at', 'last_notification_attempt_at'],
+                'paused' => ['pause_notified_at', 'last_pause_notification_attempt_at'],
+            };
+            $this->markIncident($incident, [$attemptKey => now()->toIso8601String()]);
             try {
-                $body = implode("\n", [
-                    'Incident: '.$incident['id'], 'Feature: '.$incident['feature'],
-                    'Environment: '.app()->environment(), 'Application: '.config('app.url'),
-                    'Exception: '.$incident['exception'], 'Location: '.$incident['location'],
-                    'First seen: '.CarbonImmutable::parse($incident['first_seen_at'])->asDateTime(),
-                    'Occurrences: '.$incident['count'], 'Context: '.json_encode($incident['context']),
-                    'Trace (arguments and exception messages omitted):', ...$incident['trace'],
-                    '', 'Investigate and deploy a fix, then run: php artisan dreamers:incidents resolve '.$incident['id'],
-                ]);
-                Mail::mailer($mailer)->raw($body, fn ($message) => $message->to($recipient)->subject('DreamersPalette error: '.$incident['feature'].' ['.$incident['id'].']'));
-                $this->change(function (array &$state) use ($incident): void {
-                    if ($state[$incident['feature']]['id'] === $incident['id']) {
-                        $state[$incident['feature']]['notified_at'] = now()->toIso8601String();
-                    }
-                });
+                Mail::mailer($mailer)->raw($this->alertBody($incident), fn ($message) => $message->to($recipient)->subject($this->alertSubject($incident, $alert)));
+                $delivered = [$notifiedKey => now()->toIso8601String()];
+                // An incident already paused when first alerted is covered by that single email.
+                $this->markIncident($incident, $alert === 'opened' && $this->isPaused($incident) ? $delivered + ['pause_notified_at' => now()->toIso8601String()] : $delivered);
                 $sent++;
             } catch (Throwable $failure) {
                 Log::error('Incident email delivery failed; scheduler will retry.', ['incident_id' => $incident['id'], 'exception_class' => $failure::class]);
@@ -202,11 +319,72 @@ class IncidentMonitor
         return $sent;
     }
 
+    private function pendingAlert(array $incident): ?string
+    {
+        if ($incident['resolved_at']) {
+            return null;
+        }
+        $alert = match (true) {
+            ! $incident['notified_at'] => 'opened',
+            // Legacy paused incidents have no pause_notified_at key and were already alerted.
+            $this->isPaused($incident) && array_key_exists('pause_notified_at', $incident) && ! $incident['pause_notified_at'] => 'paused',
+            default => null,
+        };
+        $attemptKey = $alert === 'paused' ? 'last_pause_notification_attempt_at' : 'last_notification_attempt_at';
+        $lastAttempt = $incident[$attemptKey] ?? null;
+
+        return $alert && $lastAttempt && now()->diffInSeconds($lastAttempt, true) < 300 ? null : $alert;
+    }
+
+    private function markIncident(array $incident, array $values): void
+    {
+        $this->change(function (array &$state) use ($incident, $values): void {
+            if ($state[$incident['feature']]['id'] === $incident['id']) {
+                $state[$incident['feature']] = $values + $state[$incident['feature']];
+            }
+        });
+    }
+
+    private function alertSubject(array $incident, string $alert): string
+    {
+        $prefix = match ($alert) {
+            'opened' => $this->isPaused($incident) ? 'DreamersPalette feature paused: ' : 'DreamersPalette error being watched: ',
+            'paused' => 'DreamersPalette feature paused: ',
+        };
+
+        return $prefix.$incident['feature'].' ['.$incident['id'].']';
+    }
+
+    private function alertBody(array $incident): string
+    {
+        $state = $this->state($incident);
+        $diagnostics = $incident['pause_cause'] ?? $incident;
+        $next = match ($state) {
+            'paused' => 'The feature is paused for all users. Investigate and deploy a fix; a deploy runs dreamers:incidents release, or resume it with: php artisan dreamers:incidents resolve '.$incident['id'],
+            'watching' => 'The feature is still available. It pauses if the error repeats. To pause it now: Studio > Incidents, or investigate and run: php artisan dreamers:incidents resolve '.$incident['id'],
+        };
+
+        return implode("\n", [
+            'State: '.ucfirst($state),
+            'Incident: '.$incident['id'], 'Feature: '.$incident['feature'],
+            'Environment: '.app()->environment(), 'Application: '.config('app.url'),
+            'Exception: '.$diagnostics['exception'], 'Location: '.$diagnostics['location'],
+            'First seen: '.CarbonImmutable::parse($incident['first_seen_at'])->asDateTime(),
+            'Occurrences: '.$incident['count'], 'Context: '.json_encode($diagnostics['context']),
+            'Trace (arguments and exception messages omitted):', ...$diagnostics['trace'],
+            '', $next,
+        ]);
+    }
+
     public function publicNotice(array $incident): array
     {
+        $paused = $this->isPaused($incident);
+
         return [
-            'id' => $incident['id'], 'feature' => $incident['feature'],
-            'message' => 'This feature has encountered a problem and is paused until a fix is released. Stop working in this feature. Keep this page open or copy any unsaved writing before leaving. Other features remain available.',
+            'id' => $incident['id'], 'feature' => $incident['feature'], 'paused' => $paused,
+            'message' => $paused
+                ? 'This feature has encountered a problem and is paused until a fix is released. Stop working in this feature. Keep this page open or copy any unsaved writing before leaving. Other features remain available.'
+                : 'This request failed and has been reported. Copy any unsaved writing before retrying.',
         ];
     }
 

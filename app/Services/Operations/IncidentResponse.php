@@ -22,10 +22,11 @@ class IncidentResponse
         }
         $incident = $request->attributes->get('application_incident');
         $notice = $incident ? $monitor->publicNotice($incident) : [
-            'id' => null, 'feature' => $request->attributes->get('incident_feature'),
+            'id' => null, 'paused' => false, 'feature' => $request->attributes->get('incident_feature'),
             'message' => 'This request failed. Stop working in this feature and keep this page open or copy any unsaved writing before leaving. The error could not be recorded automatically; contact the administrator.',
         ];
-        $status = $incident ? 503 : $response->getStatusCode();
+        // Only a paused feature is unavailable; a watched one failed this request alone.
+        $status = $incident && $notice['paused'] ? 503 : $response->getStatusCode();
         $rendered = $request->expectsJson() || $request->hasHeader('X-Livewire') || $request->is('api/*')
             ? response()->json(['message' => $notice['message'], 'incident' => $notice], $status)
             : response()->view('errors.incident', ['notice' => $notice], $status);

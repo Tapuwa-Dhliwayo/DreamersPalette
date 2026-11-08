@@ -7,6 +7,7 @@
         'reviews' => ['Editorial reviews', route('studio.reviews'), 'document-magnifying-glass', $user->can('reviews.view')],
         'publishing' => ['Publishing', '/dashboard/books', 'book-open', $user->can('books.view')],
         'account' => ['Account', route('account.profile'), 'user-circle', $user->can('account.view')],
+        'incidents' => ['Incidents', route('studio.incidents'), 'exclamation-triangle', $user->can('incidents.manage')],
         'dashboard' => ['Dashboard', '/dashboard', 'squares-2x2', true],
     ])->filter(fn (array $link): bool => $link[3]);
 @endphp

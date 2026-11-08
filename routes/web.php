@@ -8,6 +8,7 @@ use App\Http\Middleware\PreventAuthenticationCaching;
 use App\Livewire\Studio\Account\Profile;
 use App\Livewire\Studio\Account\Security;
 use App\Livewire\Studio\AssistantConnections;
+use App\Livewire\Studio\Incidents;
 use App\Livewire\Studio\Manuscripts\Compile;
 use App\Livewire\Studio\Manuscripts\Details;
 use App\Livewire\Studio\Manuscripts\Index;
@@ -33,6 +34,7 @@ Route::prefix('studio')->name('studio.')->middleware([PreventAuthenticationCachi
     Route::get('/', Index::class)->middleware('can:manuscripts.view')->name('index');
     Route::get('/reviews', App\Livewire\Studio\Reviews\Index::class)->middleware('can:reviews.view')->name('reviews');
     Route::get('/reviews/{grant}', App\Livewire\Studio\Reviews\Workspace::class)->whereNumber('grant')->middleware('can:reviews.view')->name('review');
+    Route::get('/incidents', Incidents::class)->middleware('can:incidents.manage')->name('incidents');
     Route::get('/assistant-connections', AssistantConnections::class)->middleware(PermissionMiddleware::class.':worlds.update|poems.update')->name('assistant-connections');
     Route::get('/worlds/{world}/sandbox', Sandbox::class)->whereNumber('world')->middleware('can:worlds.update')->name('world.sandbox');
     Route::get('/worlds', App\Livewire\Studio\Worlds\Index::class)->middleware('can:worlds.view')->name('worlds');

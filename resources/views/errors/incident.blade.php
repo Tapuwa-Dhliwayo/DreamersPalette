@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <title>Feature paused — Dreamer’s Palette</title>
+    <title>{{ ($notice['paused'] ?? false) ? 'Feature paused' : 'Request failed' }} — Dreamer’s Palette</title>
     <style>
         body { margin: 0; background: #1c1917; color: #fafaf9; font: 1rem/1.6 system-ui, sans-serif; }
         main { max-width: 42rem; margin: 4rem auto; padding: 1.5rem; }
@@ -17,7 +17,7 @@
 <body class="studio-body">
     <main class="mx-auto max-w-2xl p-8">
         <flux:callout variant="warning" icon="exclamation-triangle">
-            <flux:callout.heading>This feature is paused</flux:callout.heading>
+            <flux:callout.heading>{{ ($notice['paused'] ?? false) ? 'This feature is paused' : 'This request failed' }}</flux:callout.heading>
             <flux:callout.text>{{ $notice['message'] }} @if($notice['id']) Reference: {{ $notice['id'] }}.@endif</flux:callout.text>
         </flux:callout>
         <flux:button href="/dashboard" icon="arrow-left" class="mt-4">Back to dashboard</flux:button>

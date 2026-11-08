@@ -410,3 +410,12 @@ client/provider outcomes do not trigger shared feature pauses. Operations use
 of MySQL under private persistent storage. Local log mail does not deliver alerts.
 See `docs/ERROR_INCIDENTS.md` for scope, configuration, verification and release gaps.
 No reset, migration, production change or real alert email accompanied this work.
+
+## Incident pause threshold and admin page — 2026/11/08
+
+Unexpected errors now open a watching incident and alert by email; a feature pauses
+only after 3 occurrences or 2 distinct users on one error signature within 10
+minutes (`config/incidents.php`), with a second email on pause. Studio > Incidents
+(`incidents.manage`, superadmin; migration `2026_11_08_000001`) resolves or pauses
+incidents, and `php artisan dreamers:incidents release` resolves all open ones for
+the Forge deploy script. See `docs/ERROR_INCIDENTS.md`. Migration run locally only.

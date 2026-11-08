@@ -10,9 +10,8 @@ class IncidentStatusController extends Controller
 {
     public function __invoke(IncidentMonitor $monitor): JsonResponse
     {
-        return response()->json(['incidents' => array_values(array_map(
-            fn ($incident) => $monitor->publicNotice($incident),
-            array_filter(config('incidents.enabled') ? $monitor->all() : [], fn ($incident) => ! $incident['resolved_at']),
-        ))])->header('Cache-Control', 'no-store, private');
+        $paused = config('incidents.enabled') ? $monitor->paused() : [];
+
+        return response()->json(['incidents' => array_map(fn ($incident) => $monitor->publicNotice($incident), $paused)])->header('Cache-Control', 'no-store, private');
     }
 }
