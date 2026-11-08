@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
+use Symfony\Component\Process\PhpExecutableFinder;
 
 class PoemAnalysis
 {
@@ -183,7 +184,8 @@ TEXT;
         if ($turn->status !== 'queued') {
             return;
         }
-        $command = 'setsid nohup '.escapeshellarg(PHP_BINARY).' '.escapeshellarg(base_path('artisan')).' studio:assistant-turn '.(int) $turn->id.' >> '.escapeshellarg(storage_path('logs/assistant-worker.log')).' 2>&1 < /dev/null &';
+        $php = (new PhpExecutableFinder)->find(false) ?: throw new RuntimeException('PHP CLI executable is unavailable for assistant processing.');
+        $command = 'setsid nohup '.escapeshellarg($php).' '.escapeshellarg(base_path('artisan')).' studio:assistant-turn '.(int) $turn->id.' >> '.escapeshellarg(storage_path('logs/assistant-worker.log')).' 2>&1 < /dev/null &';
         exec($command);
     }
 

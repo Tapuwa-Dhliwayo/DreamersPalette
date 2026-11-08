@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Ramsey\Uuid\Uuid;
+use RuntimeException;
+use Symfony\Component\Process\PhpExecutableFinder;
 
 class AssistantConversation
 {
@@ -182,7 +184,8 @@ class AssistantConversation
     private function launch(AssistantTurn $turn): void
     {
         if ($turn->status === 'queued') {
-            $command = 'setsid nohup '.escapeshellarg(PHP_BINARY).' '.escapeshellarg(base_path('artisan')).' studio:assistant-turn '.(int) $turn->id.' >> '.escapeshellarg(storage_path('logs/assistant-worker.log')).' 2>&1 < /dev/null &';
+            $php = (new PhpExecutableFinder)->find(false) ?: throw new RuntimeException('PHP CLI executable is unavailable for assistant processing.');
+            $command = 'setsid nohup '.escapeshellarg($php).' '.escapeshellarg(base_path('artisan')).' studio:assistant-turn '.(int) $turn->id.' >> '.escapeshellarg(storage_path('logs/assistant-worker.log')).' 2>&1 < /dev/null &';
             exec($command);
         }
     }
@@ -244,7 +247,7 @@ class AssistantConversation
             Gate::forUser($user)->authorize('update', $exercise);
             $connection = AssistantConnection::where('user_id', $author)->whereKey($turn->connection_id)->firstOrFail();
             if ($connection->provider !== $turn->provider || $connection->model !== ($turn->request_context['connection_model'] ?? $turn->model)) {
-                throw new \RuntimeException('The connection changed before the turn started. Send a new request.');
+                throw new RuntimeException('The connection changed before the turn started. Send a new request.');
             }
             $connection->model = $turn->model;
             $connection->setAttribute('effort', $turn->request_context['effort'] ?? 'default');
@@ -335,13 +338,13 @@ class AssistantConversation
             });
         } catch (\Throwable $exception) {
             app(IncidentMonitor::class)->reportBackground($exception, 'world.sandbox', $turn->id);
-            if (! $exception instanceof ValidationException && get_class($exception) !== \RuntimeException::class) {
+            if (! $exception instanceof ValidationException && get_class($exception) !== RuntimeException::class) {
                 Log::error('World assistant turn failed.', ['turn_id' => $turn->id, 'exercise_id' => $turn->exercise_id, 'exception' => $exception]);
             }
             if (isset($text)) {
                 $this->retainReceivedResponse($turn, $response, $runId, $text, $structured ?? false, $displayText ?? '');
             }
-            $message = $exception instanceof ValidationException ? collect($exception->errors())->flatten()->first() : (get_class($exception) === \RuntimeException::class ? $exception->getMessage() : 'The response could not finish. Check the connection and retry explicitly.');
+            $message = $exception instanceof ValidationException ? collect($exception->errors())->flatten()->first() : (get_class($exception) === RuntimeException::class ? $exception->getMessage() : 'The response could not finish. Check the connection and retry explicitly.');
             AssistantTurn::whereKey($turn->id)->where('status', 'running')->where('run_uuid', $runId)->update(['status' => 'failed', 'error' => mb_substr($message, 0, 1000), 'finished_at' => now()]);
         }
     }
