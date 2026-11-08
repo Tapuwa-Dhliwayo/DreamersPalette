@@ -182,7 +182,7 @@ class Development extends Component
         $query = $this->editingRecords($kind, $this->editingParent);
         if ($id) {
             $record = $query->whereKey($id)->firstOrFail();
-            $fields = $record->only(array_keys($form->all()));
+            $fields = $record->only(array_intersect(array_keys($form->all()), array_keys($record->getAttributes())));
             if (in_array($kind, ['person', 'entry'], true)) {
                 $fields['aliases'] = implode("\n", $record->aliases);
                 if ($kind === 'person') {
