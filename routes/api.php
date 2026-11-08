@@ -6,6 +6,7 @@ use App\Http\Controllers\Content\AssetController;
 use App\Http\Controllers\Content\AssistantActivityController;
 use App\Http\Controllers\Content\ContentController;
 use App\Http\Controllers\Content\DashboardController;
+use App\Http\Controllers\Content\IncidentStatusController;
 use App\Http\Controllers\Content\PoemAnalysisController;
 use App\Http\Controllers\Content\ReaderController;
 use App\Http\Controllers\Content\WritingAssistantController;
@@ -27,6 +28,7 @@ Route::prefix('reader')->group(function (): void {
 });
 
 Route::prefix('studio')->middleware([PreventAuthenticationCaching::class, 'auth:sanctum', 'verified', 'can:dashboard.access'])->group(function (): void {
+    Route::get('/incidents', IncidentStatusController::class)->middleware('throttle:60,1');
     Route::get('/assistant-activity', [AssistantActivityController::class, 'index'])->middleware(PermissionMiddleware::class.':worlds.update|poems.update');
     Route::post('/assistant-activity/{turn}/acknowledge', [AssistantActivityController::class, 'acknowledge'])->whereNumber('turn')->middleware(PermissionMiddleware::class.':worlds.update|poems.update');
     Route::prefix('poem-analysis')->middleware('can:poems.update')->controller(PoemAnalysisController::class)->group(function (): void {

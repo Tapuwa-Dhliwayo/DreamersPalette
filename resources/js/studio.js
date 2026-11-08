@@ -1,4 +1,5 @@
 import './sandbox';
+import { showIncident } from './services/incidentNotice';
 import { Livewire, Alpine } from '../../vendor/livewire/livewire/dist/livewire.esm';
 import { getGrammarSuggestions, getThesaurusSuggestions, getDefinitions, getSpellingSuggestions } from './services/writingAssistantService';
 
@@ -404,5 +405,19 @@ Alpine.data('alignmentMarker', (initial) => ({
         }
     },
 }));
+
+Livewire.hook('request', ({ fail }) => {
+    fail(({ content, preventDefault }) => {
+        try {
+            const payload = typeof content === 'string' ? JSON.parse(content) : content;
+            if (payload?.incident) {
+                preventDefault();
+                showIncident(payload.incident);
+            }
+        } catch {
+            // Non-incident responses retain Livewire's normal handling.
+        }
+    });
+});
 
 Livewire.start();

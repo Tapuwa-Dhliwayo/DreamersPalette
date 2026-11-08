@@ -8,6 +8,7 @@ use App\Models\AssistantTurn;
 use App\Models\User;
 use App\Models\World;
 use App\Models\WorldExercise;
+use App\Services\Operations\IncidentMonitor;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -333,6 +334,7 @@ class AssistantConversation
                 }
             });
         } catch (\Throwable $exception) {
+            app(IncidentMonitor::class)->reportBackground($exception, 'world.sandbox', $turn->id);
             if (! $exception instanceof ValidationException && get_class($exception) !== \RuntimeException::class) {
                 Log::error('World assistant turn failed.', ['turn_id' => $turn->id, 'exercise_id' => $turn->exercise_id, 'exception' => $exception]);
             }

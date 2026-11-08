@@ -12,6 +12,7 @@
     <title>Dreamer's Palette</title>
   </head>
   <body>
+    <x-incident-notice />
     <div id="root"></div>
     @viteReactRefresh
     @vite('resources/js/main.jsx')

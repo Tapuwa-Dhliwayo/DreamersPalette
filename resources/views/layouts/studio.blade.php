@@ -11,6 +11,7 @@
     @livewireStyles
 </head>
 <body class="studio-body" style="--studio-atmosphere: url('{{ asset('assets/global_atmosphere.png') }}')">
+    <x-incident-notice />
     <a href="#studio-main" class="studio-skip">Skip to writing</a>
     <div class="studio-shell">
         {{ $slot }}

@@ -9,6 +9,7 @@ use App\Models\Poem;
 use App\Models\PoemAnalysisConversation;
 use App\Models\PoemAnalysisSnapshot;
 use App\Models\User;
+use App\Services\Operations\IncidentMonitor;
 use App\Services\Worldbuilding\AssistantModels;
 use App\Services\Worldbuilding\AssistantProviders;
 use Illuminate\Support\Facades\DB;
@@ -270,6 +271,7 @@ TEXT;
             }
             $this->saveResponse($turn, $runId, $response, $text, 'completed');
         } catch (\Throwable $exception) {
+            app(IncidentMonitor::class)->reportBackground($exception, 'poems.analysis', $turn->id);
             report($exception);
             $message = get_class($exception) === RuntimeException::class ? mb_substr($exception->getMessage(), 0, 1000) : 'The response could not finish. Check the connection and retry.';
             $turn->failRun($runId, $message, $response ? $text : null);

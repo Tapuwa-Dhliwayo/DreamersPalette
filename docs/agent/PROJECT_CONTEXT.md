@@ -398,3 +398,15 @@ keyboard activation and the selected-beat edit form; all three arcs were rated
 through the actual forms. A 390px viewport had page width 390px and the 640px graph
 contained within its 301px scroll region. No new errors appeared in the normal log.
 Local production assets rebuilt for immediate viewing; no deployment or migration.
+
+## Error incidents and feature pauses — 2026/11/08
+
+Local implementation adds correlated private incident references, deduplicated email
+alerts with scheduler retries, safe server/Livewire/API error responses, persistent
+feature pauses and browser notices that preserve unsaved work. HTTP mutations and
+Livewire requests are guarded until explicit operator resolution. Known expected
+client/provider outcomes do not trigger shared feature pauses. Operations use
+`php artisan dreamers:incidents list|notify|resolve`; diagnostic state is independent
+of MySQL under private persistent storage. Local log mail does not deliver alerts.
+See `docs/ERROR_INCIDENTS.md` for scope, configuration, verification and release gaps.
+No reset, migration, production change or real alert email accompanied this work.
