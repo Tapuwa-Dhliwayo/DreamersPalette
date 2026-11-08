@@ -2,7 +2,6 @@ export default function Logo({
                                  size = "md",
                                  variant = "default", // default | subtle | accent
                                  stacked = false,
-                                 // eslint-disable-next-line no-unused-vars -- WordmarkTag is used as a JSX tag name below; not tracked as a reference by no-unused-vars without eslint-plugin-react
                                  as: WordmarkTag = "span",
                                  className = ""
                              }) {

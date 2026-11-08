@@ -363,7 +363,6 @@ class Workspace extends Component
 
         return view('livewire.studio.worlds.workspace', [
             'system' => $system, 'manuscript' => $manuscript,
-            'worlds' => World::where('author_id', Auth::id())->orderBy('name')->get(),
             'systems' => $this->world->systems()->when($this->archivedSystems, fn ($query) => $query->onlyTrashed())->when($this->search !== '', fn ($query) => $query->where(fn ($names) => $names->where('name', 'like', '%'.mb_substr($this->search, 0, 200).'%')->orWhere('aliases', 'like', '%'.mb_substr($this->search, 0, 200).'%')))->get(),
             'caseRuleChoices' => $system?->rules()->withTrashed()->where(fn ($query) => $query->whereNull('deleted_at')->orWhereIn('id', $this->caseForm->rule_ids))->get() ?? collect(),
             'rules' => $system?->rules()->when($this->archivedParts, fn ($query) => $query->onlyTrashed())->with('decision')->get() ?? collect(),

@@ -23,6 +23,9 @@ class SaveContentRequest extends FormRequest
     {
         $required = $this->isMethod('post') ? 'required' : 'sometimes';
         $rules = ['title' => [$required, 'required', 'string', 'max:255'], 'is_published' => ['sometimes', 'boolean']];
+        if (! $this->isMethod('post')) {
+            $rules['edit_token'] = ['required', 'string', 'size:64', 'regex:/^[a-f0-9]{64}$/'];
+        }
         $resource = $this->route('resource');
         if (in_array($resource, ['collections', 'books'])) {
             $rules += [

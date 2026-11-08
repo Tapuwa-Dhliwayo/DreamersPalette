@@ -237,7 +237,7 @@ Components are refined and restrained. They use familiar product affordances, co
 
 ### Editor Panel
 
-The editor is the signature authoring surface: a bordered white shell with a quiet toolbar, writing pane, and responsive preview. Desktop favors a side-by-side split; mobile stacks the panes. Markdown controls must remain compact and predictable, while preview typography accurately represents public rendering.
+The editor is the signature authoring surface: a bordered white shell with a quiet toolbar, writing pane, and responsive preview. Write is the default, with explicit Preview and Split controls. Split is side-by-side on desktop and stacked on mobile. Metadata belongs in a collapsible details section, and explicit Save/recovery feedback remains visible while scrolling. Markdown controls must remain compact and predictable, while preview typography accurately represents public rendering.
 
 ### Collection Theme Preview
 
@@ -245,7 +245,7 @@ The preview is the bridge between author productivity and reader immersion. It s
 
 ### Dashboard Content List
 
-Collections, poems, novels, and chapters share one compact management pattern: search and sort controls, optional multi-selection, border-separated rows, visible publication state, and consistent Publish, Edit, and Archive actions. Cards are reserved for empty states and exceptional content, not routine library rows.
+Collections, poems, novels, and chapters share one compact management pattern: search and sort controls, optional multi-selection, border-separated rows, visible publication state, and consistent Publish, Edit, and Archive actions. Empty states share an unboxed icon, heading and contextual action. Manuscript-managed novels expose a direct manuscript link. Routine library rows use dividers rather than cards.
 
 ## 6. Do's and Don'ts
 
@@ -272,3 +272,7 @@ Collections, poems, novels, and chapters share one compact management pattern: s
 - **Don't** use radii above 16px on ordinary cards, fields, or controls; 24px is reserved for complete feature shells.
 - **Don't** pair a one-pixel decorative border with a soft shadow wider than 8px on the same resting component.
 - **Don't** use modals as the first solution when inline editing or progressive disclosure can preserve the author’s context.
+
+## Publishing atmosphere — 2026/11/06
+
+React Publishing and the Livewire studio share neutral author tokens in `resources/css/author-tokens.css`. Publishing navigation and the outer workspace use translucent neutral fills so the global atmosphere remains visible. The writing and rendered preview surfaces stay opaque. Reduced-transparency preferences restore solid framing surfaces.

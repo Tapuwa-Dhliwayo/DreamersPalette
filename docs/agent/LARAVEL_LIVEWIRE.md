@@ -179,7 +179,7 @@ The controller remains slim.
 
 ## Branching
 
-Prefer readable guard clauses.
+`if` is for genuine exceptions: guard clauses that leave the normal path. Behaviour that depends on a mode, kind or state uses `match`, with every case named (see `AGENTS.md`).
 
 Avoid:
 
@@ -193,7 +193,17 @@ if ($status === 'active') {
 }
 ```
 
-when a `match` or explicit state handling is clearer.
+Prefer:
+
+```php
+return match ($export->format) {
+    ExportFormat::Csv => $this->writeCsv($export),
+    ExportFormat::Pdf => $this->renderPdf($export),
+    ExportFormat::Xlsx => $this->writeSpreadsheet($export),
+};
+```
+
+`match` throws `UnhandledMatchError` for a value it does not list, so a new format cannot fall into an `else` unnoticed. Add a `default` arm only when "every other value" is a genuine, deliberate case.
 
 Avoid deep nesting.
 

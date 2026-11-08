@@ -54,6 +54,12 @@ class Development extends Component
     #[Url]
     public ?int $selected = null;
 
+    #[Url]
+    public int $character = 0;
+
+    #[Url]
+    public string $timelineView = 'sequence';
+
     public string $search = '';
 
     public string $role = '';
@@ -102,6 +108,18 @@ class Development extends Component
         $this->selected = $id;
     }
 
+    public function updatedCharacter(): void
+    {
+        $this->selected = null;
+    }
+
+    public function updatedSearch(): void
+    {
+        if ($this->section === 'timeline') {
+            $this->selected = null;
+        }
+    }
+
     public function updatedArchived(): void
     {
         $this->selected = null;
@@ -129,7 +147,7 @@ class Development extends Component
         return match ($this->section) {
             'entries' => $this->world->entries()->with('type'),
             'people' => $this->world->people(),
-            'timeline' => $this->world->events(),
+            'timeline' => $this->world->events()->with(['calendar', 'people']),
             'arcs' => $this->world->arcs(),
             'alignments' => $this->world->alignmentCharts(),
             default => abort(404),
@@ -164,11 +182,12 @@ class Development extends Component
         $query = $this->editingRecords($kind, $this->editingParent);
         if ($id) {
             $record = $query->whereKey($id)->firstOrFail();
-            $fields = $record->only(array_keys($form->all()));
+            $fields = $record->only(array_intersect(array_keys($form->all()), array_keys($record->getAttributes())));
             if (in_array($kind, ['person', 'entry'], true)) {
                 $fields['aliases'] = implode("\n", $record->aliases);
                 if ($kind === 'person') {
                     $fields['roles'] = implode(', ', $record->roles);
+                    $fields['profile'] = $record->profile ?? [];
                 }
             }
             if ($kind === 'event') {
@@ -302,8 +321,18 @@ class Development extends Component
         if ($this->section === 'people' && $this->role !== '') {
             $query->whereJsonContains('roles', $this->role);
         }
+        if ($this->section === 'timeline' && $this->character) {
+            $query->whereHas('people', fn ($people) => $people->whereKey($this->character));
+        }
+        abort_unless(in_array($this->timelineView, ['sequence', 'lanes'], true), 422);
         $entries = $query->get();
-        $entry = $this->selected ? $this->records()->withTrashed()->whereKey($this->selected)->first() : $entries->first();
+        $entry = match ($this->section) {
+            'timeline' => $entries->firstWhere('id', $this->selected) ?? $entries->first(),
+            default => $this->selected ? $this->records()->withTrashed()->whereKey($this->selected)->first() : $entries->first(),
+        };
+        if ($this->section === 'timeline') {
+            $this->selected = $entry?->id;
+        }
         if ($entry && ! $this->selected) {
             $this->selected = $entry->id;
         }
@@ -313,6 +342,13 @@ class Development extends Component
             'editingCalendarEvent' => $this->editingKind === 'event' && $this->editingId ? $this->world->events()->find($this->editingId) : null,
             'types' => WorldEntryType::orderBy('name')->get(),
             'entries' => $entries, 'entry' => $entry,
+            'timelineCharacters' => $this->section === 'timeline' ? $this->world->people()->withTrashed()->orderBy('name')->get() : collect(),
+            'timelineLanes' => $this->section === 'timeline' ? $entries->flatMap->people->unique('id')->sortBy('name')->values() : collect(),
+            'subjectConnections' => $this->section === 'people' && $entry
+                ? $this->world->relationships()
+                    ->where(fn ($query) => $query->where('source_key', 'person:'.$entry->id)->orWhere('target_key', 'person:'.$entry->id))
+                    ->get()
+                : collect(),
             'people' => $this->world->people()->withTrashed()->where(fn ($query) => $query->whereNull('deleted_at')->orWhereIn('id', match ($this->editingKind) {
                 'event' => $this->eventForm->person_ids, 'arc' => [$this->arcForm->person_id], 'placement' => [$this->placementForm->person_id], default => []
             }))->get(),
@@ -322,7 +358,6 @@ class Development extends Component
             'systems' => $this->world->systems()->withTrashed()->where(fn ($query) => $query->whereNull('deleted_at')->orWhere('id', $this->placementForm->system_id))->get(),
             'availableEvents' => $this->world->events()->withTrashed()->where(fn ($query) => $query->whereNull('deleted_at')->orWhere('id', $this->beatForm->event_id))->get(),
             'beats' => $beats,
-            'arcSeries' => $beats->map(fn ($beat, $index) => ['step' => $index + 1, 'title' => $beat->title, 'intensity' => $beat->intensity])->all(),
             'placements' => $entry instanceof AlignmentChart ? $entry->placements()->when($this->archivedChildren, fn ($query) => $query->onlyTrashed())->with(['person', 'system'])->get() : collect(),
         ]);
     }

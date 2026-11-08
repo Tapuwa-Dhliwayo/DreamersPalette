@@ -7,6 +7,7 @@ use App\Models\Concerns\PublishesContent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Poem extends Model
@@ -28,6 +29,16 @@ class Poem extends Model
             'updated_at' => 'immutable_datetime',
             'deleted_at' => 'immutable_datetime',
         ];
+    }
+
+    public function analysisConversations(): HasMany
+    {
+        return $this->hasMany(PoemAnalysisConversation::class)->latest('updated_at');
+    }
+
+    public function authorNotes(): HasMany
+    {
+        return $this->hasMany(PoemAuthorNote::class)->orderBy('id');
     }
 
     public function author(): BelongsTo

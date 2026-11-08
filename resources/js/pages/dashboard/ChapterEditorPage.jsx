@@ -1,3 +1,4 @@
+import DraftRecovery from "@/components/dashboard/DraftRecovery"
 import { useEffect, useState } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 
@@ -33,6 +34,7 @@ export default function ChapterEditorPage() {
     const [studioBook, setStudioBook] = useState(null)
     const [books, setBooks] = useState([])
     const [initialForm, setInitialForm] = useState(null)
+    const [editToken, setEditToken] = useState(null)
     const [validationError, setValidationError] = useState("")
     const [saveError, setSaveError] = useState("")
 
@@ -47,6 +49,7 @@ export default function ChapterEditorPage() {
         key: `dreamers-palette:chapter:${id || "new"}`,
         form,
         initialForm,
+        version: editToken,
         setForm
     })
     const navigationGuard = useUnsavedChanges(localDraft.isDirty && !saving)
@@ -63,6 +66,7 @@ export default function ChapterEditorPage() {
 
                 if (isEditMode) {
                     const existingChapter = await getMyChapterById(id)
+                    setEditToken(existingChapter.edit_token)
 
                     setStudioBook(booksData.find(book => book.id === existingChapter.book_id && book.is_studio_managed) || null)
                     const nextForm = {
@@ -123,7 +127,7 @@ export default function ChapterEditorPage() {
             }
 
             if (isEditMode) {
-                await updateChapter(id, payload)
+                await updateChapter(id, { ...payload, edit_token: editToken })
             } else {
                 await createChapter({
                     ...payload,
@@ -159,8 +163,8 @@ export default function ChapterEditorPage() {
     )
 
     return (
-        <div className="min-h-0 flex-1 space-y-8 overflow-y-auto">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="publishing-form min-h-0 flex-1 space-y-6 overflow-y-auto">
+            <div className="publishing-form-heading flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h2 className="text-2xl font-semibold tracking-tight">
                         {isEditMode ? "Edit Chapter" : "New Chapter"}
@@ -168,7 +172,7 @@ export default function ChapterEditorPage() {
 
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                     <EditorSaveState
                         saving={saving}
                         isDirty={localDraft.isDirty}
@@ -192,8 +196,13 @@ export default function ChapterEditorPage() {
                 </div>
             </div>
 
-            <div className="space-y-4 max-w-full md:max-w-xl">
-                <StatusMessage tone="error">{validationError || saveError}</StatusMessage>
+            <DraftRecovery draft={localDraft} initialForm={initialForm} />
+
+            <StatusMessage tone="error">{validationError || saveError}</StatusMessage>
+
+            <details className="publishing-details" open={!isEditMode}>
+                <summary>Chapter details</summary>
+                <div className="publishing-fields">
                 <FormField label="Novel" htmlFor="chapter-book" required>
                     <Select
                         id="chapter-book"
@@ -245,6 +254,7 @@ export default function ChapterEditorPage() {
                     Mark chapter as preview
                 </label>
             </div>
+            </details>
 
             <EditorPanel
                 value={form.content_md}

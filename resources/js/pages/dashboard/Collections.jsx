@@ -1,6 +1,9 @@
+import { useAuth } from "@/hooks/useAuth"
+import { can } from "@/services/authService"
+import { formatDate } from "@/utils/formatDate"
 import { useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
-import { Card } from "@/components/ui/Card"
+import PublishingEmptyState from "@/components/dashboard/PublishingEmptyState"
 import Button from "@/components/ui/Button"
 import Badge from "@/components/ui/Badge"
 import Pagination from "@/components/ui/Pagination"
@@ -32,6 +35,10 @@ function readinessFor(collection, counts) {
 
 export default function Collections() {
     const navigate = useNavigate()
+    const { user } = useAuth()
+    const canCreate = can(user, "collections.create")
+    const canPublish = can(user, "collections.publish")
+    const canArchive = can(user, "collections.archive")
     const location = useLocation()
     const [collections, setCollections] = useState([])
     const [poemCounts, setPoemCounts] = useState({})
@@ -109,7 +116,7 @@ export default function Collections() {
                     </div>
                     <div className="flex gap-2">
                         <Button variant="ghost" onClick={() => navigate(DASHBOARD_ROUTES.TRASH)}>Trash</Button>
-                        <Button onClick={() => navigate(DASHBOARD_ROUTES.COLLECTION_NEW)}>New Collection</Button>
+                        {canCreate && <Button onClick={() => navigate(DASHBOARD_ROUTES.COLLECTION_NEW)}>New Collection</Button>}
                     </div>
                 </header>
 
@@ -120,8 +127,8 @@ export default function Collections() {
                     onSortChange={list.setSort}
                     selectedCount={list.selectedIds.length}
                     pending={pending}
-                    onBulkPublish={() => setPublishTargets(selectedItems.filter((item) => !item.is_published))}
-                    onBulkArchive={() => setArchiveTargets(selectedItems)}
+                    onBulkPublish={canPublish ? () => setPublishTargets(selectedItems.filter((item) => item.capabilities?.publish && !item.is_published)) : undefined}
+                    onBulkArchive={canArchive ? () => setArchiveTargets(selectedItems.filter((item) => item.capabilities?.archive)) : undefined}
                 />
 
                 <StatusMessage tone="error" action={error ? <Button size="sm" variant="ghost" onClick={loadCollections}>Try again</Button> : null}>{error}</StatusMessage>
@@ -132,15 +139,15 @@ export default function Collections() {
                 {loading && <DashboardSkeleton />}
 
                 {!loading && list.filteredItems.length === 0 && (
-                    <Card className="p-8 text-center">
+                    <PublishingEmptyState>
                         <h3 className="text-lg font-medium">No collections found</h3>
                         <p className="mt-2 text-sm text-neutral-600">Adjust the search or create your first poetic world.</p>
-                        <Button className="mt-5" onClick={() => navigate(DASHBOARD_ROUTES.COLLECTION_NEW)}>Create Collection</Button>
-                    </Card>
+                        {canCreate && <Button className="mt-5" onClick={() => navigate(DASHBOARD_ROUTES.COLLECTION_NEW)}>Create Collection</Button>}
+                    </PublishingEmptyState>
                 )}
 
                 {!loading && list.filteredItems.length > 0 && (
-                    <ContentList items={list.visibleItems} selectedIds={list.selectedIds} onToggleAll={list.toggleAll}>
+                    <ContentList selectable={canPublish || canArchive} items={list.visibleItems} selectedIds={list.selectedIds} onToggleAll={list.toggleAll}>
                         {list.visibleItems.map((collection) => {
                             const readiness = readinessFor(collection, poemCounts[collection.id])
                             return (
@@ -151,7 +158,7 @@ export default function Collections() {
                                     onToggle={list.toggleItem}
                                     title={collection.title}
                                     description={collection.description}
-                                    metadata={`Updated ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(collection.updated_at || collection.created_at))}`}
+                                    metadata={`Updated ${formatDate(collection.updated_at || collection.created_at)}`}
                                     onEdit={() => navigate(DASHBOARD_ROUTES.COLLECTION_EDIT(collection.id))}
                                     onArchive={() => setArchiveTargets([collection])}
                                     onPublish={() => setPublishTargets([collection])}

@@ -234,7 +234,7 @@ return the domain result
 
 Keep service workflows readable from top to bottom.
 
-Use guard clauses and singular `if` statements.
+Use `if` for guard clauses and genuine exceptions. When a workflow depends on a mode, kind or status, use a `switch` with every case named and a `default` that throws (see `AGENTS.md`).
 
 Do not turn the service into a class merely to simulate Laravel models.
 

@@ -1,3 +1,4 @@
+import DraftRecovery from "@/components/dashboard/DraftRecovery"
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
@@ -32,6 +33,7 @@ export default function PoemEditorPage() {
     const [validationError, setValidationError] = useState("")
     const [saveError, setSaveError] = useState("")
     const [initialForm, setInitialForm] = useState(null)
+    const [editToken, setEditToken] = useState(null)
 
     const [collections, setCollections] = useState([])
 
@@ -44,6 +46,7 @@ export default function PoemEditorPage() {
         key: `dreamers-palette:poem:${id || "new"}`,
         form,
         initialForm,
+        version: editToken,
         setForm
     })
     const navigationGuard = useUnsavedChanges(localDraft.isDirty && !saving)
@@ -56,6 +59,7 @@ export default function PoemEditorPage() {
 
                 if (isEditMode) {
                     const existingPoem = await getMyPoemById(id)
+                    setEditToken(existingPoem.edit_token)
 
                     if (!existingPoem) {
                         navigate(DASHBOARD_ROUTES.POEMS)
@@ -95,7 +99,7 @@ export default function PoemEditorPage() {
         initialize()
     }, [id, isEditMode, navigate])
 
-    async function handleSave() {
+    async function handleSave(openAnalysis = false) {
         if (!form.title.trim()) {
             setValidationError("A poem title is required.")
             return
@@ -111,24 +115,27 @@ export default function PoemEditorPage() {
             setValidationError("")
             setSaveError("")
 
+            let savedPoemId = id
             if (isEditMode) {
                 await updatePoem(id, {
+                    edit_token: editToken,
                     title: form.title,
                     content_md: form.content_md,
                     collection_id: form.collection_id
                 })
             } else {
-                await createPoem({
+                const created = await createPoem({
                     title: form.title,
                     content_md: form.content_md,
                     collection_id: form.collection_id,
                     is_published: false
                 })
+                savedPoemId = created.id
             }
 
             localDraft.clearDraft()
             navigationGuard.markSafe()
-            navigate(DASHBOARD_ROUTES.POEMS)
+            navigate(openAnalysis ? DASHBOARD_ROUTES.POEM_ANALYSIS(savedPoemId) : DASHBOARD_ROUTES.POEMS)
 
         } catch (err) {
             setSaveError(err.message || "The poem could not be saved. Your writing is still here.")
@@ -146,22 +153,18 @@ export default function PoemEditorPage() {
     }
 
     return (
-        <div className="min-h-0 flex-1 space-y-8 overflow-y-auto">
+        <div className="publishing-form min-h-0 flex-1 space-y-6 overflow-y-auto">
 
             {/* Header */}
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="publishing-form-heading flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h2 className="text-2xl font-semibold tracking-tight">
                         {isEditMode ? "Edit Poem" : "New Poem"}
                     </h2>
-                    <p className="text-sm text-neutral-500 mt-1">
-                        {isEditMode
-                            ? "Refine your verse."
-                            : "Begin something luminous."}
-                    </p>
+
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                     <EditorSaveState
                         saving={saving}
                         isDirty={localDraft.isDirty}
@@ -176,8 +179,9 @@ export default function PoemEditorPage() {
                         Cancel
                     </Button>
 
+                    <Button variant="subtle" disabled={saving || collections.length === 0 || (isEditMode && !initialForm)} onClick={() => handleSave(true)}>Save and analyse</Button>
                     <Button
-                        onClick={handleSave}
+                        onClick={() => handleSave()}
                         disabled={saving || collections.length === 0 || (isEditMode && !initialForm)}
                     >
                         {saving ? "Saving..." : "Save"}
@@ -185,15 +189,20 @@ export default function PoemEditorPage() {
                 </div>
             </div>
 
+            <DraftRecovery draft={localDraft} initialForm={initialForm} />
+
             {/* Metadata */}
-            <div className="space-y-4 max-w-full md:max-w-xl">
+            <StatusMessage tone="error">{validationError || saveError}</StatusMessage>
+
+            <details className="publishing-details" open={!isEditMode}>
+                <summary>Poem details</summary>
+                <div className="publishing-fields">
                 {collections.length === 0 && (
                     <p className="text-sm text-neutral-500">
                         Create a collection before saving a poem.
                     </p>
                 )}
 
-                <StatusMessage tone="error">{validationError || saveError}</StatusMessage>
 
                 <FormField label="Poem title" htmlFor="poem-title" required>
                     <Input
@@ -225,9 +234,11 @@ export default function PoemEditorPage() {
                 </FormField>
 
             </div>
+            </details>
 
             {/* Editor */}
             <EditorPanel
+                selectionTools
                 value={form.content_md}
                 onChange={(value) =>
                     setForm({ ...form, content_md: value })

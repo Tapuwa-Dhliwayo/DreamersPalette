@@ -9,13 +9,12 @@ use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\Poem;
 use App\Models\PoetryCollection;
+use App\Services\PublishingContent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class ContentController extends Controller
@@ -43,11 +42,32 @@ class ContentController extends Controller
 
     private function studioLinks(Model $content, Request $request): Model
     {
+        $content->setAttribute('edit_token', $content->editToken());
+        $content->setAttribute('capabilities', [
+            'update' => $request->user()->can('update', $content)
+                && match (true) {
+                    $content instanceof Poem => $request->user()->can('collections.update'),
+                    $content instanceof Chapter => $request->user()->can('books.update'),
+                    default => true,
+                },
+            'publish' => $request->user()->can('publish', $content),
+            'archive' => $request->user()->can('delete', $content),
+        ]);
         $book = $content instanceof Book ? $content : ($content instanceof Chapter ? $content->book : null);
         if (! $book) {
             return $content;
         }
         $manuscript = $book->manuscript;
+        if ($manuscript) {
+            $capabilities = $content->getAttribute('capabilities');
+            if ($content instanceof Chapter) {
+                $capabilities = ['update' => false, 'publish' => false, 'archive' => false];
+            }
+            if ($content instanceof Book && ! $content->is_published) {
+                $capabilities['publish'] = false;
+            }
+            $content->setAttribute('capabilities', $capabilities);
+        }
         $owned = $manuscript && $manuscript->author_id === $request->user()->id && $request->user()->can('manuscripts.view');
         $content->setAttribute('is_studio_managed', $manuscript !== null);
         $content->setAttribute('studio_manuscript_id', $owned ? $manuscript->id : null);
@@ -114,70 +134,9 @@ class ContentController extends Controller
     private function save(SaveContentRequest $request, string $resource, Model $content)
     {
         $creating = ! $content->exists;
-        $fields = $request->validated();
-        $publishing = $fields['is_published'] ?? null;
-        unset($fields['is_published']);
-        if ($publishing !== null && (bool) $publishing !== (bool) $content->is_published) {
-            Gate::authorize('publish', $content->exists ? $content : tap($content, fn ($record) => $record->author_id = $request->user()->id));
-        }
-        try {
-            DB::transaction(function () use ($request, $resource, $content, $fields, $creating, $publishing): void {
-                if ($resource === 'chapters') {
-                    $parents = Book::withTrashed()->whereIn('id', array_filter([$content->book_id, $fields['book_id'] ?? $content->book_id]))->orderBy('id')->lockForUpdate()->get();
-                    if ($parents->contains(fn ($book) => $book->isStudioManaged())) {
-                        throw ValidationException::withMessages(['content_md' => 'This novel is managed in the writing studio. Edit its manuscript and publish a finished draft.']);
-                    }
-                }
-                if ($resource === 'books' && $content->exists) {
-                    Book::whereKey($content->id)->lockForUpdate()->firstOrFail();
-                    $content->refresh();
-                }
-                if ($resource === 'books' && $content->exists && $content->isStudioManaged()) {
-                    $changesTitle = array_key_exists('title', $fields) && $fields['title'] !== $content->title;
-                    $changesSynopsis = array_key_exists('synopsis', $fields) && ($fields['synopsis'] ?? '') !== ($content->synopsis ?? '');
-                    $publishesBook = $publishing !== null && (bool) $publishing && ! $content->is_published;
-                    if ($changesTitle || $changesSynopsis || $publishesBook) {
-                        throw ValidationException::withMessages(['title' => 'This novel is managed in the writing studio. Publish a finished draft to change its public writing. Theme changes are still available here.']);
-                    }
-                }
-                $content->fill($fields);
-                if ($creating) {
-                    $content->author_id = $request->user()->id;
-                }
-                if (in_array($resource, ['poems', 'chapters'])) {
-                    $parentField = $resource === 'poems' ? 'collection_id' : 'book_id';
-                    $parentClass = $resource === 'poems' ? PoetryCollection::class : Book::class;
-                    $parentId = $fields[$parentField] ?? $content->$parentField;
-                    $parent = $parentClass::query()->lockForUpdate()->find($parentId);
-                    if (! $parent || $parent->author_id !== $content->author_id) {
-                        throw ValidationException::withMessages([$parentField => 'Choose an active parent belonging to the same author.']);
-                    }
-                    Gate::authorize('update', $parent);
-                    $content->$parentField = $parentId;
-                    $content->content_md ??= '';
-                }
-                if ($resource === 'chapters' && Chapter::withTrashed()->where('book_id', $content->book_id)->where('chapter_number', $content->chapter_number)->when(! $creating, fn ($query) => $query->whereKeyNot($content->id))->exists()) {
-                    throw ValidationException::withMessages(['chapter_number' => 'This chapter number is already used, including archived chapters.']);
-                }
-                if ($creating && $resource !== 'chapters') {
-                    $base = substr(Str::slug($content->title), 0, 240) ?: 'untitled';
-                    $slug = $base;
-                    $suffix = 1;
-                    while ($content->newQuery()->withTrashed()->where('slug', $slug)->exists()) {
-                        $slug = $base.'-'.$suffix++;
-                    }
-                    $content->slug = $slug;
-                }
-                if ($publishing !== null) {
-                    $content->is_published = (bool) $publishing;
-                }
-                $content->save();
-            });
-        } catch (UniqueConstraintViolationException) {
-            throw ValidationException::withMessages(['title' => 'A conflicting record was saved. Please retry or choose another chapter number.']);
-        }
+        $content = app(PublishingContent::class)->save($content, $request->user(), $request->validated());
 
-        return response()->json($content->refresh(), $creating ? 201 : 200);
+        return response()->json($this->studioLinks($content->refresh(), $request), $creating ? 201 : 200);
     }
 
     private function requireUnmanagedChapter(Model $content): void

@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom"
+import { Link, NavLink, useNavigate } from "react-router-dom"
 import { useEffect, useRef, useState } from "react"
 import Button from "@/components/ui/Button"
 import { can, signOut } from "@/services/authService"
@@ -15,6 +15,7 @@ const navigationIcons = {
     book: "M6 3h13v18H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z M4 17h15 M8 7h7",
     chapter: "M5 3h14v18H5z M9 7h6 M9 11h6 M9 15h6 M9 19h3",
     trash: "M3 6h18 M9 6V3h6v3 M5 6l1 15h12l1-15 M10 10v7 M14 10v7",
+    account: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21v-2a8 8 0 0 1 16 0v2",
     security: "M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6z M9 12l2 2 4-4",
 }
 
@@ -73,13 +74,13 @@ export default function Sidebar({ isOpen, onClose }) {
     ].map(group => ({ ...group, items: group.items.filter(item => can(user, item.permission)) })).filter(group => group.items.length)
     const accountItems = [
         { label: "Trash", to: DASHBOARD_ROUTES.TRASH, icon: "trash", permission: "trash.view" },
-        { label: "Account security", to: DASHBOARD_ROUTES.SECURITY, icon: "security", permission: "account.security.manage" },
+        { label: "Account", to: "/account", icon: "account", permission: "account.view", fullPage: true },
     ].filter(item => can(user, item.permission))
     const navigationClass = "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-700"
     const activeClass = ({ isActive }) => `${navigationClass} ${isActive ? "bg-neutral-200/60 font-semibold text-neutral-950" : ""}`
 
     const sidebarContent = (
-        <aside className="flex h-full w-64 flex-col justify-between overflow-y-auto border-r border-neutral-200 bg-white/95">
+        <aside data-publishing-sidebar className="flex h-full w-64 flex-col justify-between overflow-y-auto border-r border-neutral-200 bg-white/95">
 
             {/* Top */}
             <div className="p-5 space-y-7">
@@ -88,7 +89,14 @@ export default function Sidebar({ isOpen, onClose }) {
                 <div className="flex items-start justify-between">
                     <div>
                         <h1 className="text-xl font-semibold tracking-tight">
-                            Dreamer's Palette
+                            <Link
+                                to={PUBLIC_ROUTES.HOME}
+                                onClick={onClose}
+                                aria-label="Dreamer's Palette public site"
+                                className="rounded hover:text-neutral-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-700"
+                            >
+                                Dreamer's Palette
+                            </Link>
                         </h1>
 
                     </div>
@@ -117,10 +125,10 @@ export default function Sidebar({ isOpen, onClose }) {
 
             {/* Bottom Profile Area */}
             <div className="border-t border-neutral-200 p-5 space-y-4">
-                {accountItems.length > 0 && <nav aria-label="Account and archives" className="space-y-1">{accountItems.map(item => <NavLink key={item.to} to={item.to} onClick={onClose} className={activeClass}><SidebarIcon name={item.icon} />{item.label}</NavLink>)}</nav>}
+                {accountItems.length > 0 && <nav aria-label="Account and archives" className="space-y-1">{accountItems.map(item => item.fullPage ? <a key={item.to} href={item.to} onClick={onClose} className={navigationClass}><SidebarIcon name={item.icon} />{item.label}</a> : <NavLink key={item.to} to={item.to} onClick={onClose} className={activeClass}><SidebarIcon name={item.icon} />{item.label}</NavLink>)}</nav>}
 
                 <div className="flex items-center gap-3">
-                    <div aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-sm font-medium">{displayName.charAt(0).toUpperCase()}</div>
+                    <a href="/account" onClick={onClose} aria-label="Edit your profile" className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-200 text-sm font-medium">{user?.profile?.avatar_url ? <img src={user.profile.avatar_url} alt="" className="h-full w-full object-cover" /> : displayName.charAt(0).toUpperCase()}</a>
                     <div className="min-w-0"><div className="truncate text-sm font-medium">{displayName}</div>{roleNames && <div className="text-xs text-neutral-600">{roleNames}</div>}</div>
                 </div>
                 <Button variant="subtle" size="sm" className="w-full justify-start" onClick={handleLogout}>Sign out</Button>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useReaderFeed } from "@/hooks/useReaderFeed";
 import { Link } from "react-router-dom";
 import { PUBLIC_ROUTES } from "@/app/routes";
 import { SITES } from "@/app/sites";
@@ -248,61 +248,14 @@ function FeaturedPoemSkeleton() {
     );
 }
 
+const fetchHomeCollections = () => getPublishedCollectionsPaginated(1, 4);
+const fetchHomeBooks = () => getPublishedBooksPaginated(1, 4);
+const fetchHomePoems = () => getRecentlyAddedPoems(4);
+
 export default function HomePage() {
-    const [collections, setCollections] = useState([]);
-    const [books, setBooks] = useState([]);
-    const [recentPoems, setRecentPoems] = useState([]);
-    const [collectionsLoading, setCollectionsLoading] = useState(true);
-    const [booksLoading, setBooksLoading] = useState(true);
-    const [recentPoemsLoading, setRecentPoemsLoading] = useState(true);
-    const [collectionsError, setCollectionsError] = useState(false);
-    const [booksError, setBooksError] = useState(false);
-    const [recentPoemsError, setRecentPoemsError] = useState(false);
-
-    const loadCollections = useCallback(async () => {
-        setCollectionsLoading(true);
-        setCollectionsError(false);
-        try {
-            const result = await getPublishedCollectionsPaginated(1, 4);
-            setCollections(result.data || []);
-        } catch {
-            setCollectionsError(true);
-        } finally {
-            setCollectionsLoading(false);
-        }
-    }, []);
-
-    const loadBooks = useCallback(async () => {
-        setBooksLoading(true);
-        setBooksError(false);
-        try {
-            const result = await getPublishedBooksPaginated(1, 4);
-            setBooks(result.data || []);
-        } catch {
-            setBooksError(true);
-        } finally {
-            setBooksLoading(false);
-        }
-    }, []);
-
-    const loadRecentPoems = useCallback(async () => {
-        setRecentPoemsLoading(true);
-        setRecentPoemsError(false);
-        try {
-            const result = await getRecentlyAddedPoems(4);
-            setRecentPoems(result || []);
-        } catch {
-            setRecentPoemsError(true);
-        } finally {
-            setRecentPoemsLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        void loadCollections();
-        void loadBooks();
-        void loadRecentPoems();
-    }, [loadBooks, loadCollections, loadRecentPoems]);
+    const { entries: collections, loading: collectionsLoading, error: collectionsError, reload: loadCollections } = useReaderFeed(fetchHomeCollections);
+    const { entries: books, loading: booksLoading, error: booksError, reload: loadBooks } = useReaderFeed(fetchHomeBooks);
+    const { entries: recentPoems, loading: recentPoemsLoading, error: recentPoemsError, reload: loadRecentPoems } = useReaderFeed(fetchHomePoems);
 
     const featuredPoem = recentPoems[0];
     const morePoems = recentPoems.slice(1);
@@ -457,12 +410,7 @@ export default function HomePage() {
                     </div>
                 </div>
 
-                <div className="gallery-rule mt-10 flex flex-col gap-4 border-t pt-8 pb-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                    <nav aria-label="Dreamer’s Palette sites" className="flex flex-wrap gap-x-7 gap-y-2">
-                        <span className="gallery-muted font-serif">All of Dreamer’s Palette</span>
-                        <a href={SITES.blog} className="gallery-nav-link" target="_blank" rel="noopener noreferrer">Journal</a>
-                        <a href={SITES.concepts} className="gallery-nav-link" target="_blank" rel="noopener noreferrer">Concepts</a>
-                    </nav>
+                <div className="gallery-rule mt-10 border-t pt-8 pb-2 text-sm">
                     <p className="gallery-muted">Powered by Alate Digital Systems</p>
                 </div>
             </footer>

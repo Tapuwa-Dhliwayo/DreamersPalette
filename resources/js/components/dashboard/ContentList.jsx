@@ -45,9 +45,9 @@ export function ContentListToolbar({
                             Publish selected
                         </Button>
                     )}
-                    <Button size="sm" variant="ghost" disabled={pending} onClick={onBulkArchive}>
+                    {onBulkArchive && <Button size="sm" variant="ghost" disabled={pending} onClick={onBulkArchive}>
                         Move to Trash
-                    </Button>
+                    </Button>}
                 </div>
             )}
         </div>
@@ -58,13 +58,14 @@ export function ContentList({
     items,
     selectedIds,
     onToggleAll,
+    selectable = true,
     children
 }) {
     const allSelected = items.length > 0 && items.every((item) => selectedIds.includes(item.id))
 
     return (
         <div>
-            {items.length > 0 && (
+            {selectable && items.length > 0 && (
                 <div className="flex items-center gap-3 border-b border-neutral-200 py-3 text-sm text-neutral-600">
                     <input
                         type="checkbox"
@@ -90,20 +91,21 @@ export function ContentListRow({
     onEdit,
     onArchive,
     onPublish,
+    onAnalyse,
     pending = false,
     children
 }) {
     return (
-        <article className="flex flex-col gap-4 py-5 md:flex-row md:items-center">
-            <input
+        <article data-content-row data-selected={selected} className="flex flex-col gap-4 py-5 md:flex-row md:items-center">
+            {(item.capabilities?.publish || item.capabilities?.archive) && <input
                 type="checkbox"
                 checked={selected}
                 onChange={(event) => onToggle(item.id, event.target.checked)}
                 aria-label={`Select ${title}`}
-            />
+            />}
             <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="truncate text-lg font-medium">{title}</h3>
+                    <h3 className="break-words text-lg font-medium">{title}</h3>
                     <Badge variant={item.is_published ? "success" : "default"}>
                         {item.is_published ? "Published" : "Draft"}
                     </Badge>
@@ -113,11 +115,12 @@ export function ContentListRow({
                 {metadata && <p className="mt-1 text-xs text-neutral-600">{metadata}</p>}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" variant="subtle" disabled={pending} onClick={() => onPublish(item)}>
+                {item.capabilities?.publish && <Button size="sm" variant="subtle" disabled={pending} onClick={() => onPublish(item)}>
                     {item.is_published ? "Unpublish" : "Publish"}
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => onEdit(item)}>Edit</Button>
-                <Button size="sm" variant="ghost" onClick={() => onArchive(item)}>Archive</Button>
+                </Button>}
+                {item.capabilities?.update && onAnalyse && <Button size="sm" variant="ghost" onClick={() => onAnalyse(item)}>Analyse</Button>}
+                {item.capabilities?.update && <Button size="sm" variant="ghost" onClick={() => onEdit(item)}>Edit</Button>}
+                {item.capabilities?.archive && <Button size="sm" variant="ghost" onClick={() => onArchive(item)}>Archive</Button>}
             </div>
         </article>
     )

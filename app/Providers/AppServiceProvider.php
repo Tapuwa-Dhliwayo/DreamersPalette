@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Http\Middleware\PreventAuthenticationCaching;
+use App\Services\Operations\ProtectLivewireFeature;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
@@ -19,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        Livewire::componentHook(ProtectLivewireFeature::class);
     }
 
     /**

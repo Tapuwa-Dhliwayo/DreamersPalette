@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\AssistantTurn;
+use App\Services\Poetry\PoemAnalysis;
 use App\Services\Worldbuilding\AssistantConversation;
 use Illuminate\Console\Command;
 
@@ -14,7 +15,11 @@ class RunAssistantTurn extends Command
 
     public function handle(AssistantConversation $conversation): int
     {
-        $conversation->run(AssistantTurn::findOrFail((int) $this->argument('turn')));
+        $turn = AssistantTurn::findOrFail((int) $this->argument('turn'));
+        match (true) {
+            $turn->poem_conversation_id !== null => app(PoemAnalysis::class)->run($turn),
+            default => $conversation->run($turn),
+        };
 
         return self::SUCCESS;
     }

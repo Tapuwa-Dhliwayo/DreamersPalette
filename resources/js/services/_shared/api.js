@@ -1,3 +1,5 @@
+import { showIncident } from "../incidentNotice";
+
 let csrfRequest = null;
 
 export class ApiError extends Error {
@@ -71,15 +73,16 @@ export async function apiRequest(
     if (response.status === 204) return null;
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
+        if (payload.incident) showIncident(payload.incident);
         if (response.status === 401)
             window.dispatchEvent(new Event("auth:expired"));
         const validationMessage = Object.values(payload.errors ?? {}).flat()[0];
         throw new ApiError(
-            response.status >= 500
+            payload.incident?.message || (response.status >= 500
                 ? "The server could not complete this request. Please retry."
                 : validationMessage ||
                       payload.message ||
-                      "The request could not be completed.",
+                      "The request could not be completed."),
             response.status,
             payload.errors,
         );

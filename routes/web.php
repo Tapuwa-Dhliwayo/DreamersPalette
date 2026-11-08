@@ -5,7 +5,10 @@ use App\Http\Controllers\Studio\DraftMapImageController;
 use App\Http\Controllers\Studio\ExportDraftController;
 use App\Http\Controllers\Studio\MapImageController;
 use App\Http\Middleware\PreventAuthenticationCaching;
+use App\Livewire\Studio\Account\Profile;
+use App\Livewire\Studio\Account\Security;
 use App\Livewire\Studio\AssistantConnections;
+use App\Livewire\Studio\Incidents;
 use App\Livewire\Studio\Manuscripts\Compile;
 use App\Livewire\Studio\Manuscripts\Details;
 use App\Livewire\Studio\Manuscripts\Index;
@@ -20,14 +23,19 @@ use App\Livewire\Studio\Worlds\Reasoning;
 use App\Livewire\Studio\Worlds\Sandbox;
 use App\Livewire\Studio\Worlds\Thinking;
 use Illuminate\Support\Facades\Route;
+use Spatie\Permission\Middleware\PermissionMiddleware;
 
 Route::middleware(PreventAuthenticationCaching::class)->group(__DIR__.'/auth.php');
+
+Route::get('/account', Profile::class)->middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.session', 'verified', 'can:account.view'])->name('account.profile');
+Route::get('/account/security', Security::class)->middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.session', 'verified', 'can:account.security.manage'])->name('account.security');
 
 Route::prefix('studio')->name('studio.')->middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.session', 'verified', 'can:dashboard.access'])->group(function (): void {
     Route::get('/', Index::class)->middleware('can:manuscripts.view')->name('index');
     Route::get('/reviews', App\Livewire\Studio\Reviews\Index::class)->middleware('can:reviews.view')->name('reviews');
     Route::get('/reviews/{grant}', App\Livewire\Studio\Reviews\Workspace::class)->whereNumber('grant')->middleware('can:reviews.view')->name('review');
-    Route::get('/assistant-connections', AssistantConnections::class)->middleware('can:worlds.update')->name('assistant-connections');
+    Route::get('/incidents', Incidents::class)->middleware('can:incidents.manage')->name('incidents');
+    Route::get('/assistant-connections', AssistantConnections::class)->middleware(PermissionMiddleware::class.':worlds.update|poems.update')->name('assistant-connections');
     Route::get('/worlds/{world}/sandbox', Sandbox::class)->whereNumber('world')->middleware('can:worlds.update')->name('world.sandbox');
     Route::get('/worlds', App\Livewire\Studio\Worlds\Index::class)->middleware('can:worlds.view')->name('worlds');
     Route::get('/worlds/{world}/calendars', Calendars::class)->whereNumber('world')->middleware('can:worlds.view')->name('world.calendars');
@@ -56,9 +64,11 @@ Route::middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.sessio
         Route::view('/dashboard/'.$resource.'/new', 'app')->middleware('can:'.$resource.'.create');
         Route::view('/dashboard/'.$resource.'/{id}/edit', 'app')->whereNumber('id')->middleware('can:'.$resource.'.update');
     }
+    Route::view('/dashboard/poems/{id}/analysis', 'app')->whereNumber('id')->middleware('can:poems.update');
     Route::view('/dashboard/trash', 'app')->middleware('can:trash.view');
 });
-Route::view('/dashboard/security', 'app')->middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.session', 'verified', 'can:account.security.manage']);
+// Account settings live in the studio shell; keep the earlier publishing URL working.
+Route::redirect('/dashboard/security', '/account/security');
 Route::view('/preview/collections/{slug}', 'app')->middleware(['auth:web', 'auth.session', 'verified', 'can:collections.preview']);
 
 // Reserved server paths must never turn into a successful SPA response by accident.

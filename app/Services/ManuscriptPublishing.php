@@ -67,13 +67,8 @@ class ManuscriptPublishing
             $book = $manuscript->book_id ? Book::whereKey($manuscript->book_id)->lockForUpdate()->firstOrFail() : new Book(['title' => $draft->manuscript_title]);
             if (! $book->exists) {
                 Gate::authorize('create', Book::class);
-                $slug = substr(Str::slug($draft->manuscript_title), 0, 240) ?: 'novel';
-                $candidate = $slug;
-                $suffix = 1;
-                while (Book::withTrashed()->where('slug', $candidate)->exists()) {
-                    $candidate = $slug.'-'.$suffix++;
-                }
-                $book->forceFill(['author_id' => $author->id, 'slug' => $candidate]);
+                $book->author_id = $author->id;
+                $book->assignSlug('novel');
             }
             abort_unless($book->author_id === $author->id && $manuscript->author_id === $author->id, 403);
             Gate::authorize('publish', $book);

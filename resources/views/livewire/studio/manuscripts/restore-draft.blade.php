@@ -1,7 +1,9 @@
 <div>
-    <header class="studio-header"><a class="studio-brand" href="{{ route('studio.index') }}">Dreamer’s Palette</a><a href="{{ route('studio.manuscript', $manuscript) }}">Back to writing</a></header>
+    <x-studio.header active="write">
+        <x-slot:context><a href="{{ route('studio.manuscript', $manuscript) }}">← {{ $manuscript->title }}</a></x-slot:context>
+    </x-studio.header>
     <main id="studio-main" class="manuscript-library">
-        <h1>Restore {{ $draft->name }}</h1>
+        <h1 class="studio-page-title">Restore {{ $draft->name }}</h1>
         <form wire:submit="restore" class="studio-form manuscript-details-form">
             <p>Your current working draft will first be saved as a locked recovery copy. Draft {{ $form->draft_number + 1 }} will then start from {{ $draft->name }}.</p>
             <p>This restores the manuscript title, chapter order, writing and summaries. World records stay as they are.</p>

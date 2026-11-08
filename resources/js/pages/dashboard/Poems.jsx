@@ -1,6 +1,9 @@
+import { useAuth } from "@/hooks/useAuth"
+import { can } from "@/services/authService"
+import { formatDate } from "@/utils/formatDate"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Card } from "@/components/ui/Card"
+import PublishingEmptyState from "@/components/dashboard/PublishingEmptyState"
 import Button from "@/components/ui/Button"
 import Select from "@/components/ui/Select"
 import Pagination from "@/components/ui/Pagination"
@@ -32,6 +35,10 @@ const PAGE_SIZE = 10
 
 export default function Poems() {
     const navigate = useNavigate()
+    const { user } = useAuth()
+    const canCreate = can(user, "poems.create") && can(user, "collections.update")
+    const canPublish = can(user, "poems.publish")
+    const canArchive = can(user, "poems.archive")
     const [poems, setPoems] = useState([])
     const [collections, setCollections] = useState([])
     const [selectedCollection, setSelectedCollection] = useState("all")
@@ -114,7 +121,7 @@ export default function Poems() {
                         <h2 className="text-2xl font-semibold tracking-tight">Poems</h2>
                         <p className="mt-1 text-sm text-neutral-600">Write, organize, and publish individual pieces.</p>
                     </div>
-                    <Button onClick={() => navigate(DASHBOARD_ROUTES.POEM_NEW)}>New Poem</Button>
+                    {canCreate && <Button onClick={() => navigate(DASHBOARD_ROUTES.POEM_NEW)}>New Poem</Button>}
                 </header>
 
                 <ContentListToolbar
@@ -124,8 +131,8 @@ export default function Poems() {
                     onSortChange={list.setSort}
                     selectedCount={list.selectedIds.length}
                     pending={pending}
-                    onBulkPublish={() => setPublishTargets(selectedItems.filter((item) => !item.is_published))}
-                    onBulkArchive={() => setArchiveTargets(selectedItems)}
+                    onBulkPublish={canPublish ? () => setPublishTargets(selectedItems.filter((item) => item.capabilities?.publish && !item.is_published)) : undefined}
+                    onBulkArchive={canArchive ? () => setArchiveTargets(selectedItems.filter((item) => item.capabilities?.archive)) : undefined}
                 >
                     <label className="w-full text-sm font-medium text-neutral-700 md:w-56">
                         Collection
@@ -146,15 +153,15 @@ export default function Poems() {
                 {loading && <DashboardSkeleton />}
 
                 {!loading && list.filteredItems.length === 0 && (
-                    <Card className="p-8 text-center">
+                    <PublishingEmptyState>
                         <h3 className="text-lg font-medium">No poems found</h3>
                         <p className="mt-2 text-sm text-neutral-600">Adjust the filters or begin a new poem.</p>
-                        <Button className="mt-5" onClick={() => navigate(DASHBOARD_ROUTES.POEM_NEW)}>Write a Poem</Button>
-                    </Card>
+                        {canCreate && <Button className="mt-5" onClick={() => navigate(DASHBOARD_ROUTES.POEM_NEW)}>Write a Poem</Button>}
+                    </PublishingEmptyState>
                 )}
 
                 {!loading && list.filteredItems.length > 0 && (
-                    <ContentList items={list.visibleItems} selectedIds={list.selectedIds} onToggleAll={list.toggleAll}>
+                    <ContentList selectable={canPublish || canArchive} items={list.visibleItems} selectedIds={list.selectedIds} onToggleAll={list.toggleAll}>
                         {list.visibleItems.map((poem) => (
                             <ContentListRow
                                 key={poem.id}
@@ -163,7 +170,8 @@ export default function Poems() {
                                 onToggle={list.toggleItem}
                                 title={poem.title}
                                 description={poem.excerpt}
-                                metadata={`Updated ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(poem.updated_at || poem.created_at))}`}
+                                metadata={`Updated ${formatDate(poem.updated_at || poem.created_at)}`}
+                                onAnalyse={() => navigate(DASHBOARD_ROUTES.POEM_ANALYSIS(poem.id))}
                                 onEdit={() => navigate(DASHBOARD_ROUTES.POEM_EDIT(poem.id))}
                                 onArchive={() => setArchiveTargets([poem])}
                                 onPublish={() => setPublishTargets([poem])}

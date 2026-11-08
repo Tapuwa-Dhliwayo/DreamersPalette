@@ -14,11 +14,11 @@ class WorldPerson extends Model
 
     protected $table = 'studio_world_people';
 
-    protected $fillable = ['creation_uuid', 'name', 'aliases', 'roles', 'domain', 'notes_md'];
+    protected $fillable = ['creation_uuid', 'name', 'aliases', 'roles', 'domain', 'notes_md', 'profile'];
 
     protected function casts(): array
     {
-        return ['world_id' => 'integer', 'revision' => 'integer', 'aliases' => 'array', 'roles' => 'array'];
+        return ['world_id' => 'integer', 'revision' => 'integer', 'aliases' => 'array', 'roles' => 'array', 'profile' => 'array'];
     }
 
     public function events(): BelongsToMany

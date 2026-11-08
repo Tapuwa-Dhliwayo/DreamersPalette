@@ -12,6 +12,6 @@ class VerifyEmailResponse implements VerifyEmailResponseContract
             return response()->json(['verified' => true]);
         }
 
-        return redirect($request->user()->can('dashboard.access') ? '/dashboard' : '/dashboard/security');
+        return redirect($request->user()->can('dashboard.access') ? '/dashboard' : '/account/security');
     }
 }

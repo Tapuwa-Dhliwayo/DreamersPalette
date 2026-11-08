@@ -8,13 +8,13 @@ Alpine.data('sandboxBoard', (initial) => ({
         const node = this.nodes[id];
         return `left:${node.x}px;top:${node.y}px`;
     },
-    path(source, target) {
+    path(source, target, compact = false) {
         const from = this.nodes[source];
         const to = this.nodes[target];
         if (!from || !to) return '';
-        const startX = from.x + 115, startY = from.y + 80;
-        const endX = to.x + 115, endY = to.y + 80;
-        return `M ${startX} ${startY} L ${endX} ${endY}`;
+        // Lines join card centres; compact cards are 112px tall instead of 160px.
+        const middle = compact ? 56 : 80;
+        return `M ${from.x + 115} ${from.y + middle} L ${to.x + 115} ${to.y + middle}`;
     },
     start(event, id) {
         if (event.button !== 0 || this.moving) return;
@@ -66,7 +66,32 @@ Alpine.data('sandboxBoard', (initial) => ({
 }));
 
 
+const COMPACT_KEY = 'sandbox.compact-cards';
+
+function storedCompactCards() {
+    try {
+        return window.localStorage.getItem(COMPACT_KEY) !== 'false';
+    } catch {
+        return true;
+    }
+}
+
 Alpine.data('sandboxWorkspace', () => ({
+    compact: storedCompactCards(),
+    toggleCompact() {
+        this.compact = !this.compact;
+        try {
+            window.localStorage.setItem(COMPACT_KEY, String(this.compact));
+        } catch {
+            // Remembering the card size is a convenience; the toggle still works without storage.
+        }
+    },
+    // Tidy fills the board's visible width, then returns to the top so the new layout starts in view.
+    async tidyBoard(wire) {
+        const width = document.querySelector('.sandbox-board-scroll')?.clientWidth ?? 900;
+        await wire.tidyBoard(this.compact, Math.max(1, Math.floor((width - 40) / 260)));
+        document.querySelector('.sandbox-board-scroll')?.scrollTo({ top: 0, left: 0 });
+    },
     openCitation(event, link, wire, exerciseId) {
         const target = new URL(link.href, window.location.href);
         if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || target.origin !== window.location.origin || target.pathname !== window.location.pathname || Number(target.searchParams.get('exercise')) !== exerciseId || !target.searchParams.has('reading')) return false;
@@ -74,11 +99,7 @@ Alpine.data('sandboxWorkspace', () => ({
         event.stopImmediatePropagation();
         if (this.dirty && !window.confirm('You have unsaved details. Discard them and open this source?')) return true;
         this.dirty = false;
-        wire.openSource(Number(target.searchParams.get('reading')), Number(target.searchParams.get('from') || 1), Number(target.searchParams.get('to') || 12)).then(() => {
-            this.detailsOpen = true;
-            this.conversationFocus = true;
-            this.mobilePane = 'details';
-        });
+        wire.openSource(Number(target.searchParams.get('reading')), Number(target.searchParams.get('from') || 1), Number(target.searchParams.get('to') || 12));
         return true;
     },
 }));

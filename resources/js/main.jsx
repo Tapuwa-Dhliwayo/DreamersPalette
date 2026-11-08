@@ -1,4 +1,5 @@
 import React from "react";
+import "./services/incidentNotice";
 import ReactDOM from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
 import { Suspense } from "react";

@@ -1,6 +1,8 @@
 <div>
-    <header class="studio-header"><a class="studio-brand" href="{{ route('studio.index') }}">Dreamer’s Palette</a><a href="{{ route('studio.manuscript', $manuscript) }}">Back to writing</a></header>
-    <main id="studio-main" class="manuscript-library"><h1>Manuscript details</h1>
+    <x-studio.header active="write">
+        <x-slot:context><a href="{{ route('studio.manuscript', $manuscript) }}">← {{ $manuscript->title }}</a></x-slot:context>
+    </x-studio.header>
+    <main id="studio-main" class="manuscript-library"><h1 class="studio-page-title">Manuscript details</h1>
         <form wire:submit="save" class="studio-form manuscript-details-form">
             <p role="status">{{ $notice }}</p>
             @error('conflict')<p class="studio-alert" role="alert">{{ $message }}</p>

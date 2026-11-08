@@ -56,11 +56,19 @@ Do not create a service for simple model-owned behaviour. Do not create generic 
 
 A large function is always a refactoring review signal. Split by meaningful responsibility, not arbitrary line count.
 
-Avoid clunky `if / elseif / else` chains and deep nesting.
+Avoid deep nesting.
 
-Prefer guard clauses and singular `if` statements.
+### `if` is for exceptions; `switch`/`match` is for behaviour
 
-Use `match` or explicit cases when mutually exclusive state handling is genuinely required.
+Use `if` for genuine exceptions: guard clauses and real special cases that leave the normal path. An `if` tells the reader that something unusual is being handled.
+
+When code chooses between deliberate behaviours, such as modes, kinds or states, use `switch`/`match` and name every case. The set of behaviours is then explicit: it can be read in one place, checked for a missing case, and extended without disturbing the others. Give it a `default` that rejects unknown values, so a new case cannot slip through silently. PHP's `match` already throws `UnhandledMatchError` when nothing matches.
+
+Do not carry behaviour in `if / elseif / else` chains. A chain treats behaviours as exceptions, and its final `else` quietly absorbs whatever is left. Do not hide a case inside a trailing `else` or a ternary either.
+
+A plain two-valued boolean, such as a label or a class name, may use a ternary.
+
+In per-cell, per-pixel or per-row loops, choose the behaviour once outside the loop, for example with a `switch` that picks the loop. Do not call through a handler map inside the loop, because the engine cannot inline it. A 2026/11/04 benchmark in Node over a 655k-cell grid measured a handler map at about 6× slower; `switch` and `if` chains cost the same.
 
 ## Dates are always yyyy/mm/dd
 
@@ -320,18 +328,18 @@ The existence of a `tests` directory, a `phpunit.xml`, a test script in
 having just changed something risky.
 
 Verify by running the code — a scratch script, the real application, the actual
-request path — and by writing a manual testing charter Tapuwa executes. Report what
-you ran and what it showed.
+request path. Report what you ran and what it showed. Create a manual testing
+charter only when Tapuwa explicitly requests one.
 
 Do not add a test to prove your own change works. If a change cannot be verified
 without a test, say that plainly and let Tapuwa decide.
 
 ### Manual testing charters
 
-Everything that would otherwise be a test belongs in a charter: CRUD, validation
-wiring, rendering, navigation, listing and filtering, wording, layout, happy-path
-clicking, and the risky rules above. When Tapuwa asks how to verify a feature,
-produce a charter. Follow `docs/agent/MANUAL_TESTING.md`.
+Do not create a testing charter unless Tapuwa explicitly requests one. A request
+to implement, fix, review or verify work does not authorize a charter. Continue
+verifying the work directly and report the evidence in chat. When a charter is
+explicitly requested, follow `docs/agent/MANUAL_TESTING.md`.
 
 ### If Tapuwa explicitly asks for a test
 
@@ -423,41 +431,44 @@ Guidance for coding agents working in this repository.
 
 ## Project Overview
 
-DreamersPalette is a React 19 + Vite single-page app for publishing and managing literary content. It uses React Router, Supabase, Tailwind CSS v4, and Vercel Analytics.
+DreamersPalette runs Laravel 13 with MySQL. Publishing and public readers use
+React 19 + React Router; the private writing/worldbuilding studio and Account use
+Livewire 4 + Flux Pro. Both surfaces use Tailwind CSS v4 and shared author tokens.
+Supabase is a historical import source, not a runtime dependency.
 
-The app has two main surfaces:
-
-- Public reading pages in `src/pages/public`
-- Authenticated dashboard/editor pages in `src/pages/dashboard`
-
-Shared UI components live in `src/components/ui`, layout components in `src/layouts`, hooks in `src/hooks`, and Supabase-backed data access in `src/services`.
+- Public reading pages: `resources/js/pages/public`
+- Publishing dashboard/editors: `resources/js/pages/dashboard`
+- Shared React components, hooks, layouts and services: `resources/js/`
+- Studio logic and Form Objects: `app/Livewire`
+- Studio Blade: `resources/views/livewire/studio`
+- Publishing persistence: Laravel models, policies, Form Requests and same-origin APIs
 
 ## Commands
 
-Use npm scripts from the repository root:
+- `php artisan serve` starts Laravel; open its URL rather than Vite directly.
+- `npm run dev` provides development assets.
+- `npm run build` writes production assets to `public/build`.
+- `npm run lint` runs ESLint; `vendor/bin/pint --test` checks PHP style.
+- `composer validate` checks Composer configuration.
 
-- `npm run dev` starts the Vite development server.
-- `npm run build` creates the production build in `dist`.
-- `npm run lint` runs ESLint.
-- `npm run preview` previews a built app locally.
-
-When changing UI, run at least `npm run lint`. Run `npm run build` before handing off larger changes or changes involving routing, imports, or environment assumptions.
+Run lint for UI work and a production build for routing/import/production changes.
+Verify behaviour directly; do not add automated tests or testing charters unless
+Tapuwa explicitly requests them.
 
 ## Environment
 
-Supabase is required at runtime. The app expects these Vite environment variables:
-
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-
-Do not commit secrets. If local commands fail immediately from missing Supabase env vars, report that directly instead of adding fallback credentials.
+Laravel owns database, mail, session, storage and provider configuration in `.env`.
+The local application uses persistent MySQL; preserve writing and existing test
+state. Never run destructive database resets or copy local test data to Anubis.
+Do not commit credentials, environment files or private backups. Follow
+`docs/agent/PROJECT_CONTEXT.md` for current deployment and local-provider boundaries.
 
 ## Code Style
 
 - This is an ES module JavaScript/JSX codebase. Follow the existing style: double quotes, semicolons, functional React components, and Tailwind utility classes.
-- Prefer existing components from `src/components/ui` before adding new UI primitives.
-- Keep data fetching and persistence logic in `src/services`; do not scatter Supabase calls through page components unless that is already the established pattern nearby.
-- Keep routing changes centralized in `src/app/router.jsx` and route constants in `src/app/routes.js` when possible.
+- Prefer existing components from `resources/js/components/ui` before adding new UI primitives.
+- Keep data fetching and persistence logic in `resources/js/services`; do not scatter persistence calls through page components unless that is already the established pattern nearby.
+- Keep routing changes centralized in `resources/js/app/router.jsx` and route constants in `resources/js/app/routes.js` when possible.
 - Use existing hooks for auth, active collection, theming, and reader navigation instead of duplicating state logic.
 - Avoid broad refactors unless they are necessary for the requested change.
 
@@ -465,7 +476,7 @@ Do not commit secrets. If local commands fail immediately from missing Supabase 
 
 - Preserve the literary/editorial tone of the public reader pages.
 - Preserve dashboard density and utility for authenticated workflows.
-- Use Tailwind v4 classes and the global styles in `src/index.css`.
+- Use Tailwind v4 classes and the global styles in `resources/js/index.css`.
 - Be careful with reader contrast, themed backgrounds, safe-area spacing, and mobile viewport behavior. Existing classes such as `h-frame`, `poetry-content`, `reader-muted`, and reader text-shadow utilities are intentional.
 - Avoid nested cards and decorative gradients unless they match an existing local pattern.
 
@@ -473,7 +484,7 @@ Do not commit secrets. If local commands fail immediately from missing Supabase 
 
 - Database and storage reference material lives in `docs`, including initial schema and update history SQL files.
 - Treat SQL files and Supabase bucket/security docs as source-of-truth context when changing data assumptions.
-- Preserve slug behavior through `src/utils/slugify.js` and color utilities through `src/utils/hexToRgb.js`.
+- Preserve slug behavior through `resources/js/utils/slugify.js` and color utilities through `resources/js/utils/hexToRgb.js`.
 
 ## Reference Projects
 
@@ -482,6 +493,10 @@ When asked to copy an implementation pattern from another project, inspect it re
 ## Verification
 
 Before final handoff, summarize what was changed and what was verified.
+
+Run `composer verify` before handing off code changes, then exercise the changed user
+actions and inspect fresh logs as described in `docs/agent/TESTING_WORKFLOW.md`.
+A successful static/build gate alone is not runtime verification.
 
 Preferred checks:
 
@@ -494,7 +509,7 @@ If a check cannot be run because of missing env vars, sandbox limits, or depende
 
 - Do not revert user changes or unrelated work.
 - Keep commits and diffs focused on the requested task.
-- Do not modify generated output such as `dist` unless the user explicitly asks for it.
+- Do not modify generated output such as `public/build` unless the user explicitly asks for it.
 
 ## UI copy
 

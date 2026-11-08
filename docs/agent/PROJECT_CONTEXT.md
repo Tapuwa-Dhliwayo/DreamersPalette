@@ -233,3 +233,189 @@ Existing 33 reading sections and original exercise messages were preserved. Loca
 source/worker migrations were amended with matching non-destructive local schema
 changes; no reset or Anubis update. See WORLD_SANDBOX.md and
 manual-testing/world-sandbox-continuity.md for review scope and limitations.
+
+## Encyclopedia conversations and private usage — 2026/11/05
+
+All six approved local stages implemented: multi-author connection boundaries,
+versioned encyclopedia proposal contract, conversational board refinements and
+reviewed updates, per-provider-request usage ledger, honest allowance visibility
+(OpenRouter key cap where available; provider links otherwise), and two-author
+runtime/request plus desktop/mobile browser verification. Hosted authors bring
+own API keys; local subscription access stays limited to the configured local
+owner. Request budgets and per-author concurrency protect reading loops. Optional
+saved model rates provide explicitly estimated token costs, never subscription bills.
+
+New additive assistant_usage migration applied locally without reset; current
+writing/connections retained. Undo reversal persistence and activity polling locks
+were fixed during review. Neutral provider/runtime/browser fixtures removed.
+No push, deployment or Anubis mutation. Paid API/live key-allowance verification
+needs an author-supplied API connection. See ASSISTANT_ENCYCLOPEDIA_AND_USAGE.md and
+manual-testing/assistant-encyclopedia-usage.md for exact scope, evidence and review.
+
+2026/11/05 model-picker follow-up: Connections and chat now fetch named searchable
+models using the connection's own local client/account or API key. Thinking effort
+follows discovered local model capabilities. Scoped caches, loading/failure states,
+server validation and preserved saved choices replace manual model IDs. Local Codex
+and Claude discovery plus desktop/mobile browser and ownership checks passed without
+sending a generation request or modifying original content/connections. API-key
+branches await an actual configured API key for live verification. See
+manual-testing/assistant-model-selection.md. The author also identified that hidden
+response modes prevented a natural request to fill trio sheets from producing linked
+character updates; that conversation-intent/recovery finding remains unresolved.
+
+2026/11/05 conversational correction: the hidden response-mode selector is removed.
+New ordinary turns use one structured reply protocol and derive discuss/propose/
+refine/clarify from the author's words. Linked drafts stage automatically and have
+reply-local grouped review. Legacy replies/thoughts can prepare linked updates from
+saved content/citations without novel rereading. Actual trio recovery turn 49 holds
+three pending updates to people 2/3/4; response 72, thought 47 and all original people
+remain unchanged. No real trio draft was accepted. Open questions are retained in
+Notes and acknowledged at acceptance; they no longer prevent a combined review.
+Live neutral discussion/build/refinement/acceptance checks passed with rolled-back
+fixtures, alongside ownership/citation checks. No schema reset, tests or deployment.
+See manual-testing/conversational-world-updates.md for the current review workflow.
+
+
+## Author dashboard and world-tool display — 2026/11/06
+
+Local dashboard now includes manuscript word/activity tracking, explicit additions/removals and size charts, chapter counts, optional weekly goals, recent work and review/release attention. Activity starts from a current-size baseline rather than fabricated history. Relationships have a network/inspector and explicit mutual direction; the null optional-field edit failure is fixed. Compare has a full-page matrix/editor; Timeline has an event rail; character dossiers link to connections. Two additive migrations under 2026_11_06 are applied locally. No production deployment or database reset. See `docs/DASHBOARD_WRITING_ACTIVITY.md` and `docs/WORLD_RELATIONSHIPS_AND_COMPARISONS.md`. Testing charters are created only when Tapuwa explicitly requests one.
+
+## Poetry analysis increment — 2026/11/07
+
+Local source now adds a private React poetry analysis workspace, immutable source
+snapshots, conversations, comparison selection, author notes and revision-aware
+follow-ups. It shares assistant connections, turns, usage and activity with worlds;
+world generation/proposals remain separate. See POETRY_ANALYSIS_IMPLEMENTATION.md
+and CLAUDE_POETRY_ANALYSIS_REVIEW.md for scope, three execution rounds and limits.
+The new 2026_11_07_000001 migration is NOT applied to normal MySQL: this execution
+sandbox blocks database sockets. Full migrations and 41 cumulative runtime checks
+passed on disposable SQLite with simulated provider responses. Chrome launch was
+also blocked, so frontend interactions, real provider generation, detached worker
+startup and MySQL concurrency remain unverified. No production work or reset.
+Pre-existing unrelated structured-world/timeline changes were preserved.
+
+
+2026/11/07 poetry review follow-up: the first reviewer confirmed the local MySQL
+migration/indexes are in place (no poetry usage yet). All thirteen reported issues
+were addressed: latest-only retry, relative world links, retained stopped-cost
+estimates, recovering/immediate polling, explicit previous-text context, aligned
+activity filtering, deliberate New selection, note attribution/restore, original
+Claude world prompt, bounded cancellation checks, shared model-owned expiry/stop
+and dedicated activity controller, plus HTTP-safe cryptographic UUID generation.
+53 isolated runtime and five JavaScript checks passed. Browser checks covered the
+empty local workspace, mobile draft/pane continuity, desktop structure and activity
+menu without creating writing/conversations or sending a provider request. See the
+review-corrections section of POETRY_ANALYSIS_IMPLEMENTATION.md for remaining limits.
+
+2026/11/07 second poetry review: latest-attempt JSX lookup is now explicit findLast;
+world timeout copy and unknown-stop no-op semantics restored. Guarded model-owned
+failRun cleanup retains the last streamed tail and releases active turns promptly
+on end-of-stream access loss. 59 cumulative isolated runtime checks and seven
+focused JavaScript checks passed, alongside build/lint/Pint/syntax checks. No real
+provider, normal database fixtures, deployment or commit.
+
+
+## Account profile — 2026/11/07
+
+`/account` is a shared Livewire/Flux profile destination from the React dashboard
+and studio/world header. Authors can edit display name/bio and upload or remove a
+JPG/PNG/WebP avatar (2 MB limit). Account lives entirely in the studio shell:
+`/account/security` mounts the existing React 2FA/passkey settings as an island
+(`resources/js/account-security.jsx`), and `/dashboard/security` plus the GET of
+`/user/confirm-password` redirect there. The sidebar shows the saved avatar and
+studio uses display name.
+Own-account policy and account.view protect route, render and actions. Shared user
+name/email/password are unchanged. Missing publishing profiles are created on save;
+existing ones update in place. No migration is required. Failed database saves
+remove their new upload; replaced historical avatar files are retained.
+
+11 disposable runtime checks passed, covering create/update, field preparation,
+identity preservation, valid image storage, validation, avatar removal and ownership.
+Focused ESLint/Pint, PHP syntax, route registration, frontend build and diff checks
+passed. Browser confirmed profile rendering and navigation to Security; subsequent
+mobile verification was blocked by browser debugger synchronization timeout.
+The actual author's profile was not changed. No production deployment or commit.
+
+## World sandbox layout — 2026/11/07
+
+The sandbox shows one working surface at a time: Discuss | Board | Timeline | List.
+Discuss gives the conversation the main area with a rail of what it produced; the
+other modes give the arrangement the space and turn the conversation into a drawer.
+Details open as a slide-over only for a selection or a chosen action (`$panel` is
+empty otherwise); structured records keep their full-width editor. Each exercise
+remembers its last mode in the session. Assistant replies over 6,000 characters show
+as a card that opens a reader (`AssistantMessage::readsAsDocument()`). Board cards
+are compact by default (a per-browser preference), links show for the selected card
+unless "All connections" is ticked, and Tidy layout (`WorldExercise::tidyBoard()`)
+arranges rows by kind and events in story order to the board's width, with Undo.
+
+## Standards cleanup — 2026/11/07
+
+Publishing saves now run through PublishingContent with model-owned slug allocation,
+locked parent/record authorization and edit-token conflict checks. All four React
+publishing editors send the loaded token. Browser recovery is author-scoped, keeps
+its base version, offers explicit comparison/restoration and tolerates blocked or
+full storage. Historical unscoped copies are ignored because their owner is unknown.
+Publishing lists use policy-derived capabilities for row and bulk actions.
+
+Sandbox alternative creation and event sequencing live on their subject models;
+Livewire retains UI coordination and open-form revision handling. Connection discovery
+and poetry retry validation live in their forms/requests. Unexpected world assistant
+exceptions are logged with turn/exercise context. Reader feeds share their loading
+hook; date/time labels and supported lookup/compile formats are explicit. AGENTS.md
+project paths and stack descriptions match the current Laravel application.
+
+Full ESLint, Pint, frontend build, Composer validation and diff checks passed.
+32 isolated PHP runtime checks covered publishing conflicts/ownership/capabilities,
+managed-novel protections, sequencing, forks, compile formats and failure diagnostics;
+11 JavaScript checks covered recovery isolation/storage errors/date formatting.
+The existing 59-check poetry rehearsal also passed. Fixtures used disposable SQLite
+transactions and simulated providers; real MySQL races/provider workers were not run.
+Browser confirmed the publishing list and populated poem editor load without editing
+or saving author data. Recent view decluttering was preserved. No migration required.
+
+## Local experimentation authorization — 2026/11/07
+
+Tapuwa explicitly confirms this local environment is disposable test data used for
+structural and visual experiments before live deployment. Agents may adjust local
+sample content, ratings and arrangements and redo experiments as needed within the
+requested work. Do not treat this authorization as applying to Anubis/production.
+Use populated examples to deliver real visual feedback, not only lists or proposals.
+
+## Arc visual workspace — 2026/11/07
+
+The active local trio arcs have 33 provisional 0–100 connection ratings for visual
+experimentation (Samuelá 10, Tamarius 10, Tiberius 13). These are illustrative design
+fixtures, including speculative values for offstage/separated scenes, not canon.
+The arc workspace now uses a fixed-scale interactive SVG curve with numbered beat
+markers, a horizontal beat selector and one selected detail panel with event/source
+links and existing edit/archive controls. Missing ratings break the line rather
+than being interpolated; single points remain selectable. Character accents are
+stable. The graph scrolls within its own region on narrow screens.
+
+composer verify passed. Browser exercised graph selection, beat-strip navigation,
+keyboard activation and the selected-beat edit form; all three arcs were rated
+through the actual forms. A 390px viewport had page width 390px and the 640px graph
+contained within its 301px scroll region. No new errors appeared in the normal log.
+Local production assets rebuilt for immediate viewing; no deployment or migration.
+
+## Error incidents and feature pauses — 2026/11/08
+
+Local implementation adds correlated private incident references, deduplicated email
+alerts with scheduler retries, safe server/Livewire/API error responses, persistent
+feature pauses and browser notices that preserve unsaved work. HTTP mutations and
+Livewire requests are guarded until explicit operator resolution. Known expected
+client/provider outcomes do not trigger shared feature pauses. Operations use
+`php artisan dreamers:incidents list|notify|resolve`; diagnostic state is independent
+of MySQL under private persistent storage. Local log mail does not deliver alerts.
+See `docs/ERROR_INCIDENTS.md` for scope, configuration, verification and release gaps.
+No reset, migration, production change or real alert email accompanied this work.
+
+## Incident pause threshold and admin page — 2026/11/08
+
+Unexpected errors now open a watching incident and alert by email; a feature pauses
+only after 3 occurrences or 2 distinct users on one error signature within 10
+minutes (`config/incidents.php`), with a second email on pause. Studio > Incidents
+(`incidents.manage`, superadmin; migration `2026_11_08_000001`) resolves or pauses
+incidents, and `php artisan dreamers:incidents release` resolves all open ones for
+the Forge deploy script. See `docs/ERROR_INCIDENTS.md`. Migration run locally only.

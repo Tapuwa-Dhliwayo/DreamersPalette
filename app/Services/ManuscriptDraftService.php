@@ -33,7 +33,8 @@ class ManuscriptDraftService
             $draft = $manuscript->drafts()->create([
                 'restored_from_draft_id' => $details['restored_from_draft_id'] ?? null,
                 'number' => $manuscript->working_draft_number, 'name' => $details['name'],
-                'note' => $details['note'], 'manuscript_title' => $manuscript->title,
+                'note' => $details['note'],
+                'manuscript_title' => $manuscript->title,
                 'source_revision' => $manuscript->revision, 'created_by' => $author->id,
                 'request_uuid' => $details['request_uuid'], 'created_at' => now(),
                 'world_context' => $manuscript->world?->captureDraftContext($manuscript),
@@ -86,6 +87,7 @@ class ManuscriptDraftService
             }
             $manuscript->chapters()->whereNotIn('id', $retained)->update(['deleted_at' => now(), 'archived_by' => $author->id]);
             $manuscript->forceFill(['title' => $source->manuscript_title, 'based_on_draft_id' => $source->id, 'revision' => $manuscript->revision + 1])->save();
+            $manuscript->recordWritingActivity('restore', $author->id);
         });
     }
 

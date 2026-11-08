@@ -31,6 +31,7 @@ class Thinking extends Component
 
     public string $search = '';
 
+    #[Url]
     public string $subjectFilter = '';
 
     public string $notice = '';
@@ -59,11 +60,35 @@ class Thinking extends Component
         };
     }
 
+    public function updated(string $property): void
+    {
+        // A changed filter can leave the selected record outside the list.
+        if (in_array($property, ['search', 'subjectFilter', 'archived'], true)) {
+            $this->selected = null;
+        }
+    }
+
+    public function cancelEdit(): void
+    {
+        $this->editing = false;
+        $this->resetValidation();
+    }
+
+    public function reverseRelationship(): void
+    {
+        $this->authorize('update', $this->world);
+        abort_unless($this->editing && $this->editingSection === 'relationships', 409);
+        [$this->relationshipForm->source_key, $this->relationshipForm->target_key] = [$this->relationshipForm->target_key, $this->relationshipForm->source_key];
+    }
+
     public function select(int $id): void
     {
         $this->authorize('view', $this->world);
         $this->selected = $this->records()->withTrashed()->findOrFail($id)->id;
         $this->notice = '';
+        if ($this->section === 'relationships') {
+            $this->dispatch('relationship-selected');
+        }
     }
 
     public function edit(?int $id = null): void
@@ -76,8 +101,11 @@ class Thinking extends Component
         $this->editingSection = $this->section;
         if ($id) {
             $record = $this->records()->findOrFail($id);
-            $form = $this->section === 'relationships' ? $this->relationshipForm : $this->comparisonForm;
-            $form->fill(array_intersect_key($record->toArray(), $form->all()));
+            match ($this->section) {
+                'relationships' => $this->relationshipForm->setRelationship($record),
+                'comparisons' => $this->comparisonForm->setComparison($record),
+                default => abort(404),
+            };
         }
         $this->editing = true;
     }
@@ -161,6 +189,8 @@ class Thinking extends Component
         $this->selected = $saved->id;
         $this->archived = false;
         $this->editing = false;
+        $this->search = '';
+        $this->subjectFilter = '';
         $this->notice = 'Saved';
         $this->dispatch('world-saved');
     }
@@ -192,7 +222,9 @@ class Thinking extends Component
         if ($this->section === 'relationships' && $this->subjectFilter !== '') {
             $records->where(fn ($query) => $query->where('source_key', $this->subjectFilter)->orWhere('target_key', $this->subjectFilter));
         }
-        $record = $this->selected ? $this->records()->withTrashed()->findOrFail($this->selected) : null;
+        $records = $records->get();
+        $record = $records->firstWhere('id', $this->selected) ?? $records->first();
+        $this->selected = $record?->id;
         $catalogue = $this->world->referenceCatalogue()->keyBy('key');
         $choices = $catalogue->all();
         $original = $this->editingId ? $this->records($this->editingSection)->find($this->editingId) : null;
@@ -205,6 +237,12 @@ class Thinking extends Component
             }
         }
 
-        return view('livewire.studio.worlds.thinking', ['records' => $records->get(), 'record' => $record, 'catalogue' => $catalogue, 'choices' => $choices, 'dependencyImpact' => $this->section === 'relationships' && $record?->is_dependency ? $this->world->dependencyImpact($record->target_key) : null]);
+        return view('livewire.studio.worlds.thinking', [
+            'records' => $records,
+            'record' => $record,
+            'catalogue' => $catalogue,
+            'choices' => $choices,
+            'dependencyImpact' => $this->section === 'relationships' && $record?->is_dependency ? $this->world->dependencyImpact($record->target_key) : null,
+        ]);
     }
 }

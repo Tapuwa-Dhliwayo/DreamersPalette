@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class GeneratedAsset extends Model
 {
-    use HasPreciseTimestamps, HasUuids;
+    use HasPreciseTimestamps;
 
     public const UPDATED_AT = null;
 
