@@ -22,6 +22,9 @@ export function usePoemAnalysis(poemId) {
     const [catalogue, setCatalogue] = useState(null);
     const [source, setSource] = useState("latest");
     const [comparisonIds, setComparisonIds] = useState([]);
+    const [importPreview, setImportPreview] = useState(null);
+    const [importFailure, setImportFailure] = useState(null);
+    const [importBusy, setImportBusy] = useState(false);
     const scope = `${poemId}:${conversationId}`;
     const mounted = useRef(false);
     const requestRef = useRef(null);
@@ -172,7 +175,46 @@ export function usePoemAnalysis(poemId) {
         }
     }
 
+    function importFailureFrom(failure) {
+        return { message: failure.message, errors: failure.errors || {} };
+    }
+
+    async function previewImport(markdown) {
+        setImportBusy(true);
+        setImportFailure(null);
+        try { setImportPreview(await analysis.previewImport(poemId, markdown)); }
+        catch (failure) { if (mounted.current) { setImportPreview(null); setImportFailure(importFailureFrom(failure)); } }
+        finally { if (mounted.current) setImportBusy(false); }
+    }
+
+    // Closing an unsaved preview drops it server-side; a repeat of an already saved package has nothing to drop.
+    async function closeImport() {
+        const abandoned = importPreview && !importPreview.saved ? importPreview : null;
+        setImportPreview(null);
+        setImportFailure(null);
+        if (abandoned) await analysis.discardImport(poemId, abandoned.id).catch(() => {});
+    }
+
+    async function openImported(conversation) {
+        setImportPreview(null);
+        setImportFailure(null);
+        await loadWorkspace();
+        if (String(conversation) === conversationId) await refreshConversation();
+        else selectConversation(conversation);
+    }
+
+    async function saveImport() {
+        setImportBusy(true);
+        setImportFailure(null);
+        try {
+            const saved = await analysis.saveImport(poemId, importPreview.id);
+            await openImported(saved.conversation_id);
+        } catch (failure) { if (mounted.current) setImportFailure(importFailureFrom(failure)); }
+        finally { if (mounted.current) setImportBusy(false); }
+    }
+
     return {
+        importPreview, importFailure, importBusy, previewImport, saveImport, closeImport, openImported,
         workspace, conversation, conversationId, question, setQuestion, connectionId, setConnectionId,
         model, setModel, effort, setEffort, catalogue: catalogue?.connectionId === connectionId ? catalogue : null, source, setSource, comparisonIds, setComparisonIds,
         error: error || pollError, busy, selectConversation, newConversation, send, loadModels: (refresh) => perform(() => loadModels(refresh)),

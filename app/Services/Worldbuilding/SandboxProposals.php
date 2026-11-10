@@ -24,10 +24,16 @@ class SandboxProposals
         } catch (\JsonException) {
             throw ValidationException::withMessages(['proposals' => 'The response was not valid proposal JSON. The full response is retained; ask the assistant to try again.']);
         }
-        $validated = Validator::make(is_array($proposal) ? $proposal : [], [
+
+        return $this->validate(is_array($proposal) ? $proposal : [], $structured);
+    }
+
+    public function validate(array $proposal, bool $structured, int $maxIdeas = 20, int $maxLinks = 40): array
+    {
+        $validated = Validator::make($proposal, [
             'intent' => [$structured ? 'required' : 'sometimes', Rule::in(['discuss', 'propose', 'refine', 'clarify'])],
             'reply' => ['required', 'string', 'max:30000'],
-            'ideas' => ['present', 'array', 'max:20'],
+            'ideas' => ['present', 'array', 'max:'.$maxIdeas],
             'ideas.*.kind' => ['required', Rule::in(ProposalTypes::kinds())],
             'ideas.*.title' => ['required', 'string', 'max:255'],
             'ideas.*.target_key' => ['sometimes', 'nullable', 'string', 'max:80'],
@@ -47,7 +53,7 @@ class SandboxProposals
             'ideas.*.fields' => 'sometimes|array', 'ideas.*.position' => 'sometimes|numeric|between:-99999999999,99999999999',
             'ideas.*.completeness' => [$structured ? 'required' : 'sometimes', 'in:complete,partial,unsupported'],
             'ideas.*.missing' => 'sometimes|array|list|max:30', 'ideas.*.missing.*' => 'string|max:500',
-            'links' => ['sometimes', 'array', 'max:40'],
+            'links' => ['sometimes', 'array', 'max:'.$maxLinks],
             'links.*.source' => ['required'],
             'links.*.target' => ['required'],
             'links.*.kind' => ['required', Rule::in(['connection', 'before', 'participant', 'relationship', 'depends'])],
@@ -63,17 +69,8 @@ class SandboxProposals
                 'proposals' => 'The assistant did not return the promised updates. Your question is saved; retry to prepare them.',
             ]);
         }
-        foreach ($validated['ideas'] as &$idea) {
-            $idea['fields'] = ProposalTypes::validateFields($idea['kind'], $idea['fields'] ?? []);
-            if (in_array($idea['completeness'] ?? '', ['partial', 'unsupported'], true) && empty($idea['missing'])) {
-                ProposalTypes::invalid('Partial or unsupported proposals must state what is missing.');
-            }
-            if (($idea['completeness'] ?? '') === 'complete' && ! empty($idea['missing'])) {
-                ProposalTypes::invalid('A complete proposal cannot list missing work.');
-            }
-            if (empty($idea['target_key']) && ($idea['completeness'] ?? '') === 'complete' && ProposalTypes::structureProblems($idea['kind'], $idea['fields'])) {
-                ProposalTypes::invalid('A complete '.$idea['kind'].' needs its actual structure, not only Notes.');
-            }
+        foreach ($validated['ideas'] as $index => &$idea) {
+            $this->validateIdea($idea, $index);
         }
         unset($idea);
         if (($validated['deliverable'] ?? '') === 'character') {
@@ -114,27 +111,56 @@ class SandboxProposals
         return $validated;
     }
 
+    /** Errors carry the idea's position so an author or client can see exactly which idea is wrong. */
+    private function validateIdea(array &$idea, int $index): void
+    {
+        try {
+            $idea['fields'] = ProposalTypes::validateFields($idea['kind'], $idea['fields'] ?? []);
+            if (in_array($idea['completeness'] ?? '', ['partial', 'unsupported'], true) && empty($idea['missing'])) {
+                ProposalTypes::invalid('Partial or unsupported proposals must state what is missing.');
+            }
+            if (($idea['completeness'] ?? '') === 'complete' && ! empty($idea['missing'])) {
+                ProposalTypes::invalid('A complete proposal cannot list missing work.');
+            }
+            if (empty($idea['target_key']) && ($idea['completeness'] ?? '') === 'complete' && ProposalTypes::structureProblems($idea['kind'], $idea['fields'])) {
+                ProposalTypes::invalid('A complete '.$idea['kind'].' needs its actual structure, not only Notes.');
+            }
+        } catch (ValidationException $failure) {
+            $located = [];
+            foreach ($failure->errors() as $key => $messages) {
+                $located[$key === 'structure' ? 'ideas.'.$index : 'ideas.'.$index.'.'.$key] = $messages;
+            }
+
+            throw ValidationException::withMessages($located);
+        }
+    }
+
     public function prepare(AssistantTurn $turn, array $proposal): array
     {
+        return $this->prepareFrom(ProposalSource::forTurn($turn), $proposal);
+    }
+
+    public function prepareFrom(ProposalSource $source, array $proposal): array
+    {
+        $world = $source->exercise->world;
         foreach ($proposal['ideas'] as &$idea) {
             if (! empty($idea['target_key'])) {
-                $target = $this->worldContext->target($turn->exercise->world, $idea['target_key']);
-                $revision = $turn->context_manifest['proposal_targets'][$idea['target_key']] ?? collect($turn->context_manifest['records'] ?? [])
-                    ->firstWhere('key', $idea['target_key'])['revision'] ?? null;
-                if (! str_starts_with($idea['target_key'], $idea['kind'].':') || $revision === null || $target->revision !== (int) $revision) {
+                $target = $this->worldContext->target($world, $idea['target_key']);
+                $revision = $source->expectedRevision($idea['target_key'], $idea);
+                if (! str_starts_with($idea['target_key'], $idea['kind'].':') || $revision === null || $target->revision !== $revision) {
                     throw ValidationException::withMessages(['proposals' => 'A proposed update has no current scoped reference. Ask for a refreshed proposal.']);
                 }
-                $idea['target_revision'] = (int) $revision;
+                $idea['target_revision'] = $revision;
             }
             if (! empty($idea['proposal_id'])) {
-                $captured = collect($turn->request_context['sandbox'] ?? [])->firstWhere('id', $idea['proposal_id']);
-                $board = $turn->exercise->ideas()->findOrFail($idea['proposal_id']);
+                $capturedRevision = $source->capturedProposalRevision($idea['proposal_id'], $idea);
+                $board = $source->exercise->ideas()->findOrFail($idea['proposal_id']);
                 if (
-                    ! $captured
+                    $capturedRevision === null
                     || ! $board->canEdit()
                     || $board->kind !== $idea['kind']
                     || $board->revision !== (int) ($idea['proposal_revision'] ?? 0)
-                    || $board->revision !== (int) $captured['revision']
+                    || $board->revision !== $capturedRevision
                     || ($idea['target_key'] ?? null) !== $board->target_key
                 ) {
                     throw ValidationException::withMessages(['proposals' => 'The proposal being refined changed. Reopen it and ask again.']);
@@ -145,17 +171,17 @@ class SandboxProposals
             }
             foreach (['source_key', 'target_key'] as $endpoint) {
                 if ($idea['kind'] === 'relationship' && ! empty($idea['fields'][$endpoint])) {
-                    $this->worldContext->target($turn->exercise->world, $idea['fields'][$endpoint]);
+                    $this->worldContext->target($world, $idea['fields'][$endpoint]);
                 }
             }
-            $target = ! empty($idea['target_key']) ? $this->worldContext->target($turn->exercise->world, $idea['target_key']) : null;
-            ProposalTypes::validateScope($turn->exercise->world, $idea['kind'], $idea['fields'] ?? [], $target);
+            $target = ! empty($idea['target_key']) ? $this->worldContext->target($world, $idea['target_key']) : null;
+            ProposalTypes::validateScope($world, $idea['kind'], $idea['fields'] ?? [], $target);
             if (($idea['completeness'] ?? '') === 'complete' && ProposalTypes::structureProblems($idea['kind'], $idea['fields'] ?? [], $target)) {
                 ProposalTypes::invalid('The requested '.$idea['kind'].' is structurally incomplete.');
             }
             foreach ($idea['fields']['beats'] ?? [] as $beat) {
                 if (str_starts_with($beat['event_ref'] ?? '', 'board:')) {
-                    $eventDraft = $turn->exercise->ideas()->findOrFail((int) substr($beat['event_ref'], 6));
+                    $eventDraft = $source->exercise->ideas()->findOrFail((int) substr($beat['event_ref'], 6));
                     if ($eventDraft->kind !== 'event') {
                         ProposalTypes::invalid('A beat must link to an event draft.');
                     }
@@ -167,13 +193,13 @@ class SandboxProposals
                     }
                 }
             }
-            array_walk_recursive($idea['fields'], function (&$content) use ($turn): void {
+            array_walk_recursive($idea['fields'], function (&$content) use ($source): void {
                 if (is_string($content)) {
-                    $content = $this->reading->citations($turn, $content);
+                    $content = $source->citations($this->reading, $content);
                 }
             });
             $idea['basis'] ??= 'interpretation';
-            $idea['evidence'] = $this->reading->citations($turn, $idea['evidence'] ?? 'No supporting evidence supplied. Review before accepting.');
+            $idea['evidence'] = $source->citations($this->reading, $idea['evidence'] ?? 'No supporting evidence supplied. Review before accepting.');
         }
         unset($idea);
         foreach ($proposal['links'] ?? [] as $link) {
@@ -181,7 +207,7 @@ class SandboxProposals
             foreach (['source', 'target'] as $side) {
                 $endpoint = $link[$side];
                 if (is_string($endpoint)) {
-                    $this->worldContext->target($turn->exercise->world, $endpoint, true);
+                    $this->worldContext->target($world, $endpoint, true);
                 }
                 $kinds[] = is_string($endpoint) ? explode(':', $endpoint)[0] : $proposal['ideas'][$endpoint]['kind'];
             }
@@ -194,16 +220,33 @@ class SandboxProposals
     public function collect(AssistantTurn $turn, ?User $author = null): void
     {
         DB::transaction(function () use ($turn, $author): void {
-            World::lockForUpdate()->findOrFail($turn->exercise->world_id);
-            $exercise = WorldExercise::lockForUpdate()->findOrFail($turn->exercise_id);
-            Gate::forUser($author ?? auth()->user())->authorize('update', $exercise);
+            $exercise = $this->lockedExercise($turn->exercise, $author);
             $turn = $exercise->turns()->lockForUpdate()->findOrFail($turn->id);
             abort_unless($turn->status === 'completed' && $turn->proposals, 409);
-            abort_unless($exercise->world && ! $exercise->world->trashed(), 409);
+            $this->stage(ProposalSource::forTurn($turn), $turn->proposals, $author);
+        });
+    }
+
+    /** Locks and authorises the exercise's world before anything is written to its board. */
+    private function lockedExercise(WorldExercise $exercise, ?User $author): WorldExercise
+    {
+        World::lockForUpdate()->findOrFail($exercise->world_id);
+        $locked = WorldExercise::lockForUpdate()->findOrFail($exercise->id);
+        Gate::forUser($author ?? auth()->user())->authorize('update', $locked);
+        abort_unless($locked->world && ! $locked->world->trashed(), 409);
+
+        return $locked;
+    }
+
+    /** Puts a prepared batch on the sandbox board; returns the board ideas keyed by their position in the batch. */
+    public function stage(ProposalSource $source, array $proposal, ?User $author = null): array
+    {
+        return DB::transaction(function () use ($source, $proposal, $author): array {
+            $exercise = $this->lockedExercise($source->exercise, $author);
             $ideas = [];
-            foreach ($turn->proposals['ideas'] ?? [] as $index => $fields) {
-                $token = 'turn:'.$turn->id.':'.$index;
-                $collectedId = $turn->request_context['collected_proposals'][$index] ?? null;
+            foreach ($proposal['ideas'] ?? [] as $index => $fields) {
+                $token = $source->tokenPrefix().':'.$index;
+                $collectedId = $source->collectedIdeaIds()[$index] ?? null;
                 $existing = $collectedId
                     ? $exercise->ideas()->withTrashed()->findOrFail($collectedId)
                     : $exercise->ideas()->withTrashed()->where('source_token', $token)->first();
@@ -246,7 +289,7 @@ class SandboxProposals
                 $attributes['notes_md'] = array_key_exists('notes_md', $fields) ? $fields['notes_md'] : ($board?->notes_md ?? $base['notes_md'] ?? null);
                 // Omitted fields are unchanged. Target values are resolved at review, not copied as accidental edits.
                 $attributes['fields'] = array_replace($board?->fields ?? [], $custom);
-                $coverage = $turn->evidenceLimitations();
+                $coverage = $source->coverage();
                 $previousCoverage = ($board?->provenanceForReview() ?? [])['coverage_status'] ?? [];
                 if (($previousCoverage['recorded'] ?? null) === false) {
                     $coverage['recorded'] = false;
@@ -260,16 +303,13 @@ class SandboxProposals
                 $attributes['provenance'] = [
                     'coverage_status' => $coverage,
                     'notes_provided' => array_key_exists('notes_md', $fields),
-                    'structure' => ['version' => 3, 'deliverable' => $turn->proposals['deliverable'] ?? 'records', 'completeness' => $fields['completeness'] ?? 'unassessed', 'missing' => $fields['missing'] ?? []],
+                    'structure' => ['version' => 3, 'deliverable' => $proposal['deliverable'] ?? 'records', 'completeness' => $fields['completeness'] ?? 'unassessed', 'missing' => $fields['missing'] ?? []],
                     'basis' => $fields['basis'] ?? 'interpretation',
                     'evidence' => $fields['evidence'] ?? '',
-                    'turn_id' => $turn->id,
-                    'recovery' => collect($turn->request_context['recovery'] ?? [])
-                        ->only(['message_id', 'idea_id', 'idea_revision', 'source_turn_id'])
-                        ->all(),
+                    ...$source->provenanceExtras(),
                     'previous' => $board?->provenance ? collect($board->provenance)->except('previous')->all() : null,
                 ];
-                $attributes += ['origin' => 'assistant', 'source_message_id' => $turn->response_id, 'source_token' => $token];
+                $attributes += ['origin' => $source->origin(), 'source_message_id' => $source->sourceMessageId(), 'source_token' => $token];
                 if ($board) {
                     $board->revise($attributes, $board->revision);
                     $ideas[$index] = $board->refresh();
@@ -278,14 +318,12 @@ class SandboxProposals
                         ->create($attributes + ['x' => 40 + ($index % 3) * 260, 'y' => 40 + intdiv($index, 3) * 170, 'position' => $index]);
                 }
             }
-            $settings = $turn->request_context ?? [];
-            $settings['collected_proposals'] = array_map(fn ($idea) => $idea->id, $ideas);
-            $turn->update(['request_context' => $settings]);
+            $source->recordCollected(array_map(fn ($idea) => $idea->id, $ideas));
             foreach ($ideas as $idea) {
                 $custom = $idea->fields ?? [];
                 foreach ($custom['beats'] ?? [] as $index => $beat) {
                     if (str_starts_with($beat['event_ref'] ?? '', 'board:')) {
-                        $eventDraft = $turn->exercise->ideas()->findOrFail((int) substr($beat['event_ref'], 6));
+                        $eventDraft = $exercise->ideas()->findOrFail((int) substr($beat['event_ref'], 6));
                         if ($eventDraft->kind !== 'event') {
                             ProposalTypes::invalid('A beat must link to an event draft.');
                         }
@@ -302,7 +340,7 @@ class SandboxProposals
                     $idea->update(['fields' => $custom]);
                 }
             }
-            foreach ($turn->proposals['links'] ?? [] as $link) {
+            foreach ($proposal['links'] ?? [] as $link) {
                 $endpoints = [];
                 foreach (['source', 'target'] as $side) {
                     $endpoint = $link[$side];
@@ -311,6 +349,8 @@ class SandboxProposals
                 }
                 $exercise->links()->firstOrCreate($endpoints + ['kind' => $link['kind'], 'label' => $link['label']]);
             }
+
+            return $ideas;
         });
     }
 }

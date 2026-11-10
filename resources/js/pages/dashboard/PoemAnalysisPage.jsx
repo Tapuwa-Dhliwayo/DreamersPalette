@@ -5,12 +5,14 @@ import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
 import StatusMessage from "@/components/ui/StatusMessage";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import ImportAnalysisDialog from "@/components/poemAnalysis/ImportAnalysisDialog";
+import { ImportedAnalysisHeader, SuggestedNotes } from "@/components/poemAnalysis/ImportedAnalysis";
 import { usePoemAnalysis } from "@/hooks/usePoemAnalysis";
 import { DASHBOARD_ROUTES } from "@/app/routes";
 import { formatDate } from "@/utils/formatDate";
 
 function ActionIcon({ kind = "chat" }) {
-    const paths = { chat: "M4 4h16v12H9l-5 4z", send: "m3 3 18 9-18 9 4-9z M7 12h14", plus: "M12 5v14 M5 12h14", write: "m4 16 12-12 4 4-12 12H4z", archive: "M3 4h18v4H3z M5 8v12h14V8 M10 12h4" };
+    const paths = { chat: "M4 4h16v12H9l-5 4z", send: "m3 3 18 9-18 9 4-9z M7 12h14", plus: "M12 5v14 M5 12h14", write: "m4 16 12-12 4 4-12 12H4z", archive: "M3 4h18v4H3z M5 8v12h14V8 M10 12h4", import: "M12 4v12 M7 11l5 5 5-5 M4 20h16" };
     return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d={paths[kind]} /></svg>;
 }
 
@@ -27,6 +29,7 @@ function AnalysisWorkspace({ id }) {
     const [note, setNote] = useState("");
     const [editingNoteId, setEditingNoteId] = useState(null);
     const [archiveOpen, setArchiveOpen] = useState(false);
+    const [importOpen, setImportOpen] = useState(false);
     const messagesEnd = useRef(null);
     const followLatest = useRef(true);
     const { workspace, conversation, busy, error } = state;
@@ -98,6 +101,7 @@ function AnalysisWorkspace({ id }) {
                     <div className="flex shrink-0 flex-wrap items-end gap-2">
                         <label className="min-w-0 flex-1 text-sm font-medium">Conversation<Select className="mt-1" value={state.conversationId} disabled={busy} onChange={(event) => { setViewSnapshotId(""); state.selectConversation(event.target.value); }}><option value="">New analysis</option>{workspace.conversations.map((conversation) => <option key={conversation.id} value={conversation.id}>{conversation.title}</option>)}</Select></label>
                         <Button className="gap-2" variant="subtle" disabled={busy} onClick={state.newConversation}><ActionIcon kind="plus" />New</Button>
+                        <Button className="gap-2" variant="subtle" disabled={busy} onClick={() => setImportOpen(true)}><ActionIcon kind="import" />Import analysis</Button>
                         {state.conversationId && <Button className="gap-2" variant="ghost" disabled={busy} onClick={() => setArchiveOpen(true)}><ActionIcon kind="archive" />Archive</Button>}
                     </div>
                     {!!workspace.archived_conversations.length && <details className="text-sm"><summary className="cursor-pointer">Archived conversations</summary>{workspace.archived_conversations.map((conversation) => <div key={conversation.id} className="flex items-center justify-between gap-2"><span>{conversation.title}</span><Button size="sm" variant="ghost" disabled={busy} onClick={() => state.restore(conversation.id)}>Restore</Button></div>)}</details>}
@@ -107,6 +111,16 @@ function AnalysisWorkspace({ id }) {
                         {conversation?.messages.map((message) => {
                             const turn = turns.find((turn) => turn.response_id === message.id);
                             const questionTurn = turns.findLast((turn) => turn.message_id === message.id);
+                            const imported = message.import_id ? conversation.imports.find((record) => record.id === message.import_id) : null;
+                            if (message.import_id) {
+                                // An imported answer has no turn: no provider status, retry, model or usage.
+                                const importedSnapshot = conversation.snapshots.find((snapshot) => snapshot.id === imported?.snapshot_id);
+                                return <article key={message.id} className="break-words border-l-2 border-neutral-400 py-1 pl-4">
+                                    <ImportedAnalysisHeader record={imported} snapshot={importedSnapshot} isNewerVersion={Boolean(importedSnapshot) && importedSnapshot.fingerprint !== workspace.fingerprint} onViewSource={(snapshotId) => { setViewSnapshotId(String(snapshotId)); setPane("poem"); }} />
+                                    <div className="analysis-markdown text-sm leading-7"><ReactMarkdown>{message.content}</ReactMarkdown></div>
+                                    <SuggestedNotes notes={imported?.suggested_notes} savedContents={workspace.notes.map((saved) => saved.content)} disabled={busy} onSave={(content) => state.saveNote({ content })} />
+                                </article>;
+                            }
                             return <article key={message.id} className={`break-words border-l-2 py-1 pl-4 ${message.role === "user" ? "border-teal-700" : "border-neutral-200"}`}>
                                 <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-neutral-600"><strong>{message.role === "user" ? "You" : `${turn?.provider || "Assistant"} · ${turn?.model || ""}`}</strong>{turn && <span>{turn.status}{turn.request_context.retry_of ? " · retried question" : ""}</span>}{questionTurn && <button className="min-h-8 underline" onClick={() => { setViewSnapshotId(String(questionTurn.request_context.snapshot_id)); setPane("poem"); }}>View source version {questionTurn.request_context.snapshot_id}</button>}</div>
                                 {questionTurn?.request_context.revision && <p className="mb-2 text-xs text-teal-800">New poem version supplied.</p>}
@@ -141,6 +155,7 @@ function AnalysisWorkspace({ id }) {
                     </form>
                 </section>
             </div>
+            <ImportAnalysisDialog open={importOpen || Boolean(state.importPreview || state.importFailure)} onClose={() => { setImportOpen(false); state.closeImport(); }} preview={state.importPreview} failure={state.importFailure} busy={state.importBusy} onPreview={state.previewImport} onSave={state.saveImport} onOpen={(conversationId) => { setImportOpen(false); state.openImported(conversationId); }} />
             <ConfirmDialog open={archiveOpen} title="Archive this conversation?" description="Any running response will stop. Saved discussion and source versions will be retained." confirmLabel="Archive conversation" onClose={() => setArchiveOpen(false)} onConfirm={() => { setArchiveOpen(false); state.archive(); }} />
         </div>
     );

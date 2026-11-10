@@ -6,14 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Content\PoemAnalysisRequest;
 use App\Models\AssistantConnection;
 use App\Models\AssistantMessage;
+use App\Models\ExchangeImport;
 use App\Models\Poem;
 use App\Models\PoemAnalysisConversation;
 use App\Models\PoemAnalysisSnapshot;
+use App\Services\Exchange\ExchangeImports;
 use App\Services\Poetry\PoemAnalysis;
 use App\Services\Worldbuilding\AssistantModels;
 use App\Services\Worldbuilding\AssistantProviders;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 class PoemAnalysisController extends Controller
 {
@@ -67,14 +71,90 @@ class PoemAnalysisController extends Controller
         $record = $this->conversation($poem, $conversation);
         $analysis->expire($record);
         $turns = $record->turns()->get();
-        $snapshotIds = $turns->map(fn ($turn) => $turn->request_context['snapshot_id'])->unique();
+        $messages = $record->messages()->get(['id', 'role', 'content', 'import_id']);
+        $imports = ExchangeImport::query()->saved()->whereIn('id', $messages->pluck('import_id')->filter())->orderBy('id')->get();
+        $snapshotIds = $turns->toBase()->map(fn ($turn) => $turn->request_context['snapshot_id'])->merge($imports->pluck('snapshot_id'))->filter()->unique();
 
         return response()->json([
             'conversation' => $record->only(['id', 'title', 'connection_id']),
-            'messages' => $record->messages()->get(['id', 'role', 'content']),
+            'messages' => $messages,
+            'imports' => $imports->map(fn (ExchangeImport $import): array => [
+                'id' => $import->id,
+                'message_id' => $messages->firstWhere('import_id', $import->id)?->id,
+                'title' => $import->title,
+                'snapshot_id' => $import->snapshot_id,
+                'external_origin' => $import->external_origin,
+                'saved_at' => $import->saved_at?->toIso8601String(),
+                'suggested_notes' => $import->payload['poetry']['suggested_notes'] ?? [],
+            ])->values(),
             'turns' => $turns->map(fn ($turn) => $turn->only(['id', 'connection_id', 'message_id', 'response_id', 'status', 'provider', 'model', 'error', 'progress', 'request_context', 'created_at'])),
             'snapshots' => PoemAnalysisSnapshot::where('poem_id', $poem)->whereIn('id', $snapshotIds)->get(),
         ]);
+    }
+
+    private function import(int $poem, int $import): ExchangeImport
+    {
+        $this->poem($poem);
+
+        return ExchangeImport::where('author_id', auth()->id())
+            ->where('destination_type', 'poem_analysis')
+            ->where('poem_id', $poem)
+            ->findOrFail($import);
+    }
+
+    private function importSummary(ExchangeImport $import): array
+    {
+        return [
+            'id' => $import->id,
+            'title' => $import->title,
+            'saved' => $import->isSaved(),
+            'saved_at' => $import->saved_at?->toIso8601String(),
+            'preview' => $import->receipt['preview'] ?? null,
+            'suggested_notes' => $import->payload['poetry']['suggested_notes'] ?? [],
+            'external_origin' => $import->external_origin,
+            'conversation_id' => $import->isSaved() ? $import->poem_conversation_id : null,
+        ];
+    }
+
+    public function previewImport(PoemAnalysisRequest $request, int $poem, ExchangeImports $imports)
+    {
+        $record = $this->poem($poem);
+        try {
+            $import = $imports->preview($request->user(), $request->validated('markdown'));
+        } catch (ModelNotFoundException) {
+            throw ValidationException::withMessages(['destination.poem' => 'This package names a poem or conversation that is not available to you.']);
+        }
+        if ($import->destination_type !== 'poem_analysis' || $import->poem_id !== $record->id) {
+            // A saved import is a record of earlier work; only an unsaved preview is ours to throw away.
+            if (! $import->isSaved()) {
+                $import->discard();
+            }
+            throw ValidationException::withMessages(['destination.poem' => 'This package is not an analysis of "'.$record->title.'". Import it from the poem it names.']);
+        }
+
+        return response()->json($this->importSummary($import));
+    }
+
+    public function saveImport(int $poem, int $import, ExchangeImports $imports)
+    {
+        $saved = $imports->save(auth()->user(), $this->import($poem, $import));
+
+        return response()->json([
+            'conversation_id' => $saved->receipt['conversation_id'],
+            'message_id' => $saved->receipt['message_id'],
+            'snapshot_id' => $saved->receipt['snapshot_id'],
+            'newer_version' => $saved->receipt['newer_version'],
+            'warnings' => $saved->receipt['warnings'],
+        ]);
+    }
+
+    public function discardImport(int $poem, int $import)
+    {
+        $record = $this->import($poem, $import);
+        abort_if($record->isSaved(), 409, 'A saved import cannot be discarded.');
+        $record->discard();
+
+        return response()->noContent();
     }
 
     public function models(int $connection)

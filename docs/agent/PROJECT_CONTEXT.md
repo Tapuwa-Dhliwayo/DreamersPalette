@@ -419,3 +419,20 @@ minutes (`config/incidents.php`), with a second email on pause. Studio > Inciden
 (`incidents.manage`, superadmin; migration `2026_11_08_000001`) resolves or pauses
 incidents, and `php artisan dreamers:incidents release` resolves all open ones for
 the Forge deploy script. See `docs/ERROR_INCIDENTS.md`. Migration run locally only.
+
+## External chat workflow: account MCP and exchange imports — 2026/11/10
+
+Local, uncommitted, undeployed. Model conversation moves to the author's own Claude,
+ChatGPT or Codex client; DreamersPalette stays the durable home. A read-only account
+MCP server (`/mcp/account`, Passport OAuth on a separate `api` guard, four tools) is
+registered only when `ACCOUNT_MCP_ENABLED` is true (on in local `.env` only). Authors
+choose readable material under Account → External access; default deny. Work returns as
+an exchange Markdown package (`dreamerspalette-exchange` fenced JSON), uploaded or pasted
+in the sandbox (Import work) or poetry workspace (Import analysis). World packages stage
+through the same `SandboxProposals` code as internal replies via `ProposalSource`; no
+turn, connection or usage row is created. Imports stay pending until canon review.
+
+Migrations `2026_11_10_000001`, `000002` and Passport's five are applied locally only.
+Verified by rolled-back scratch runs, real HTTP requests, locally minted tokens and
+`composer verify`. Not verified: real client connections, the browser OAuth consent
+flow, and all new screens in a browser. See `docs/MCP_AND_EXTERNAL_CHAT_WORKFLOW_PLAN.md`.

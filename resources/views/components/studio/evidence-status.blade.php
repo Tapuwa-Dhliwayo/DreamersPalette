@@ -1,5 +1,7 @@
 @props(['status' => []])
-@if(($status['recorded'] ?? null) === false)
+@if($status['external'] ?? false)
+    <p class="sandbox-notice">Imported from an external conversation. DreamersPalette did not read its sources; review them before accepting changes.</p>
+@elseif(($status['recorded'] ?? null) === false)
     <p class="sandbox-notice">Evidence coverage was not recorded for this earlier response; review its sources before accepting changes.</p>
 @endif
 @if($status['partial'] ?? false)

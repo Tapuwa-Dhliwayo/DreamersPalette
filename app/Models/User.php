@@ -6,6 +6,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -15,13 +16,15 @@ use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Laravel\Passport\Contracts\OAuthenticatable;
+use Laravel\Passport\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
-class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
+class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable, PasskeyUser
 {
-    use HasRoles, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use HasApiTokens, HasRoles, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     protected $guard_name = 'web';
 
@@ -110,6 +113,40 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     public function chapters(): HasMany
     {
         return $this->hasMany(Chapter::class, 'author_id');
+    }
+
+    public function externalGrants(): HasMany
+    {
+        return $this->hasMany(ExternalGrant::class);
+    }
+
+    public function replaceExternalGrants(array $grants): void
+    {
+        $this->getConnection()->transaction(function () use ($grants): void {
+            $this->externalGrants()->delete();
+            foreach ($grants as $grant) {
+                $this->externalGrants()->create($grant);
+            }
+        });
+    }
+
+    /**
+     * One entry per connected client that still holds a live token, newest connection first.
+     */
+    public function connectedClients(): Collection
+    {
+        return $this->tokens()->with('client')->where('revoked', false)->where('expires_at', '>', now())
+            ->orderByDesc('created_at')->get()->unique('client_id')->values();
+    }
+
+    public function revokeConnectedClient(string $clientId): void
+    {
+        $this->getConnection()->transaction(function () use ($clientId): void {
+            foreach ($this->tokens()->with('refreshToken')->where('client_id', $clientId)->where('revoked', false)->get() as $token) {
+                $token->revoke();
+                $token->refreshToken?->revoke();
+            }
+        });
     }
 
     public function generatedAssets(): HasMany

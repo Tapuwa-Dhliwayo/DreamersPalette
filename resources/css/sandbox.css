@@ -271,3 +271,13 @@
     .sandbox-rail { display:none; }
     .sandbox-workspace { flex:none; min-height:75dvh; }
 }
+
+.sandbox-import { width:min(40rem, calc(100vw - 2rem)); display:grid; gap:.8rem; }
+.sandbox-import-summary { display:grid; gap:.15rem; }
+.sandbox-import-items { display:grid; gap:.5rem; list-style:none; margin:0; padding:0; max-height:50vh; overflow-y:auto; }
+.sandbox-import-items>li { display:grid; gap:.2rem; padding:.55rem .7rem; border:1px solid var(--studio-border); border-radius:8px; }
+.sandbox-import-item-head { display:flex; flex-wrap:wrap; align-items:baseline; gap:.4rem; font-size:.85rem; }
+.sandbox-import-item-head>strong { overflow-wrap:anywhere; }
+.sandbox-import-warning { font-size:.8rem; color:#8a5a00; }
+.sandbox-import-conflict { margin:.2rem 0 0; padding:.4rem .6rem; font-size:.8rem; }
+.sandbox-import-errors { margin:.4rem 0 0; padding-left:1.1rem; overflow-wrap:anywhere; }

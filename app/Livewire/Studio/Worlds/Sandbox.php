@@ -4,18 +4,21 @@ namespace App\Livewire\Studio\Worlds;
 
 use App\Livewire\Forms\Worlds\ConversationForm;
 use App\Livewire\Forms\Worlds\ExerciseForm;
+use App\Livewire\Forms\Worlds\ImportForm;
 use App\Livewire\Forms\Worlds\NamingConventionForm;
 use App\Livewire\Forms\Worlds\SandboxIdeaForm;
 use App\Livewire\Forms\Worlds\SandboxLinkForm;
 use App\Models\AssistantConnection;
 use App\Models\AssistantSource;
 use App\Models\AssistantTurn;
+use App\Models\ExchangeImport;
 use App\Models\ManuscriptChapter;
 use App\Models\NamingConvention;
 use App\Models\SandboxIdea;
 use App\Models\World;
 use App\Models\WorldEntryType;
 use App\Models\WorldExercise;
+use App\Services\Exchange\ExchangeImports;
 use App\Services\Worldbuilding\AssistantConversation;
 use App\Services\Worldbuilding\AssistantModels;
 use App\Services\Worldbuilding\AssistantProviders;
@@ -24,6 +27,8 @@ use App\Services\Worldbuilding\Canonisation;
 use App\Services\Worldbuilding\ProposalTypes;
 use App\Services\Worldbuilding\SandboxProposals;
 use App\Services\Worldbuilding\WorldContext;
+use Flux\Flux;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
@@ -33,11 +38,14 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Ramsey\Uuid\Uuid;
 
 #[Layout('layouts.studio')]
 class Sandbox extends Component
 {
+    use WithFileUploads;
+
     public World $world;
 
     public ExerciseForm $exerciseForm;
@@ -49,6 +57,8 @@ class Sandbox extends Component
     public SandboxLinkForm $linkForm;
 
     public NamingConventionForm $namingForm;
+
+    public ImportForm $importForm;
 
     #[Url(as: 'exercise')]
     public ?int $exerciseId = null;
@@ -76,6 +86,13 @@ class Sandbox extends Component
 
     #[Locked]
     public string $sendRequest = '';
+
+    // Only the previewed import's id is kept; the package Markdown stays in its private file.
+    #[Locked]
+    public ?int $importId = null;
+
+    // Path-keyed messages from an invalid package, shown so they can be pasted back to the chat client.
+    public array $importErrors = [];
 
     #[Locked]
     public array $undoMove = [];
@@ -570,17 +587,135 @@ class Sandbox extends Component
         $turn = $exercise->turns()->findOrFail($id);
         $proposals->collect($turn);
         $drafts = $exercise->ideas()->whereIn('id', $turn->fresh()->request_context['collected_proposals'] ?? [])->get();
+        $this->reviewDrafts($drafts, $canon, 'There are no pending record updates in this response. Accepted changes remain in History.');
+    }
+
+    public function reviewImport(int $importId, Canonisation $canon): void
+    {
+        $exercise = $this->exercise(true);
+        $import = $this->worldImport($importId);
+        abort_unless($import->isSaved() && $import->exercise_id === $exercise->id, 404);
+        $drafts = $exercise->ideas()->whereIn('id', array_values($import->receipt['ideas'] ?? []))->get();
+        $this->reviewDrafts($drafts, $canon, 'There are no pending record updates in this import. Accepted changes remain in History.');
+    }
+
+    private function reviewDrafts(Collection $drafts, Canonisation $canon, string $noneNotice): void
+    {
         $this->selectedIdeas = $drafts
             ->filter(fn ($idea) => $idea->canEdit() && ! in_array($idea->kind, ['thought', 'question', 'name'], true))
             ->pluck('id')
             ->all();
         if (! $this->selectedIdeas) {
             $this->panel = 'history';
-            $this->notice = 'There are no pending record updates in this response. Accepted changes remain in History.';
+            $this->notice = $noneNotice;
 
             return;
         }
         $this->reviewCanon($canon);
+    }
+
+    // An import is reachable only by its author and only through the world it names.
+    private function worldImport(?int $id): ExchangeImport
+    {
+        $this->authorize('update', $this->world);
+
+        return ExchangeImport::where('author_id', auth()->id())
+            ->where('destination_type', 'world_exercise')
+            ->where('world_id', $this->world->id)
+            ->findOrFail($id);
+    }
+
+    public function previewImport(ExchangeImports $imports): void
+    {
+        $this->authorize('update', $this->world);
+        $this->importErrors = [];
+        try {
+            $markdown = $this->importForm->markdown();
+            $this->discardPreview();
+            $import = $imports->preview(auth()->user(), $markdown);
+        } catch (ValidationException $invalid) {
+            $this->resetValidation();
+            $this->importErrors = $invalid->errors();
+
+            return;
+        } catch (ModelNotFoundException) {
+            $this->importErrors = ['destination' => ['The package names a world or poem you do not have.']];
+
+            return;
+        }
+        $this->importForm->clearPackage();
+        if ($import->destination_type !== 'world_exercise' || $import->world_id !== $this->world->id) {
+            $this->importErrors = ['destination' => [$this->destinationMismatch($import)]];
+            $import->isSaved() || $import->discard();
+
+            return;
+        }
+        $this->importId = $import->id;
+    }
+
+    private function destinationMismatch(ExchangeImport $import): string
+    {
+        $named = match ($import->destination_type) {
+            'world_exercise' => 'the world "'.(World::find($import->world_id)?->name ?? '#'.$import->world_id).'"',
+            'poem_analysis' => 'a poem analysis',
+        };
+
+        return 'This package is addressed to '.$named.', but you are importing into "'.$this->world->name.'". Ask the chat client for a package addressed to this world.';
+    }
+
+    public function saveImport(ExchangeImports $imports): void
+    {
+        $import = $this->worldImport($this->importId);
+        abort_if($import->isSaved(), 409);
+        $this->importErrors = [];
+        try {
+            $saved = $imports->save(auth()->user(), $import, $this->importForm->conflictsAsAlternatives);
+        } catch (ValidationException $invalid) {
+            $this->importErrors = $invalid->errors();
+
+            return;
+        }
+        $this->closeImport();
+        $this->openExercise($saved->receipt['exercise_id']);
+        $count = count($saved->receipt['ideas']);
+        $this->notice = 'Imported '.$count.' '.Str::plural('item', $count).' as pending proposals. Nothing is canon until you accept it.';
+    }
+
+    public function openImportedWork(): void
+    {
+        $import = $this->worldImport($this->importId);
+        abort_unless($import->isSaved(), 409);
+        $this->closeImport();
+        $this->openExercise($import->exercise_id);
+    }
+
+    public function cancelImport(): void
+    {
+        $this->discardPreview();
+        $this->closeImport();
+    }
+
+    // A saved import is a record of what happened; only a never-saved preview is dropped.
+    private function discardPreview(): void
+    {
+        if ($this->importId) {
+            $this->authorize('update', $this->world);
+            // The preview may already have expired and been pruned.
+            $import = ExchangeImport::where('author_id', auth()->id())->where('world_id', $this->world->id)->find($this->importId);
+            if ($import && ! $import->isSaved()) {
+                $import->discard();
+            }
+            $this->importId = null;
+        }
+    }
+
+    private function closeImport(): void
+    {
+        $this->importId = null;
+        $this->importErrors = [];
+        $this->importForm->reset();
+        $this->resetValidation();
+        Flux::modal('import-work')->close();
     }
 
     public function editSavedQuestion(int $id): void
@@ -855,6 +990,7 @@ class Sandbox extends Component
         $sourceRevisions = ManuscriptChapter::whereIn('id', $readingSources->flatten()->pluck('chapter_id'))->pluck('revision', 'id');
 
         return view('livewire.studio.worlds.sandbox', [
+            'importRecord' => $this->importId ? ExchangeImport::where('author_id', auth()->id())->where('world_id', $this->world->id)->find($this->importId) : null,
             'usageTotals' => app(AssistantUsage::class)->summary(auth()->id(), $exercise?->id),
             'source' => $source,
             'readingSources' => $readingSources,
@@ -872,7 +1008,7 @@ class Sandbox extends Component
             'catalogue' => $catalogue,
             'chapters' => $chapters,
             'connections' => AssistantConnection::where('user_id', auth()->id())->where('enabled', true)->get(),
-            'messages' => $exercise?->messages()->get() ?? collect(),
+            'messages' => $exercise?->messages()->with('import:id,title,external_origin,saved_at')->get() ?? collect(),
             'turns' => $turns,
             'recoveredMessages' => $recoveredMessages,
             'recoveredIdeas' => $recoveredIdeas,

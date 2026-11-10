@@ -41,6 +41,9 @@ Route::prefix('studio')->middleware([PreventAuthenticationCaching::class, 'auth:
         Route::post('/{poem}/conversations/{conversation}/messages', 'send')->middleware('throttle:30,1')->whereNumber(['poem', 'conversation']);
         Route::post('/{poem}/conversations/{conversation}/turns/{turn}/stop', 'stop')->whereNumber(['poem', 'conversation', 'turn']);
         Route::post('/{poem}/conversations/{conversation}/turns/{turn}/retry', 'retry')->middleware('throttle:30,1')->whereNumber(['poem', 'conversation', 'turn']);
+        Route::post('/{poem}/imports/preview', 'previewImport')->middleware('throttle:30,1')->whereNumber('poem');
+        Route::post('/{poem}/imports/{import}/save', 'saveImport')->middleware('throttle:30,1')->whereNumber(['poem', 'import']);
+        Route::delete('/{poem}/imports/{import}', 'discardImport')->whereNumber(['poem', 'import']);
         Route::post('/{poem}/notes', 'note')->whereNumber('poem');
         Route::post('/{poem}/notes/{note}/restore', 'restoreNote')->whereNumber(['poem', 'note']);
         Route::delete('/{poem}/notes/{note}', 'retireNote')->whereNumber(['poem', 'note']);

@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Content;
 
+use App\Services\Exchange\ExchangePackage;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -32,6 +34,13 @@ class PoemAnalysisRequest extends FormRequest
                 'content' => ['required', 'string', 'max:4000'],
                 'source_message_id' => ['nullable', 'integer'],
                 'note_id' => ['nullable', 'integer'],
+            ],
+            'previewImport' => [
+                'markdown' => ['required', 'string', function (string $attribute, mixed $value, Closure $fail): void {
+                    if (strlen($value) > ExchangePackage::MAX_FILE_BYTES) {
+                        $fail('The file is larger than '.(ExchangePackage::MAX_FILE_BYTES / 1048576).' MiB.');
+                    }
+                }],
             ],
             default => [],
         };

@@ -5,6 +5,7 @@ use App\Http\Controllers\Studio\DraftMapImageController;
 use App\Http\Controllers\Studio\ExportDraftController;
 use App\Http\Controllers\Studio\MapImageController;
 use App\Http\Middleware\PreventAuthenticationCaching;
+use App\Livewire\Studio\Account\ExternalAccess;
 use App\Livewire\Studio\Account\Profile;
 use App\Livewire\Studio\Account\Security;
 use App\Livewire\Studio\AssistantConnections;
@@ -29,6 +30,7 @@ Route::middleware(PreventAuthenticationCaching::class)->group(__DIR__.'/auth.php
 
 Route::get('/account', Profile::class)->middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.session', 'verified', 'can:account.view'])->name('account.profile');
 Route::get('/account/security', Security::class)->middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.session', 'verified', 'can:account.security.manage'])->name('account.security');
+Route::get('/account/connections', ExternalAccess::class)->middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.session', 'verified', 'can:account.view', 'can:account.external-access'])->name('account.connections');
 
 Route::prefix('studio')->name('studio.')->middleware([PreventAuthenticationCaching::class, 'auth:web', 'auth.session', 'verified', 'can:dashboard.access'])->group(function (): void {
     Route::get('/', Index::class)->middleware('can:manuscripts.view')->name('index');
@@ -73,4 +75,4 @@ Route::view('/preview/collections/{slug}', 'app')->middleware(['auth:web', 'auth
 
 // Reserved server paths must never turn into a successful SPA response by accident.
 Route::view('/{path?}', 'app')
-    ->where('path', '^(?!api(?:/|$)|studio(?:/|$)|livewire(?:[-/]|$)|sanctum(?:/|$)|up(?:/|$)|dashboard(?:/|$)|preview(?:/|$)|user(?:/|$)|passkeys(?:/|$)|login(?:/|$)|logout(?:/|$)|register(?:/|$)|forgot-password(?:/|$)|reset-password(?:/|$)|two-factor-challenge(?:/|$)|email(?:/|$)|verify-email(?:/|$)).*');
+    ->where('path', '^(?!api(?:/|$)|oauth(?:/|$)|mcp(?:/|$)|\.well-known(?:/|$)|studio(?:/|$)|livewire(?:[-/]|$)|sanctum(?:/|$)|up(?:/|$)|dashboard(?:/|$)|preview(?:/|$)|user(?:/|$)|passkeys(?:/|$)|login(?:/|$)|logout(?:/|$)|register(?:/|$)|forgot-password(?:/|$)|reset-password(?:/|$)|two-factor-challenge(?:/|$)|email(?:/|$)|verify-email(?:/|$)).*');

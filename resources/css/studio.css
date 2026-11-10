@@ -2093,3 +2093,31 @@ a.thinking-subject:hover { text-decoration: underline; text-underline-offset: 4p
 .arc-detail-value small { font:12px sans-serif; color:var(--studio-muted); }
 .arc-detail-actions { display:flex; gap:8px; margin-top:20px; }
 @media(max-width:760px) { .arc-scoreboard { padding:16px 14px 0; gap:12px; } .arc-score-context { max-width:180px; font-size:11px; } .arc-score { font-size:36px; } .arc-detail-heading h3 { font-size:22px; } }
+/* Livewire restores wire:dirty.remove elements as inline-block unless told otherwise; the notice is a size container, so inline-block collapses it to zero width. */
+.ext-notice { display:flex; flex-direction:column; margin-bottom:20px; }
+.ext-section { display:flex; flex-direction:column; gap:12px; margin-bottom:32px; }
+.ext-url { display:flex; gap:8px; align-items:center; }
+.ext-url-field { flex:1; min-width:0; padding:7px 10px; border:1px solid var(--studio-border); border-radius:8px; background:var(--studio-white); font:13px ui-monospace,monospace; color:var(--studio-ink); }
+.ext-howto { display:flex; flex-direction:column; gap:6px; }
+.ext-howto summary { cursor:pointer; font-weight:600; font-size:14px; }
+.ext-howto p { margin:6px 0; font-size:14px; color:var(--studio-body); }
+.ext-howto code { display:block; margin:4px 0; padding:6px 8px; overflow-wrap:anywhere; background:var(--studio-surface); border-radius:6px; font-size:12.5px; }
+.ext-group { border:0; padding:0; margin:0; display:flex; flex-direction:column; }
+.ext-group legend { font-weight:600; font-size:14px; padding:0 0 6px; }
+.ext-row { display:flex; justify-content:space-between; gap:16px; align-items:center; padding:7px 0; border-top:1px solid var(--studio-line); font-size:14px; }
+.ext-pick,.ext-extra { display:flex; gap:8px; align-items:center; }
+.ext-extra { color:var(--studio-body); font-size:13px; }
+.ext-extra:has(:disabled) { opacity:.5; }
+.ext-none { color:var(--studio-body); font-size:14px; margin:0; }
+.ext-client { display:grid; grid-template-columns:minmax(0,2fr) 1fr 1fr auto; gap:12px; align-items:center; padding:9px 0; border-top:1px solid var(--studio-line); font-size:14px; }
+@media(max-width:640px) {
+    .ext-row { flex-direction:column; align-items:flex-start; gap:6px; }
+    .ext-client { grid-template-columns:1fr; gap:4px; }
+    .ext-client button { justify-self:start; margin-top:6px; }
+}
+.mcp-authorize { margin-top:48px; }
+.mcp-authorize p { margin:0 0 12px; line-height:1.6; }
+.mcp-authorize-meta { font-size:13px; color:var(--studio-body); overflow-wrap:anywhere; }
+.mcp-authorize-actions { justify-content:flex-start; }
+.mcp-authorize-button { padding:8px 16px; border:1px solid var(--studio-border); border-radius:8px; background:var(--studio-white); font-size:14px; cursor:pointer; }
+.mcp-authorize-primary { background:var(--studio-accent); border-color:var(--studio-accent); color:#fff; }

@@ -40,6 +40,11 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (!sessionLoading && user) {
+            // A connecting client is waiting on its consent screen, which is a server page.
+            if (user.email_verified && user.continue_to) {
+                window.location.assign(user.continue_to);
+                return;
+            }
             const destination = !user.email_verified
                 ? "/verify-email"
                 : can(user, "dashboard.access")

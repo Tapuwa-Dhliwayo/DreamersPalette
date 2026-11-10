@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ExchangeImport;
 use App\Models\ManuscriptCompile;
 use App\Services\Operations\IncidentMonitor;
 use Illuminate\Support\Facades\Artisan;
@@ -24,6 +25,9 @@ Artisan::command('dreamers:prune-compiles', function (): void {
 })->purpose('Remove expired temporary private manuscript export files and manifests');
 
 Schedule::command('dreamers:prune-compiles')->daily()->withoutOverlapping();
+
+// Unsaved exchange previews hold a private copy of the upload; they are not reservations.
+Schedule::call(fn () => ExchangeImport::prunePreviews())->name('exchange-imports:prune-previews')->daily()->withoutOverlapping();
 
 Artisan::command('dreamers:incidents {operation=list : list, notify, resolve, or release} {reference?}', function (): int {
     $monitor = app(IncidentMonitor::class);

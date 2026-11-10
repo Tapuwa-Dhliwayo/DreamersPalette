@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 class AssistantMessage extends Model
@@ -12,11 +13,21 @@ class AssistantMessage extends Model
 
     protected $table = 'studio_assistant_messages';
 
-    protected $fillable = ['role', 'content'];
+    protected $fillable = ['role', 'content', 'import_id'];
 
     protected function casts(): array
     {
-        return [];
+        return ['import_id' => 'integer'];
+    }
+
+    public function import(): BelongsTo
+    {
+        return $this->belongsTo(ExchangeImport::class, 'import_id');
+    }
+
+    public function isImported(): bool
+    {
+        return $this->import_id !== null;
     }
 
     public function readsAsDocument(): bool

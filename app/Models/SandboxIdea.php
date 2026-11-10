@@ -67,6 +67,13 @@ class SandboxIdea extends Model
             return $provenance;
         }
 
+        if ($this->origin === 'import') {
+            // An import has no assistant turn to look up; its coverage is whatever was stored when it was staged.
+            $provenance['coverage_status'] = ['recorded' => false, 'external' => true];
+
+            return $provenance;
+        }
+
         if (isset($provenance['turn_id'])) {
             $provenance['coverage_status'] = $this->exercise->turns()
                 ->find($provenance['turn_id'])?->evidenceLimitations() ?? AssistantTurn::UNRECORDED_COVERAGE;
@@ -81,6 +88,15 @@ class SandboxIdea extends Model
         $provenance['coverage_status'] = AssistantTurn::UNRECORDED_COVERAGE;
 
         return $provenance;
+    }
+
+    public function originLabel(): string
+    {
+        return match ($this->origin) {
+            'assistant' => 'Assistant proposal',
+            'import' => 'Imported proposal',
+            default => 'Author-created idea',
+        };
     }
 
     public function forkAlternative(): self

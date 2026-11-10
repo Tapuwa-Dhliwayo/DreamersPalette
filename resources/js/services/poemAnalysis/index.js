@@ -14,6 +14,9 @@ export const retryTurn = (poem, conversation, turn, requestUuid) => apiRequest(`
 export const saveAuthorNote = (poem, body) => apiRequest(`${root(poem)}/notes`, { method: "POST", body });
 export const restoreAuthorNote = (poem, note) => apiRequest(`${root(poem)}/notes/${note}/restore`, { method: "POST" });
 export const retireAuthorNote = (poem, note) => apiRequest(`${root(poem)}/notes/${note}`, { method: "DELETE" });
+export const previewImport = (poem, markdown) => apiRequest(`${root(poem)}/imports/preview`, { method: "POST", body: { markdown } });
+export const saveImport = (poem, importId) => apiRequest(`${root(poem)}/imports/${importId}/save`, { method: "POST" });
+export const discardImport = (poem, importId) => apiRequest(`${root(poem)}/imports/${importId}`, { method: "DELETE" });
 
 export const getAssistantActivity = () => apiRequest("/api/studio/assistant-activity");
 export const acknowledgeActivity = (turn) => apiRequest(`/api/studio/assistant-activity/${turn}/acknowledge`, { method: "POST" });
